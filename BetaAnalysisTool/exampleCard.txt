@@ -1,0 +1,52 @@
+# Example card to run analysis over a given file or set of files for beta or TB analysis
+
+# Specify the list of files to read and analyse here, in comma-separated format string
+
+files = "stats_Sr_Run4_Ch1-100V_Ch2-100V_Ch3-2750V_trig230V.root"
+
+# To use a channel, specify whether it is a DUT or MCP or REF.
+# For DUT, a fit will be performed.
+# For MCP, time resolution will be extracted from the DUT temporally to this.
+# For REF, the channel will be shown in plotting but not fitted or used for time resolution
+# Specify channel with the board type, e.g. "DUT, SC" so during analysis the area can be accurately converted to charge
+
+CH_1 = "REF, SC"
+CH_2 = "DUT, SC"
+CH_3 = "DUT, SC"
+CH_4 = "MCP, None"
+CH_5 = 0
+CH_6 = 0
+CH_7 = 0
+CH_8 = 0
+
+# Specify what results and fits are to be performed
+
+tmax = False
+pmax = True
+negpmax = False
+charge = False
+rms = False
+timeres = False
+discretisation = False
+waveform = False
+all_with_no_plots = False
+
+# For charge, RMS, and time resolution, specify the number of bins, lower bound, and upper bound to plot
+
+charge_nB_xL_xU = 40,0,40
+rms_nB_xL_xU = 40,0,4
+timeres_nB_xL_xU = 80,2.4,2.8
+
+# Specify which selections should be applied to which channel (these are not applied simultaneously unless calculating time resolution
+# For time resolution, the MCP channel selection is applied with the corresponding DUT.
+# If the three-DUT setup is used, the cuts for the relevant channels for time resolution extraction will be applied
+# The inputs are PMAX_LOWER,PMAX_UPPER,NEGPMAX_LOWER (in mV), written e.g. 20,160,-20. If the value is 0, no cut will be performed.
+
+CH1_cut = 0,0,0
+CH2_cut = 0,100,0
+CH3_cut = 0,100,0
+CH4_cut = 0,0,0
+CH5_cut = 0,0,0
+CH6_cut = 0,0,0
+CH7_cut = 0,0,0
+CH8_cut = 0,0,0
