@@ -69,10 +69,13 @@ def main():
   parser = argparse.ArgumentParser(description='Read .root files into an array.')
   parser.add_argument('files', metavar='F', type=str, nargs='+',
                       help='List of .root files or wildcard pattern (*.root)')
+  parser.add_argument("--ch", type=int, required=True, help='Channel number to which to fit Langauss')
   args = parser.parse_args()
 
   files = []
   trees = []
+
+  ch_ind = args.ch - 1
 
   for pattern in args.files:
     root_files = glob.glob(pattern)
@@ -86,13 +89,12 @@ def main():
   area_list = []
 
   for entry in theTree:
-    pmax_sig = entry.pmax[0]
-    negpmax_sig = entry.negpmax[0]
-    pmax_mcp = entry.pmax[1]
-    if (pmax_sig < 10) or (pmax_sig > 120) or (negpmax_sig < -15) or (negpmax_sig > 5) or (pmax_mcp > 120):
+    pmax_sig = entry.pmax[ch_ind]
+    negpmax_sig = entry.negpmax[ch_ind]
+    if (pmax_sig < 20) or (pmax_sig > 200) or (negpmax_sig < -25):
       continue
     else:
-      area_sig = entry.area_new[0]
+      area_sig = entry.area_new[ch_ind]
       pmax_list.append(pmax_sig)
       area_list.append(area_sig)
 
