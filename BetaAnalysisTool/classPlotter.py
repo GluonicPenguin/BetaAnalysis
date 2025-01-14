@@ -16,6 +16,8 @@ class plotVar:
     self.cut_cond = cut_cond
     self.fit = fit
 
+    var_dict = {"tmax":"t_{max} / 10 ns" , "pmax":"p_max / mV" , "negpmax":"-p_max / mV", "charge":"Q / fC", "area_new":"Area / pWb" , "rms":"RMS / mV"}
+
   def run(self, files, trees, ch, total_number_channels):
     print(f"[BETA ANALYSIS]: Reading {self.var}")
     arr_of_hists = []

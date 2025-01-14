@@ -5,7 +5,7 @@ import re
 def read_text_card(file_path):
   config = {}
 
-  channel_mapping = {
+  channel_type_mapping = {
       "DUT": 1,
       "MCP": 2,
       "REF": 3
@@ -46,26 +46,28 @@ def read_text_card(file_path):
       match = re.match(r'^(\w+)\s*=\s*(.+)$', line)
       if match:
         key, value = match.groups()
-        value = value.strip().strip('"').strip("'")
+        value = value.strip().strip('"')
+        value = value.strip("'")
 
         if key == "files":
           value = [item.strip() for item in value.split(',')]
+          config[key] = value
 
         elif key.startswith("CH_") and key[3:].isdigit():
           index = int(key[3:]) - 1  # Convert to 0-based index
 
-           parts = [part.strip() for part in value.split(',')]
-           type_str = parts[0]
-           additional_str = parts[1] if len(parts) > 1 else ""
+          parts = [part.strip() for part in value.split(',')]
+          type_str = parts[0]
+          additional_str = parts[1] if len(parts) > 1 else ""
 
-           channel_type = channel_type_mapping.get(type_str.upper(), 0)
-           channel_value = channel_value_mapping.get(additional_str, 1)
+          channel_type = channel_type_mapping.get(type_str.upper(), 0)
+          channel_value = channel_area_to_charge_mapping.get(additional_str, 1)
 
-           channels[index] = [channel_type, channel_value, None]
+          channels[index] = [channel_type, channel_value, None]
         elif key.startswith("CH") and key.endswith("_cut"):
-           channel_index = int(key[2]) - 1
-           lower_bound, upper_bound, additional_condition = map(int, value.split(","))
-           channels[channel_index][2] = (lower_bound, upper_bound, additional_condition)
+          channel_index = int(key[2]) - 1
+          lower_bound, upper_bound, additional_condition = map(int, value.split(","))
+          channels[channel_index][2] = (lower_bound, upper_bound, additional_condition)
 
         elif key in plot_flags:
           plot_flags[key] = value.lower() == "true"

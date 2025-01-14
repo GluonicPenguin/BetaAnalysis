@@ -2,7 +2,7 @@
 
 # Specify the list of files to read and analyse here, in comma-separated format string
 
-files = "stats_Sr_Run4_Ch1-100V_Ch2-100V_Ch3-2750V_trig230V.root"
+files = "../../../../DESY_TB_Dec_24/data_TB/Run0_W1_T20C/stats_Sr_Run0_Ch1-150V_Ch2-150V_Ch3-2750V_trig230V.root"
 
 # To use a channel, specify whether it is a DUT or MCP or REF.
 # For DUT, a fit will be performed.
