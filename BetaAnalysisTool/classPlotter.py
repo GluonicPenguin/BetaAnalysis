@@ -5,7 +5,7 @@ import ROOT as root
 from proc_tools import get_fit_results, hist_tree_file_basics, plot_fit_curves, getBias
 
 class plotVar:
-  def __init__(self, var, nBins, xLower, xUpper, log_scale, save_name, cut_cond="event>-1", fit=None):
+  def __init__(self, var, nBins, xLower, xUpper, log_scale, save_name, fit=None):
 
     self.var = var
     self.nBins = nBins
@@ -13,15 +13,18 @@ class plotVar:
     self.xUpper = xUpper
     self.log_scale = log_scale
     self.save_name = save_name
-    self.cut_cond = cut_cond
     self.fit = fit
 
     var_dict = {"tmax":"t_{max} / 10 ns" , "pmax":"p_max / mV" , "negpmax":"-p_max / mV", "charge":"Q / fC", "area_new":"Area / pWb" , "rms":"RMS / mV"}
+    cut_cond="event>-1"
 
-  def run(self, files, trees, ch, total_number_channels):
-    print(f"[BETA ANALYSIS]: Reading {self.var}")
+  def run(self, files, trees, channel_array):
+
     arr_of_hists = []
     arr_of_biases = []
+
+    print(channel_array)
+    total_number_channels = len(channel_array)
 
     if total_number_channels == 1:
       for i in range(len(trees)):

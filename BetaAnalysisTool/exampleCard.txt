@@ -33,6 +33,8 @@ all_with_no_plots = False
 
 # For charge, RMS, and time resolution, specify the number of bins, lower bound, and upper bound to plot
 
+pmax_nB_xL_xU = 200,0,200
+negpmax_nB_xL_xU = -40,10,50
 charge_nB_xL_xU = 40,0,40
 rms_nB_xL_xU = 40,0,4
 timeres_nB_xL_xU = 80,2.4,2.8

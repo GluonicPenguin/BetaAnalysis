@@ -75,7 +75,7 @@ def read_text_card(file_path):
           param_key = key.split("_nB_xL_xU")[0]
           if plot_flags.get(param_key, False):  # Check if this plot is enabled
             nBins, xLower, xUpper = map(float, value.split(","))
-            plot_params[param_key] = (nBins, xLower, xUpper)
+            plot_params[param_key+"_params"] = (nBins, xLower, xUpper)
         else:
           config[key] = value
 

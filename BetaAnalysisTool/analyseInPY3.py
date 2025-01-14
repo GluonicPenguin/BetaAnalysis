@@ -72,13 +72,10 @@ def main():
         theFile = root.TFile(root_file)
         file_array.append(theFile)
         tree_array.append(theFile.Get("Analysis"))
-        #print(f"Successfully read {root_file}")
       except Exception as e:
         print(f"Error reading {root_file}: {e}")
 
-  if len(file_array) == 1:
-    print(f"[BETA ANALYSIS] : [FILE READER] Single input ROOT file read.")
-  elif len(file_array) == 0:
+  if len(file_array) == 0:
     print(f"[BETA ANALYSIS] : [FILE READER] No files found.")
     sys.exit(0)
   else:
@@ -99,7 +96,7 @@ def main():
   
 
   if plot_variables:
-    sentence = "will plot " + ", ".join(plot_variables) + "..."
+    sentence = "will plot " + ", ".join(plot_variables)
   else:
     sentence = "will perform analysis without plotting."
 
@@ -112,19 +109,19 @@ def main():
     plot_tmax = plotVar("tmax", 1000, -2, 2, False, "tmax.png", fit=None)
     plot_tmax.run(file_array,tree_array,config['channels'])
   if config.get('pmax', False) == True:
-    plot_pmax = plotVar("pmax", pmax_params[0], pmax_params[1], pmax_params[2], True, "pmax.png", cut_cond=args.cutCond, fit=None)
+    plot_pmax = plotVar("pmax", pmax_params[0], pmax_params[1], pmax_params[2], True, "pmax.png", fit=None)
     plot_pmax.run(file_array,tree_array,config['channels'])
   if config.get('negpmax', False) == True:
-    plot_negpmax = plotVar("negpmax", negpmax_params[0], negpmax_params[1], negpmax_params[2], True, "negpmax.png", cut_cond=args.cutCond, fit=None)
+    plot_negpmax = plotVar("negpmax", negpmax_params[0], negpmax_params[1], negpmax_params[2], True, "negpmax.png", fit=None)
     plot_negpmax.run(file_array,tree_array,config['channels'])
   if config.get('charge', False) == True:
-    plot_charge = plotVar("charge", charge_params[0], charge_params[1], charge_params[2], True, "charge.png", cut_cond=args.cutCond, fit=None)
+    plot_charge = plotVar("charge", charge_params[0], charge_params[1], charge_params[2], True, "charge.png", fit=None)
     plot_charge.run(file_array,tree_array,config['channels'])
   if config.get('rms', False) == True:
-    plot_rms = plotVar("rms", rms_params[0], rms_params[1], rms_params[2], True, "rms.png", cut_cond=args.cutCond, fit="gaus")
+    plot_rms = plotVar("rms", rms_params[0], rms_params[1], rms_params[2], True, "rms.png", fit="gaus")
     plot_rms.run(file_array,tree_array,config['channels'])
   if config.get('timeres', False) == True:
-    plot_timeres = plotVar("timeres", timeres_params[0], timeres_params[1], timeres_params[2], True, "timeres.png", cut_cond=args.cutCond, fit="gaus")
+    plot_timeres = plotVar("timeres", timeres_params[0], timeres_params[1], timeres_params[2], True, "timeres.png", fit="gaus")
     plot_timeres.run(file_array,tree_array,config['channels'])
 
 
