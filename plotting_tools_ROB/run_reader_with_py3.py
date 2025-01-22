@@ -54,7 +54,7 @@ import math
 # Run14 S2 cut_cond = "event>-1 && pmax[2] > 20 && pmax[2] < 200 && negpmax[2] > -25"
 
 #myGlobalCut = "event>-1"
-myGlobalCut = "event>-1 && pmax[2] > 20 && pmax[2] < 200 && negpmax[2] > -25"
+myGlobalCut = "event>-1 && pmax[0] > 10 && pmax[0] < 150 && tmax[0] > 11 && tmax[0] < 14"
 
 var_dict = {"tmax":"t_{max} / 10 ns" , "pmax":"p_max / mV" , "negpmax":"-p_max / mV", "charge":"Q / fC", "area_new":"Area / pWb" , "rms":"RMS / mV"}
 
@@ -177,10 +177,10 @@ def hist_tree_file_basics(tree,file,var,index,nBins,xLower,xUpper,biasVal,cut_co
   if var == "cfd["+str(ch)+"]["+str(toaThreshold)+"]-cfd["+str(ch+1)+"]["+str(toaThreshold)+"]" or var == "cfd[0]["+str(toaThreshold)+"]-cfd["+str(ch)+"]["+str(toaThreshold)+"]":
     thisHist = root.TH1F("hist"+biasVal, var+";tn-tn+1 / ns ;Events", nBins, xLower, xUpper)
     tree.Draw(var+">>hist"+biasVal,cut_cond)
-  elif var == "cfd["+str(ch)+"][1]-cfd["+str(ch)+"][4]":
+  elif var == "cfd["+str(ch)+"][2]-cfd["+str(ch)+"][4]":
     thisHist = root.TH1F("hist"+biasVal, var+";t(20%)-t(50%) / ns ;Events", nBins, xLower, xUpper)
     tree.Draw(var+">>hist"+biasVal,cut_cond)
-  elif var == "cfd["+str(ch)+"]["+str(toaThreshold)+"]-cfd[3]["+str(toaThreshold)+"]":
+  elif var == "cfd["+str(ch)+"]["+str(toaThreshold)+"]-cfd[1]["+str(toaThreshold)+"]":
     thisHist = root.TH1F("hist"+biasVal, var+";tn-tn+1 / ns ;Events", nBins, xLower, xUpper)
     tree.Draw(var+">>hist"+biasVal,cut_cond)
   elif var == "charge":
@@ -215,13 +215,13 @@ def plot_fit_curves(xLower,xUpper,fit_type,hist_to_fit,index,biasVal):
 def tMaxTest(files,trees,ch,total_number_channels):
   print("tmax test run")
   var = "tmax"
-  nBins = 1000
+  nBins = 100
   cut_cond = "event>-1" # 100 for SPS TB 24
   arr_of_hists = []
   arr_of_biases = []
 
-  xLower = -2
-  xUpper = 2
+  xLower = -20
+  xUpper = 20
 
   if total_number_channels == 1:
     for i in range(len(trees)):
@@ -240,8 +240,9 @@ def tMaxTest(files,trees,ch,total_number_channels):
         arr_of_biases.append(bias)
 
   c1 = root.TCanvas("c1", "Comparison of tmax distribution", 800, 600)
+  c1.SetLogy()
   max_y = max(hist.GetMaximum() for hist in arr_of_hists) * 1.05
-  arr_of_hists[0].GetYaxis().SetRangeUser(0, max_y)
+  arr_of_hists[0].GetYaxis().SetRangeUser(1, max_y)
   arr_of_hists[0].SetTitle("Comparison of tmax distribution")
   arr_of_hists[0].Draw()
   if len(arr_of_hists) > 1:
@@ -571,13 +572,14 @@ def timeRes(files,trees,ch,total_number_channels):
   # 1 = 20%, 4 = 50%
   # "wt" Draw option to ignore tail
   if total_number_channels == 2:
-    var = "cfd[0]["+str(toaThreshold)+"]-cfd[1]["+str(toaThreshold)+"]"
+    var = "cfd[0]["+str(toaThreshold)+"]-cfd[2]["+str(toaThreshold)+"]"
     cut_cond = "negpmax[0] > -15 && negpmax[0] < 5 && pmax[0] > 6.0 && pmax[0] < 120 && pmax[1] > 20 && pmax[1] < 120 && negpmax[1] > -15 && cfd[1]["+str(toaThreshold)+"]<2 && cfd[1]["+str(toaThreshold)+"]>-2 && cfd[0]["+str(toaThreshold)+"]>10"
     vars.append(var)
     cut_conds.append(cut_cond)
   elif total_number_channels == 1:
-    var = "cfd["+str(ch)+"]["+str(toaThreshold)+"]-cfd[3]["+str(toaThreshold)+"]"
-    cut_cond = "negpmax[2] > -40 && pmax[2] < 400 && " + myGlobalCut
+    print("HERE")
+    var = "cfd["+str(ch)+"]["+str(toaThreshold)+"]-cfd[1]["+str(toaThreshold)+"]"
+    cut_cond = "negpmax[1] > -40 && pmax[1] < 400 && " + myGlobalCut
     vars.append(var)
     cut_conds.append(cut_cond)
   else:
@@ -598,8 +600,8 @@ def timeRes(files,trees,ch,total_number_channels):
       cut_conds.append(cut_cond)
 
   nBins = 80
-  xLower = 2.6
-  xUpper = 3.0
+  xLower = 8
+  xUpper = 12
 
   arr_of_hists = []
   arr_of_biases = []

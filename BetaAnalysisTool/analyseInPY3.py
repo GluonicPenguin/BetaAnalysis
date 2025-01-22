@@ -18,6 +18,7 @@ import sys
 
 from classPlotter import plotVar
 from cardReader import read_text_card
+from langaus import plot_langaus
 
 var_dict = {"tmax":"t_{max} / 10 ns" , "pmax":"p_max / mV" , "negpmax":"-p_max / mV", "charge":"Q / fC", "area_new":"Area / pWb" , "rms":"RMS / mV"}
 
@@ -49,7 +50,6 @@ def main():
   filtered_channels = [ch for ch in config['channels'] if ch[0] != 0] # drop channels that are not specified in the textCard
   modified_channels = [[ch[0], ch[1], (ch[2][0], 1000 if ch[2][1] == 0 else ch[2][1], -100 if ch[2][2] >= 0 else ch[2][2], -50 if ch[2][3] == 0 else ch[2][3], 50 if ch[2][4] == 0 else ch[2][4])] for ch in filtered_channels] # set +ve negpmax lower bounds to -100 mV if they are +ve or 0 in the textCard (and tmax cuts on full range if specified as 0,0)
   config['channels'] = modified_channels
-  print(config['channels'])
 
   channel_mapping = {
     1: "DUT",
@@ -125,8 +125,7 @@ def main():
     plot_negpmax = plotVar("negpmax", negpmax_params[0], negpmax_params[1], negpmax_params[2], True, output_name+"_negpmax.png", fit=None)
     plot_negpmax.run(file_array,tree_array,config['channels'])
   if config.get('charge', False) == True:
-    plot_charge = plotVar("charge", charge_params[0], charge_params[1], charge_params[2], True, output_name+"_charge.png", fit=None)
-    plot_charge.run(file_array,tree_array,config['channels'])
+    plot_langaus(file_array, tree_array, config['channels'], charge_params[0], charge_params[1], charge_params[2], output_name+"_charge")
   if config.get('rms', False) == True:
     plot_rms = plotVar("rms", rms_params[0], rms_params[1], rms_params[2], True, output_name+"_rms.png", fit="gaus")
     plot_rms.run(file_array,tree_array,config['channels'])

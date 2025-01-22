@@ -40,9 +40,6 @@ class plotVar:
     total_number_channels = len(channel_array)
 
     result = []
-
-    print(channel_array)
-
     for i, (_, _, (A, B, C, D, E)) in enumerate(channel_array):
       condition = f"event>-1 && pmax[{i}] > {A} && pmax[{i}] < {B} && negpmax[{i}] > {C} && tmax[{i}] > {D} && tmax[{i}] < {E}"
       result.append(condition)
@@ -76,17 +73,16 @@ class plotVar:
       for hist_to_draw in valid_hists[1:]:
         hist_to_draw.Draw("SAME")
 
-    print(self.fit)
-    if self.fit:
+    if (self.fit) is not None:
       arr_of_fits = []
-      for channel_i in range(len(self.fit)):
-        if (channel_array[j][0] == 1):
-          print(f"[BETA ANALYSIS]: Performing {self.fit} fit to channel {channel_i}")
-          thisFit = plot_fit_curves(self.xLower, self.xUpper, self.fit[channel_i], arr_of_hists[channel_i], channel_i, arr_of_biases[channel_i])
+      for i, thisHist in enumerate(arr_of_hists):
+        print(f"[BETA ANALYSIS]: Performing {self.fit} fit to DUT channels")
+        if (channel_array[i][0] == 1):
+          thisFit = plot_fit_curves(self.xLower, self.xUpper, self.fit, arr_of_hists[i], i, arr_of_biases[i])
           arr_of_fits.append(thisFit)
           thisFit.Draw("SAME")
         else:
-          arr_of_fits.append(0)
+          arr_of_fits.append(None)
 
     legend = root.TLegend(0.7, 0.7, 0.9, 0.9)
     for i in range(len(valid_hists)):
@@ -96,6 +92,6 @@ class plotVar:
     c1.SaveAs(self.save_name)
     print(f"[BETA ANALYSIS]: Saved {self.var} as "+self.save_name)
 
-    if self.fit:
+    if (self.fit) is not None:
       fit_results = get_fit_results(arr_of_fits,arr_of_biases)
       print(fit_results)

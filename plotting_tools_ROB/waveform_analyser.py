@@ -66,7 +66,9 @@ def main():
       negpmax_sig = entry.negpmax[0]
       pmax_mcp = entry.pmax[1]
       peakfind = entry.cfd[0][1]
-      if (pmax_sig > 10) and (pmax_sig < 30) and (negpmax_sig > -30) and (pmax_mcp < 120) and (peakfind > 9) and (peakfind < 14): # W12 15e14 betw 10 and 40 mV
+      if (pmax_sig > 55) and (pmax_sig < 80) and (negpmax_sig > -30) and (pmax_mcp < 120) and (peakfind > 9) and (peakfind < 14):
+        # W12 15e14/25e14 (pmax_sig > 10) and (pmax_sig < 30) and (negpmax_sig > -30) and (pmax_mcp < 120) and (peakfind > 9) and (peakfind < 14)
+        # W13 35e14 (pmax_sig > 55) and (pmax_sig < 80) and (negpmax_sig > -30) and (pmax_mcp < 120) and (peakfind > 9) and (peakfind < 14)
         w_sig = entry.w[0]
         t_sig = entry.t[0]
         w_data[j].extend(w_sig)
@@ -82,10 +84,10 @@ def main():
 
   plt.figure(figsize=(10, 6))
 
-  colours = ['blue','orange']
+  colours = ['orange','blue']
   alphas = [1.0,0.8]
   edges = ['black','none']
-  labels = ["W5 non irradiated (120 V)","W12 15e14 (210 V)"]
+  labels = ["W5 non irradiated (120 V)","W13 35e14 (420 V)"]
 
   for i in range(2):
     time_data = t_data[i]*(10**9)
@@ -105,7 +107,7 @@ def main():
   plt.legend(fontsize=14)
   #plt.yscale('log')
   plt.grid(True, linestyle='--', alpha=0.5)
-  plt.savefig("./ampl_shape_W5new_v_W1215e14.png",dpi=300,facecolor='w')
+  plt.savefig("./ampl_shape_W5new_v_W1335e14S.png",dpi=300,facecolor='w')
   plt.show()
 
 
