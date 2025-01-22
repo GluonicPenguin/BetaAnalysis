@@ -66,8 +66,8 @@ def read_text_card(file_path):
           channels[index] = [channel_type, channel_value, None]
         elif key.startswith("CH") and key.endswith("_cut"):
           channel_index = int(key[2]) - 1
-          lower_bound, upper_bound, additional_condition = map(int, value.split(","))
-          channels[channel_index][2] = (lower_bound, upper_bound, additional_condition)
+          lower_bound, upper_bound, additional_condition , tlow, thigh = map(int, value.split(","))
+          channels[channel_index][2] = (lower_bound, upper_bound, additional_condition, tlow, thigh)
 
         elif key in plot_flags:
           plot_flags[key] = value.lower() == "true"
@@ -75,7 +75,7 @@ def read_text_card(file_path):
           param_key = key.split("_nB_xL_xU")[0]
           if plot_flags.get(param_key, False):  # Check if this plot is enabled
             nBins, xLower, xUpper = map(float, value.split(","))
-            plot_params[param_key+"_params"] = (nBins, xLower, xUpper)
+            plot_params[param_key+"_params"] = (int(nBins), xLower, xUpper)
         else:
           config[key] = value
 

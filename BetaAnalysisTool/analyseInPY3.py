@@ -28,6 +28,7 @@ def main():
 
   print(f"[BETA ANALYSIS] : [CARD READER] Reading text card {args.config}.")
   config = read_text_card(args.config)
+  output_name = os.path.splitext(os.path.basename(args.config))[0]
 
   file_list = config.get('files', [])
   channels = config.get('channels', [[0, 1]] * 8)
@@ -46,8 +47,9 @@ def main():
     timeres_params = config.get('timeres_params', None)
 
   filtered_channels = [ch for ch in config['channels'] if ch[0] != 0] # drop channels that are not specified in the textCard
-  modified_channels = [[ch[0], ch[1], (ch[2][0], ch[2][1], -100 if ch[2][2] >= 0 else ch[2][2])] for ch in filtered_channels] # set +ve negpmax lower bounds to -100 mV if they are +ve or 0 in the textCard
+  modified_channels = [[ch[0], ch[1], (ch[2][0], 1000 if ch[2][1] == 0 else ch[2][1], -100 if ch[2][2] >= 0 else ch[2][2], -50 if ch[2][3] == 0 else ch[2][3], 50 if ch[2][4] == 0 else ch[2][4])] for ch in filtered_channels] # set +ve negpmax lower bounds to -100 mV if they are +ve or 0 in the textCard (and tmax cuts on full range if specified as 0,0)
   config['channels'] = modified_channels
+  print(config['channels'])
 
   channel_mapping = {
     1: "DUT",
@@ -62,6 +64,14 @@ def main():
     1: "unmounted"
   }
 
+  output_name_w_bias = ""
+  for ch_ind, ch_val in enumerate(config['channels']):
+    if ch_val[0] == 1:
+      bias_after_channel = re.search(rf"Ch{ch_ind}-(\d+)V_", file_list[0])
+      output_name_w_bias = output_name_w_bias + f"_Ch{ch_ind}-" + bias_after_channel.group(1) +"V"
+
+  output_name = "hist_" + output_name + output_name_w_bias
+
   file_array = []
   tree_array = []
 
@@ -70,6 +80,8 @@ def main():
     for root_file in root_files:
       try:
         theFile = root.TFile(root_file)
+        #biasForSaveName = getBias(root_file)
+        #output_name = output_name + "_Ch1" + biasForSaveName + "V"
         file_array.append(theFile)
         tree_array.append(theFile.Get("Analysis"))
       except Exception as e:
@@ -78,8 +90,8 @@ def main():
   if len(file_array) == 0:
     print(f"[BETA ANALYSIS] : [FILE READER] No files found.")
     sys.exit(0)
-  else:
-    print(f"[BETA ANALYSIS] : [FILE READER] Total {len(file_array)} input ROOT files read.")
+  #else:
+  #  print(f"[BETA ANALYSIS] : [FILE READER] Total {len(file_array)} input ROOT files read.")
 
   tree_with_channels = theFile.Get("Analysis")
   branch_with_number_channels = tree_with_channels.GetBranch("t")
@@ -92,36 +104,34 @@ def main():
   total_number_channels = int(outer_vector_count / branch_with_number_channels.GetEntries())
   print(f"[BETA ANALYSIS] : [FILE READER] Total {total_number_channels} channels in the file.")
 
-  plot_variables = [var for var, flag in config.items() if var in ['tmax', 'pmax', 'negpmax', 'charge', 'rms', 'timeres', 'discretisation', 'waveform'] and flag]
-  
+  plot_variables = [var for var, flag in config.items() if var in ['tmax', 'pmax', 'negpmax', 'charge', 'rms', 'timeres', 'discretisation', 'waveform'] and flag]  
 
   if plot_variables:
     sentence = "will plot " + ", ".join(plot_variables)
   else:
     sentence = "will perform analysis without plotting."
 
-  print(f"[BETA ANALYSIS] : [CARD READER] Analyser " + sentence + " distributions.")
-  print(f"[BETA ANALYSIS] : [CARD READER] Setup is as follows: ")
+  print(f"[BETA ANALYSIS] : [CARD READER] Analyser " + sentence + " distributions for the following setup:")
   for i, ch in enumerate(config['channels']):
     print(f"        CH {i} : {channel_mapping.get(ch[0])} {board_mapping.get(ch[1])}")
 
   if config.get('tmax', False) == True:
-    plot_tmax = plotVar("tmax", 1000, -2, 2, False, "tmax.png", fit=None)
+    plot_tmax = plotVar("tmax", 1000, -2, 2, False, output_name+"_tmax.png", fit=None)
     plot_tmax.run(file_array,tree_array,config['channels'])
   if config.get('pmax', False) == True:
-    plot_pmax = plotVar("pmax", pmax_params[0], pmax_params[1], pmax_params[2], True, "pmax.png", fit=None)
+    plot_pmax = plotVar("pmax", pmax_params[0], pmax_params[1], pmax_params[2], True, output_name+"_pmax.png", fit=None)
     plot_pmax.run(file_array,tree_array,config['channels'])
   if config.get('negpmax', False) == True:
-    plot_negpmax = plotVar("negpmax", negpmax_params[0], negpmax_params[1], negpmax_params[2], True, "negpmax.png", fit=None)
+    plot_negpmax = plotVar("negpmax", negpmax_params[0], negpmax_params[1], negpmax_params[2], True, output_name+"_negpmax.png", fit=None)
     plot_negpmax.run(file_array,tree_array,config['channels'])
   if config.get('charge', False) == True:
-    plot_charge = plotVar("charge", charge_params[0], charge_params[1], charge_params[2], True, "charge.png", fit=None)
+    plot_charge = plotVar("charge", charge_params[0], charge_params[1], charge_params[2], True, output_name+"_charge.png", fit=None)
     plot_charge.run(file_array,tree_array,config['channels'])
   if config.get('rms', False) == True:
-    plot_rms = plotVar("rms", rms_params[0], rms_params[1], rms_params[2], True, "rms.png", fit="gaus")
+    plot_rms = plotVar("rms", rms_params[0], rms_params[1], rms_params[2], True, output_name+"_rms.png", fit="gaus")
     plot_rms.run(file_array,tree_array,config['channels'])
   if config.get('timeres', False) == True:
-    plot_timeres = plotVar("timeres", timeres_params[0], timeres_params[1], timeres_params[2], True, "timeres.png", fit="gaus")
+    plot_timeres = plotVar("timeres", timeres_params[0], timeres_params[1], timeres_params[2], True, output_name+"_timeres.png", fit="gaus")
     plot_timeres.run(file_array,tree_array,config['channels'])
 
 

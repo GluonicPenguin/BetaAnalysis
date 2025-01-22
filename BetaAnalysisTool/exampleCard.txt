@@ -21,9 +21,9 @@ CH_8 = 0
 
 # Specify what results and fits are to be performed
 
-tmax = False
+tmax = True
 pmax = True
-negpmax = False
+negpmax = True
 charge = False
 rms = False
 timeres = False
@@ -34,7 +34,7 @@ all_with_no_plots = False
 # For charge, RMS, and time resolution, specify the number of bins, lower bound, and upper bound to plot
 
 pmax_nB_xL_xU = 200,0,200
-negpmax_nB_xL_xU = -40,10,50
+negpmax_nB_xL_xU = 50,-40,10
 charge_nB_xL_xU = 40,0,40
 rms_nB_xL_xU = 40,0,4
 timeres_nB_xL_xU = 80,2.4,2.8
@@ -44,11 +44,11 @@ timeres_nB_xL_xU = 80,2.4,2.8
 # If the three-DUT setup is used, the cuts for the relevant channels for time resolution extraction will be applied
 # The inputs are PMAX_LOWER,PMAX_UPPER,NEGPMAX_LOWER (in mV), written e.g. 20,160,-20. If the value is 0, no cut will be performed.
 
-CH1_cut = 0,0,0
-CH2_cut = 0,100,0
-CH3_cut = 0,100,0
-CH4_cut = 0,0,0
-CH5_cut = 0,0,0
-CH6_cut = 0,0,0
-CH7_cut = 0,0,0
-CH8_cut = 0,0,0
+CH1_cut = 0,0,0,0,0
+CH2_cut = 0,100,0,0,0
+CH3_cut = 0,100,0,0,0
+CH4_cut = 0,0,0,0,0
+CH5_cut = 0,0,0,0,0
+CH6_cut = 0,0,0,0,0
+CH7_cut = 0,0,0,0,0
+CH8_cut = 0,0,0,0,0
