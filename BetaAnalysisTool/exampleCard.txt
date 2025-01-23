@@ -1,4 +1,5 @@
 # Example card to run analysis over a given file or set of files for beta or TB analysis
+# Run the script with command `python3 analyseInPY3.py exampleCard.txt` - note that it must be run in Py3!
 
 # Specify the list of files to read and analyse here, in comma-separated format string
 
