@@ -17,6 +17,7 @@ import math
 import sys
 
 from classPlotter import plotVar
+from classTRPlotter import plotTRVar
 from cardReader import read_text_card
 from langaus import plot_langaus
 
@@ -130,7 +131,7 @@ def main():
     plot_rms = plotVar("rms", rms_params[0], rms_params[1], rms_params[2], True, output_name+"_rms.png", fit="gaus")
     plot_rms.run(file_array,tree_array,config['channels'])
   if config.get('timeres', False) == True:
-    plot_timeres = plotVar("timeres", timeres_params[0], timeres_params[1], timeres_params[2], True, output_name+"_timeres.png", fit="gaus")
+    plot_timeres = plotTRVar("timeres", timeres_params[0], timeres_params[1], timeres_params[2], True, output_name+"_timeres.png")
     plot_timeres.run(file_array,tree_array,config['channels'])
 
 

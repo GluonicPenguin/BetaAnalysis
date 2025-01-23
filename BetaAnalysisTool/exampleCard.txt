@@ -22,11 +22,11 @@ CH_8 = 0
 # Specify what results and fits are to be performed
 
 tmax = False
-pmax = True
+pmax = False
 negpmax = False
-charge = True
+charge = False
 rms = False
-timeres = False
+timeres = True
 discretisation = False
 waveform = False
 all_with_no_plots = False

@@ -37,11 +37,10 @@ class plotVar:
     arr_of_biases = []
 
     root.gErrorIgnoreLevel = root.kWarning
-    total_number_channels = len(channel_array)
 
     result = []
     for i, (_, _, (A, B, C, D, E)) in enumerate(channel_array):
-      condition = f"event>-1 && pmax[{i}] > {A} && pmax[{i}] < {B} && negpmax[{i}] > {C} && tmax[{i}] > {D} && tmax[{i}] < {E}"
+      condition = f"pmax[{i}] > {A} && pmax[{i}] < {B} && negpmax[{i}] > {C} && tmax[{i}] > {D} && tmax[{i}] < {E}"
       result.append(condition)
 
     for i in range(len(trees)):
