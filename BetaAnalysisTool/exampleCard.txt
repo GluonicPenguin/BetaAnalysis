@@ -2,7 +2,7 @@
 
 # Specify the list of files to read and analyse here, in comma-separated format string
 
-files = "../../../../DESY_TB_Dec_24/data_TB/Run0_W1_T20C/stats_Sr_Run0_Ch1-170V_Ch2-170V_Ch3-2750V_trig230V.root"
+files = "../../../../DESY_TB_Dec_24/data_TB/Run0_W1_T20C/stats_Sr_Run0_Ch1-170V_Ch2-170V_Ch3-2750V_trig230V.root,../../../../DESY_TB_Dec_24/data_TB/Run0_W1_T20C/stats_Sr_Run0_Ch1-180V_Ch2-180V_Ch3-2750V_trig230V.root"
 
 # To use a channel, specify whether it is a DUT or MCP or REF.
 # For DUT, a fit will be performed.
@@ -21,11 +21,11 @@ CH_8 = 0
 
 # Specify what results and fits are to be performed
 
-tmax = False
-pmax = False
-negpmax = False
-charge = False
-rms = False
+tmax = True
+pmax = True
+negpmax = True
+charge = True
+rms = True
 timeres = True
 discretisation = False
 waveform = False

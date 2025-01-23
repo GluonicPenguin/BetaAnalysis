@@ -31,7 +31,7 @@ class plotVar:
     self.save_name = save_name
     self.fit = fit
 
-  def run(self, files, trees, channel_array):
+  def run(self, file, tree, channel_array):
 
     arr_of_hists = []
     arr_of_biases = []
@@ -43,20 +43,19 @@ class plotVar:
       condition = f"pmax[{i}] > {A} && pmax[{i}] < {B} && negpmax[{i}] > {C} && tmax[{i}] > {D} && tmax[{i}] < {E}"
       result.append(condition)
 
-    for i in range(len(trees)):
-      for j in range(len(channel_array)):
-        bias = getBias(files[i])
-        if (channel_array[j][0] == 1) or (channel_array[j][0] == 2):
-          thisHist = hist_tree_file_basics(trees[i], files[i], self.var, j, self.nBins, self.xLower, self.xUpper, bias, result[j], j, 0)
-        else:
-          thisHist = None
-        arr_of_hists.append(thisHist)
-        arr_of_biases.append(bias)
+    for j in range(len(channel_array)):
+      bias = getBias(file)
+      if (channel_array[j][0] == 1) or (channel_array[j][0] == 2):
+        thisHist = hist_tree_file_basics(tree, file, self.var, j, self.nBins, self.xLower, self.xUpper, bias, result[j], j, 0)
+      else:
+        thisHist = None
+      arr_of_hists.append(thisHist)
+      arr_of_biases.append(bias)
 
     if (self.var == "pmax") or (self.var == "negpmax") or (self.var == "tmax"):
-      print(f"[BETA ANALYSIS]: Plotting {self.var} (note that for {self.var} no selections are applied to the phase space)")
-    else:
-      print(f"[BETA ANALYSIS]: Plotting {self.var} with specified selections on the phase space")
+      print(f"[BETA ANALYSIS]: [PLOTTER] Plotting {self.var} (note that for {self.var} no selections are applied to the phase space)")
+    #else:
+    #  print(f"[BETA ANALYSIS]: [PLOTTER] Plotting {self.var} with specified selections on the phase space")
 
     c1 = root.TCanvas("c1", f"Distribution {self.var}", 800, 600)
     if self.log_scale:
@@ -74,8 +73,8 @@ class plotVar:
 
     if (self.fit) is not None:
       arr_of_fits = []
+      print(f"[BETA ANALYSIS]: [PLOTTER] Performing {self.fit} fit to DUT channels")
       for i, thisHist in enumerate(arr_of_hists):
-        print(f"[BETA ANALYSIS]: Performing {self.fit} fit to DUT channels")
         if (channel_array[i][0] == 1):
           thisFit = plot_fit_curves(self.xLower, self.xUpper, self.fit, arr_of_hists[i], i, arr_of_biases[i])
           arr_of_fits.append(thisFit)
@@ -89,8 +88,8 @@ class plotVar:
 
     legend.Draw()
     c1.SaveAs(self.save_name)
-    print(f"[BETA ANALYSIS]: Saved {self.var} as "+self.save_name)
+    print(f"[BETA ANALYSIS]: [PLOTTER] Saved {self.var} as "+self.save_name)
 
     if (self.fit) is not None:
       fit_results = get_fit_results(arr_of_fits,arr_of_biases)
-      print(fit_results)
+      return fit_results

@@ -65,45 +65,33 @@ def main():
     1: "unmounted"
   }
 
-  output_name_w_bias = ""
-  for ch_ind, ch_val in enumerate(config['channels']):
-    if ch_val[0] == 1:
-      bias_after_channel = re.search(rf"Ch{ch_ind}-(\d+)V_", file_list[0])
-      output_name_w_bias = output_name_w_bias + f"_Ch{ch_ind}-" + bias_after_channel.group(1) +"V"
-
-  output_name = "hist_" + output_name + output_name_w_bias
-
   file_array = []
   tree_array = []
+  output_name_array = []
 
   for pattern in file_list:
     root_files = glob.glob(pattern)
+    output_name_const = output_name
     for root_file in root_files:
       try:
         theFile = root.TFile(root_file)
-        #biasForSaveName = getBias(root_file)
-        #output_name = output_name + "_Ch1" + biasForSaveName + "V"
         file_array.append(theFile)
         tree_array.append(theFile.Get("Analysis"))
+        output_name_w_bias = ""
+        for ch_ind, ch_val in enumerate(config['channels']):
+          if ch_val[0] == 1:
+            bias_after_channel = re.search(rf"Ch{ch_ind}-(\d+)V_", pattern)
+            output_name_w_bias = output_name_w_bias + f"_Ch{ch_ind}-" + bias_after_channel.group(1) +"V"
+        output_name_const = "hist_" + output_name_const + output_name_w_bias
+        output_name_array.append(output_name_const)
       except Exception as e:
         print(f"Error reading {root_file}: {e}")
 
   if len(file_array) == 0:
     print(f"[BETA ANALYSIS] : [FILE READER] No files found.")
     sys.exit(0)
-  #else:
-  #  print(f"[BETA ANALYSIS] : [FILE READER] Total {len(file_array)} input ROOT files read.")
-
-  tree_with_channels = theFile.Get("Analysis")
-  branch_with_number_channels = tree_with_channels.GetBranch("t")
-  outer_vectors = root.std.vector('std::vector<double>')()
-  tree_with_channels.SetBranchAddress("t", outer_vectors)
-  outer_vector_count = 0
-  for i in range(tree_with_channels.GetEntries()):
-    tree_with_channels.GetEntry(i)
-    outer_vector_count += len(outer_vectors)
-  total_number_channels = int(outer_vector_count / branch_with_number_channels.GetEntries())
-  print(f"[BETA ANALYSIS] : [FILE READER] Total {total_number_channels} channels in the file.")
+  else:
+    print(f"[BETA ANALYSIS] : [FILE READER] Total {len(file_array)} input ROOT files read.")
 
   plot_variables = [var for var, flag in config.items() if var in ['tmax', 'pmax', 'negpmax', 'charge', 'rms', 'timeres', 'discretisation', 'waveform'] and flag]  
 
@@ -117,23 +105,40 @@ def main():
     print(f"        CH {i} : {channel_mapping.get(ch[0])} {board_mapping.get(ch[1])}")
 
   if config.get('tmax', False) == True:
-    plot_tmax = plotVar("tmax", 1000, -2, 2, False, output_name+"_tmax.png", fit=None)
-    plot_tmax.run(file_array,tree_array,config['channels'])
+    for file_ind, file_real in enumerate(file_array):
+      plot_tmax = plotVar("tmax", 1000, -2, 2, False, output_name_array[file_ind]+"_tmax.png", fit=None)
+      plot_tmax.run(file_real, tree_array[file_ind], config['channels'])
   if config.get('pmax', False) == True:
-    plot_pmax = plotVar("pmax", pmax_params[0], pmax_params[1], pmax_params[2], True, output_name+"_pmax.png", fit=None)
-    plot_pmax.run(file_array,tree_array,config['channels'])
+    for file_ind, file_real in enumerate(file_array):
+      plot_pmax = plotVar("pmax", pmax_params[0], pmax_params[1], pmax_params[2], True, output_name_array[file_ind]+"_pmax.png", fit=None)
+      plot_pmax.run(file_real, tree_array[file_ind], config['channels'])
   if config.get('negpmax', False) == True:
-    plot_negpmax = plotVar("negpmax", negpmax_params[0], negpmax_params[1], negpmax_params[2], True, output_name+"_negpmax.png", fit=None)
-    plot_negpmax.run(file_array,tree_array,config['channels'])
+    for file_ind, file_real in enumerate(file_array):
+      plot_negpmax = plotVar("negpmax", negpmax_params[0], negpmax_params[1], negpmax_params[2], True, output_name_array[file_ind]+"_negpmax.png", fit=None)
+      plot_negpmax.run(file_real, tree_array[file_ind], config['channels'])
   if config.get('charge', False) == True:
-    plot_langaus(file_array, tree_array, config['channels'], charge_params[0], charge_params[1], charge_params[2], output_name+"_charge")
+    charge_dfs = []
+    for file_ind, file_real in enumerate(file_array):
+      df_data = plot_langaus(file_real, tree_array[file_ind], config['channels'], charge_params[0], charge_params[1], charge_params[2], output_name_array[file_ind]+"_charge")
+      charge_dfs.append(df_data)
+    charge_data = pd.concat(charge_dfs, ignore_index=True)
+    print(charge_data.sort_values(by='Channel'))
   if config.get('rms', False) == True:
-    plot_rms = plotVar("rms", rms_params[0], rms_params[1], rms_params[2], True, output_name+"_rms.png", fit="gaus")
-    plot_rms.run(file_array,tree_array,config['channels'])
+    rms_dfs = []
+    for file_ind, file_real in enumerate(file_array):
+      plot_rms = plotVar("rms", rms_params[0], rms_params[1], rms_params[2], True, output_name_array[file_ind]+"_rms.png", fit="gaus")
+      df_data = plot_rms.run(file_real, tree_array[file_ind], config['channels'])
+      rms_dfs.append(df_data)
+    rms_data = pd.concat(rms_dfs, ignore_index=True)
+    print(rms_data.sort_values(by='Channel'))
   if config.get('timeres', False) == True:
-    plot_timeres = plotTRVar("timeres", timeres_params[0], timeres_params[1], timeres_params[2], True, output_name+"_timeres.png")
-    plot_timeres.run(file_array,tree_array,config['channels'])
-
+    time_res_dfs = []
+    for file_ind, file_real in enumerate(file_array):
+      plot_timeres = plotTRVar("timeres", timeres_params[0], timeres_params[1], timeres_params[2], True, output_name_array[file_ind]+"_timeres.png")
+      df_data = plot_timeres.run(file_real, tree_array[file_ind], config['channels'])
+      time_res_dfs.append(df_data)
+    time_res_data = pd.concat(time_res_dfs, ignore_index=True)
+    print(time_res_data.sort_values(by='Channel'))
 
   #if args.doDiscretisation: risingEdgeDiscretisation.run(file_array,tree_array,args.ch-1,total_number_channels)
   #if args.doWaveform: plot_waveform.run(file_array,tree_array,args.ch-1,total_number_channels)

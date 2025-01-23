@@ -30,7 +30,7 @@ class plotTRVar:
     self.log_scale = log_scale
     self.save_name = save_name
 
-  def run(self, files, trees, channel_array):
+  def run(self, file, tree, channel_array):
 
     arr_of_hists = []
     arr_of_biases = []
@@ -44,13 +44,12 @@ class plotTRVar:
 
     duts_to_analyse = []
     mcp_exists = False
-    for i in range(len(trees)):
-      for j in range(len(channel_array)):
-        if (channel_array[j][0] == 1):
-          duts_to_analyse.append([["cfd["+str(j)+"][2]-cfd[","cfd["+str(j)+"][0]-cfd[","cfd["+str(j)+"][4]-cfd["], result[j], j])
-        elif (channel_array[j][0] == 2):
-          mcp_channel = [[str(j)+"][2]",str(j)+"][0]",str(j)+"][4]"], result[j]]
-          mcp_exists = True
+    for j in range(len(channel_array)):
+      if (channel_array[j][0] == 1):
+        duts_to_analyse.append([["cfd["+str(j)+"][2]-cfd[","cfd["+str(j)+"][0]-cfd[","cfd["+str(j)+"][4]-cfd["], result[j], j])
+      elif (channel_array[j][0] == 2):
+        mcp_channel = [[str(j)+"][2]",str(j)+"][0]",str(j)+"][4]"], result[j]]
+        mcp_exists = True
 
     duts_vars_cuts = []
     if mcp_exists == True:
@@ -61,15 +60,14 @@ class plotTRVar:
       print("NEED THE THREE CHANNEL DUT SETUP")
       sys.exit(0)
 
-    for i in range(len(trees)):
-      for j in range(len(duts_vars_cuts)):
-        bias = getBias(files[i])
-        hist_down_up_dev = []
-        for dut_var in duts_vars_cuts[j][0]:
-          thisHist = hist_tree_file_timeres(trees[i], files[i], dut_var, duts_vars_cuts[j][2], self.nBins, self.xLower, self.xUpper, bias, duts_vars_cuts[j][1])
-          hist_down_up_dev.append(thisHist)
-        arr_of_hists.append(hist_down_up_dev)
-        arr_of_biases.append(bias)
+    for j in range(len(duts_vars_cuts)):
+      bias = getBias(file)
+      hist_down_up_dev = []
+      for dut_var in duts_vars_cuts[j][0]:
+        thisHist = hist_tree_file_timeres(tree, file, dut_var, duts_vars_cuts[j][2], self.nBins, self.xLower, self.xUpper, bias, duts_vars_cuts[j][1])
+        hist_down_up_dev.append(thisHist)
+      arr_of_hists.append(hist_down_up_dev)
+      arr_of_biases.append(bias)
 
     print(f"[BETA ANALYSIS]: [TIME RESOLUTION] Plotting time resolution with specified selections on the phase space")
 
@@ -106,4 +104,4 @@ class plotTRVar:
     print(f"[BETA ANALYSIS]: [TIME RESOLUTION] Saved time resolution as "+self.save_name)
 
     fit_results = get_fit_results_TR(arr_of_fits,arr_of_biases,mcp_exists)
-    print(fit_results)
+    return fit_results
