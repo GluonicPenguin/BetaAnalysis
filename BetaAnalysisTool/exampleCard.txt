@@ -2,7 +2,12 @@
 
 # Specify the list of files to read and analyse here, in comma-separated format string
 
-files = "../../../../DESY_TB_Dec_24/data_TB/Run0_W1_T20C/stats_Sr_Run0_Ch1-170V_Ch2-170V_Ch3-2750V_trig230V.root,../../../../DESY_TB_Dec_24/data_TB/Run0_W1_T20C/stats_Sr_Run0_Ch1-180V_Ch2-180V_Ch3-2750V_trig230V.root"
+files = "../../../../DESY_TB_Dec_24/data_TB/Run0_W1_T20C/stats_Sr_Run0_Ch1-155V_Ch2-155V_Ch3-2750V_trig230V.root,
+         ../../../../DESY_TB_Dec_24/data_TB/Run0_W1_T20C/stats_Sr_Run0_Ch1-160V_Ch2-160V_Ch3-2750V_trig230V.root,
+         ../../../../DESY_TB_Dec_24/data_TB/Run0_W1_T20C/stats_Sr_Run0_Ch1-165V_Ch2-165V_Ch3-2750V_trig230V.root,
+         ../../../../DESY_TB_Dec_24/data_TB/Run0_W1_T20C/stats_Sr_Run0_Ch1-170V_Ch2-170V_Ch3-2750V_trig230V.root,
+         ../../../../DESY_TB_Dec_24/data_TB/Run0_W1_T20C/stats_Sr_Run0_Ch1-175V_Ch2-175V_Ch3-2750V_trig230V.root,
+         ../../../../DESY_TB_Dec_24/data_TB/Run0_W1_T20C/stats_Sr_Run0_Ch1-180V_Ch2-180V_Ch3-2750V_trig230V.root"
 
 # To use a channel, specify whether it is a DUT or MCP or REF.
 # For DUT, a fit will be performed.

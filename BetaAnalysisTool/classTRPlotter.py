@@ -85,7 +85,6 @@ class plotTRVar:
         hist_to_draw.Draw("SAME")
 
     arr_of_fits = []
-    print(f"[BETA ANALYSIS]: [TIME RESOLUTION] Performing gaus fit to DUT-MCP channels")
     for i, thisHist in enumerate(arr_of_hists):
       fit_down_up_dev = []
       for j, toa_thresh_hist in enumerate(thisHist):

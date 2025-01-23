@@ -21,7 +21,7 @@ from classTRPlotter import plotTRVar
 from cardReader import read_text_card
 from langaus import plot_langaus
 
-var_dict = {"tmax":"t_{max} / 10 ns" , "pmax":"p_max / mV" , "negpmax":"-p_max / mV", "charge":"Q / fC", "area_new":"Area / pWb" , "rms":"RMS / mV"}
+#var_dict = {"tmax":"t_{max} / 10 ns" , "pmax":"p_max / mV" , "negpmax":"-p_max / mV", "charge":"Q / fC", "area_new":"Area / pWb" , "rms":"RMS / mV"}
 
 def main():
   parser = argparse.ArgumentParser(description='Read a text card containing information and location of ROOT analysis files and plot distributions of corresponding variables.')
@@ -105,14 +105,17 @@ def main():
     print(f"        CH {i} : {channel_mapping.get(ch[0])} {board_mapping.get(ch[1])}")
 
   if config.get('tmax', False) == True:
+    print(f"[BETA ANALYSIS]: [PLOTTER] Plotting TMAX distribution (note that for TMAX no selections are applied to the phase space)")
     for file_ind, file_real in enumerate(file_array):
       plot_tmax = plotVar("tmax", 1000, -2, 2, False, output_name_array[file_ind]+"_tmax.png", fit=None)
       plot_tmax.run(file_real, tree_array[file_ind], config['channels'])
   if config.get('pmax', False) == True:
+    print(f"[BETA ANALYSIS]: [PLOTTER] Plotting PMAX distribution (note that for PMAX no selections are applied to the phase space)")
     for file_ind, file_real in enumerate(file_array):
       plot_pmax = plotVar("pmax", pmax_params[0], pmax_params[1], pmax_params[2], True, output_name_array[file_ind]+"_pmax.png", fit=None)
       plot_pmax.run(file_real, tree_array[file_ind], config['channels'])
   if config.get('negpmax', False) == True:
+    print(f"[BETA ANALYSIS]: [PLOTTER] Plotting NEGPMAX distribution (note that for NEGPMAX no selections are applied to the phase space)")
     for file_ind, file_real in enumerate(file_array):
       plot_negpmax = plotVar("negpmax", negpmax_params[0], negpmax_params[1], negpmax_params[2], True, output_name_array[file_ind]+"_negpmax.png", fit=None)
       plot_negpmax.run(file_real, tree_array[file_ind], config['channels'])
@@ -124,6 +127,7 @@ def main():
     charge_data = pd.concat(charge_dfs, ignore_index=True)
     print(charge_data.sort_values(by='Channel'))
   if config.get('rms', False) == True:
+    print(f"[BETA ANALYSIS]: [PLOTTER] Performing Gaussian fit to DUT channels")
     rms_dfs = []
     for file_ind, file_real in enumerate(file_array):
       plot_rms = plotVar("rms", rms_params[0], rms_params[1], rms_params[2], True, output_name_array[file_ind]+"_rms.png", fit="gaus")
@@ -132,6 +136,7 @@ def main():
     rms_data = pd.concat(rms_dfs, ignore_index=True)
     print(rms_data.sort_values(by='Channel'))
   if config.get('timeres', False) == True:
+    print(f"[BETA ANALYSIS]: [TIME RESOLUTION] Performing Gaussian fit to DUT-MCP channels")
     time_res_dfs = []
     for file_ind, file_real in enumerate(file_array):
       plot_timeres = plotTRVar("timeres", timeres_params[0], timeres_params[1], timeres_params[2], True, output_name_array[file_ind]+"_timeres.png")

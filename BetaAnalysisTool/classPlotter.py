@@ -52,11 +52,6 @@ class plotVar:
       arr_of_hists.append(thisHist)
       arr_of_biases.append(bias)
 
-    if (self.var == "pmax") or (self.var == "negpmax") or (self.var == "tmax"):
-      print(f"[BETA ANALYSIS]: [PLOTTER] Plotting {self.var} (note that for {self.var} no selections are applied to the phase space)")
-    #else:
-    #  print(f"[BETA ANALYSIS]: [PLOTTER] Plotting {self.var} with specified selections on the phase space")
-
     c1 = root.TCanvas("c1", f"Distribution {self.var}", 800, 600)
     if self.log_scale:
       c1.SetLogy()
@@ -73,7 +68,6 @@ class plotVar:
 
     if (self.fit) is not None:
       arr_of_fits = []
-      print(f"[BETA ANALYSIS]: [PLOTTER] Performing {self.fit} fit to DUT channels")
       for i, thisHist in enumerate(arr_of_hists):
         if (channel_array[i][0] == 1):
           thisFit = plot_fit_curves(self.xLower, self.xUpper, self.fit, arr_of_hists[i], i, arr_of_biases[i])

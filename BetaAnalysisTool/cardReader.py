@@ -37,25 +37,32 @@ def read_text_card(file_path):
   }
 
   with open(file_path, 'r') as f:
+    current_key = None  # Track the current key being processed
+    current_value = []  # Collect multi-line values
     for line in f:
       line = line.strip()
-      if not line or line.startswith('#'):
+      if not line or line.startswith('#'):  # Skip empty lines and comments
         continue
 
-      # Match lines in the format: key = value
       match = re.match(r'^(\w+)\s*=\s*(.+)$', line)
       if match:
+        if current_key and current_value:
+          if current_key == "files":
+            config[current_key] = "".join(current_value).strip('",').split(',')
+          else:
+            config[current_key] = "".join(current_value).strip()
+          current_key = None
+          current_value = []
+
         key, value = match.groups()
-        value = value.strip().strip('"')
-        value = value.strip("'")
+        value = value.strip().strip('"').strip("'")
 
-        if key == "files":
-          value = [item.strip() for item in value.split(',')]
-          config[key] = value
+        if key == "files":  # Handle multi-line `files`
+          current_key = key
+          current_value.append(value)
 
-        elif key.startswith("CH_") and key[3:].isdigit():
+        elif key.startswith("CH_") and key[3:].isdigit():  # Handle CH_ keys
           index = int(key[3:]) - 1  # Convert to 0-based index
-
           parts = [part.strip() for part in value.split(',')]
           type_str = parts[0]
           additional_str = parts[1] if len(parts) > 1 else ""
@@ -64,20 +71,28 @@ def read_text_card(file_path):
           channel_value = channel_area_to_charge_mapping.get(additional_str, 1)
 
           channels[index] = [channel_type, channel_value, None]
-        elif key.startswith("CH") and key.endswith("_cut"):
+        elif key.startswith("CH") and key.endswith("_cut"):  # Handle CH_cut keys
           channel_index = int(key[2]) - 1
-          lower_bound, upper_bound, additional_condition , tlow, thigh = map(int, value.split(","))
+          lower_bound, upper_bound, additional_condition, tlow, thigh = map(int, value.split(","))
           channels[channel_index][2] = (lower_bound, upper_bound, additional_condition, tlow, thigh)
 
-        elif key in plot_flags:
+        elif key in plot_flags:  # Handle plot flags
           plot_flags[key] = value.lower() == "true"
-        elif key.endswith("_nB_xL_xU"):
+        elif key.endswith("_nB_xL_xU"):  # Handle plot parameters
           param_key = key.split("_nB_xL_xU")[0]
           if plot_flags.get(param_key, False):  # Check if this plot is enabled
             nBins, xLower, xUpper = map(float, value.split(","))
             plot_params[param_key+"_params"] = (int(nBins), xLower, xUpper)
-        else:
+        else:  # Handle generic key-value pairs
           config[key] = value
+      elif current_key:  # Handle continuation lines
+        current_value.append(line.strip())
+
+    if current_key and current_value:
+        if current_key == "files":
+          config[current_key] = "".join(current_value).strip('",').split(',')
+        else:
+          config[current_key] = "".join(current_value).strip()
 
   config['channels'] = channels
   config.update(plot_flags)
