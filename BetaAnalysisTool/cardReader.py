@@ -20,6 +20,7 @@ def read_text_card(file_path):
     "tmax": False,
     "pmax": False,
     "negpmax": False,
+    "amplitude": False,
     "risetime": False,
     "charge": False,
     "rms": False,

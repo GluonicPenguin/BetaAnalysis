@@ -35,7 +35,7 @@ def main():
 
   print(f"[BETA ANALYSIS] : [FILE READER] Reading files {file_list}.")
 
-  if config.get('pmax', False):
+  if (config.get('pmax', False)) or (config.get('amplitude', False)):
     pmax_params = config.get('pmax_params', None)
   if config.get('negpmax', False):
     negpmax_params = config.get('negpmax_params', None)
@@ -91,7 +91,7 @@ def main():
   else:
     print(f"[BETA ANALYSIS] : [FILE READER] Total {len(file_array)} input ROOT files read.")
 
-  plot_variables = [var for var, flag in config.items() if var in ['tmax', 'pmax', 'negpmax', 'risetime', 'charge', 'rms', 'timeres', 'discretisation', 'waveform'] and flag]  
+  plot_variables = [var for var, flag in config.items() if var in ['tmax', 'pmax', 'negpmax', 'amplitude', 'risetime', 'charge', 'rms', 'timeres', 'discretisation', 'waveform'] and flag]  
 
   if plot_variables:
     sentence = "will plot " + ", ".join(plot_variables)
@@ -107,6 +107,7 @@ def main():
   print("     If you experience dizziness, altered vision, muscle twitching, disorientation, or any other unusual symptoms, immediately stop the programme and seek medical attention.\n")
   print("    ***************************************************************************************************************************************************************************\n\n\n\n")
   input("Press any key to continue")
+
   if config.get('tmax', False) == True:
     print(f"[BETA ANALYSIS]: [PLOTTER] Plotting TMAX distribution (note that for TMAX no selections are applied to the phase space)")
     for file_ind, file_real in enumerate(file_array):
@@ -122,6 +123,13 @@ def main():
     for file_ind, file_real in enumerate(file_array):
       plot_negpmax = plotVar("negpmax", negpmax_params[0], negpmax_params[1], negpmax_params[2], True, output_name_array[file_ind]+"_negpmax.png", fit=None)
       plot_negpmax.run(file_real, file_ind, tree_array[file_ind], config['channels'])
+  if config.get('amplitude', False) == True:
+    amplitude_dfs = []
+    for file_ind, file_real in enumerate(file_array):
+      df_data = plot_langaus('amplitude', file_real, file_ind, tree_array[file_ind], config['channels'], pmax_params[0], pmax_params[1], pmax_params[2], output_name_array[file_ind]+"_amplitude")
+      amplitude_dfs.append(df_data)
+    amplitude_data = pd.concat(amplitude_dfs, ignore_index=True)
+    print(amplitude_data.sort_values(by=['Channel','Bias']))
   if config.get('risetime', False) == True:
     print(f"[BETA ANALYSIS]: [PLOTTER] Performing Gaussian fit to RISETIME distribution")
     risetime_dfs = []
@@ -134,7 +142,7 @@ def main():
   if config.get('charge', False) == True:
     charge_dfs = []
     for file_ind, file_real in enumerate(file_array):
-      df_data = plot_langaus(file_real, file_ind, tree_array[file_ind], config['channels'], charge_params[0], charge_params[1], charge_params[2], output_name_array[file_ind]+"_charge")
+      df_data = plot_langaus('charge', file_real, file_ind, tree_array[file_ind], config['channels'], charge_params[0], charge_params[1], charge_params[2], output_name_array[file_ind]+"_charge")
       charge_dfs.append(df_data)
     charge_data = pd.concat(charge_dfs, ignore_index=True)
     print(charge_data.sort_values(by=['Channel','Bias']))

@@ -18,7 +18,8 @@ import csv
 import math
 import sys
 
-from proc_tools_TR import get_fit_results_TR, hist_tree_file_timeres, plot_fit_curves, getBias
+from proc_tools_TR import get_fit_results_TR, hist_tree_file_timeres, plot_fit_curves
+from proc_tools import getBias
 
 class plotTRVar:
   def __init__(self, var, nBins, xLower, xUpper, log_scale, save_name):
@@ -48,8 +49,11 @@ class plotTRVar:
     duts_to_analyse = []
     channel_of_dut = []
     mcp_exists = False
+    arr_of_biases
     for j in range(len(channel_array)):
       if (channel_array[j][0] == 1):
+        bias = getBias(str(file), j)
+        arr_of_biases.append(bias)
         duts_to_analyse.append([["cfd["+str(j)+"][2]-cfd[","cfd["+str(j)+"][0]-cfd[","cfd["+str(j)+"][4]-cfd["], result[j], j])
         channel_of_dut.append(j)
       elif (channel_array[j][0] == 2):
@@ -67,10 +71,9 @@ class plotTRVar:
 
     hists_to_plot = []
     for j in range(len(duts_vars_cuts)):
-      bias = getBias(file)
       hist_down_up_dev = []
       for dut_var_ind, dut_var in enumerate(duts_vars_cuts[j][0]):
-        thisHist = hist_tree_file_timeres(tree, file, dut_var, duts_vars_cuts[j][2], self.nBins, self.xLower, self.xUpper, bias, duts_vars_cuts[j][1])
+        thisHist = hist_tree_file_timeres(tree, file, dut_var, duts_vars_cuts[j][2], self.nBins, self.xLower, self.xUpper, arr_of_biases[j], duts_vars_cuts[j][1])
         if dut_var_ind == 0:
           hists_to_plot.append(thisHist)
         hist_down_up_dev.append(thisHist)

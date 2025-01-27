@@ -98,20 +98,6 @@ def get_fit_results_TR(arr_of_fits,arr_of_biases,dut_channels,mcp_channel, simpl
   else:
     return df_of_results
 
-def getBias(filename):
-  pattern = r"_(\d{2,3}V)."
-  match = re.search(pattern, str(filename))
-  if match:
-    return str(match.group(1))
-  else:
-    pattern_hyp = r"-(\d{2,3}V)."
-    match = re.search(pattern_hyp, str(filename))
-    if match:
-      return str(match.group(1))
-    else:
-      print("[GetBias] : BIAS NOT FOUND")
-      return None
-
 def hist_tree_file_timeres(tree,file,var,ch,nBins,xLower,xUpper,biasVal,cut_cond):
   thisHist = root.TH1F("CH "+str(ch)+" "+biasVal, var+";tn-tn+1 / ns ;Events", nBins, xLower, xUpper)
   tree.Draw(var+">>CH "+str(ch)+" "+biasVal,cut_cond)

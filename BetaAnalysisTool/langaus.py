@@ -60,7 +60,7 @@ def round_to_sig_figs(x, sig):
   else:
     return round(x, sig - int(math.floor(math.log10(abs(x)))) - 1)
 
-def plot_langaus(file, file_index, tree, channel_array, nBins, xLower, xUpper, savename):
+def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpper, savename):
 
   pmax_list = []
   area_list = []
@@ -71,6 +71,8 @@ def plot_langaus(file, file_index, tree, channel_array, nBins, xLower, xUpper, s
   arr_of_width = []
   arr_of_sigma = []
   arr_threshold_frac = []
+
+  dict_of_vars = {"amplitude": "Amplitude / mV", "charge": "Charge / fC"}
 
   for ch_ind, ch_val in enumerate(channel_array):
     pmax_list = []
@@ -85,7 +87,7 @@ def plot_langaus(file, file_index, tree, channel_array, nBins, xLower, xUpper, s
       if C == 0: C = -100
       if D == 0: D = -50
       if E == 0: E = 50
-      bias_of_channel = getBias(file)
+      bias_of_channel = getBias(str(file), ch_ind)
       for entry in tree:
         pmax_sig = entry.pmax[ch_ind]
         negpmax_sig = entry.negpmax[ch_ind]
@@ -100,21 +102,19 @@ def plot_langaus(file, file_index, tree, channel_array, nBins, xLower, xUpper, s
     else:
       continue
 
-    pmax = np.array(pmax_list)
-    area = np.array(area_list)
-    area = area/AtQfactor
-    area = area[(area>=xLower) & (area<=xUpper)]
-
     plt.figure(figsize=(10, 6))
-    histo, bins, _ = plt.hist(area, bins=nBins, range=(xLower, xUpper), color='blue', edgecolor='black', alpha=0.6, density=True)
-    #plt.xlabel('Charge [fC]')
-    #plt.ylabel('Frequency')
-    #plt.title('Distribution charge')
-    #plt.yscale('log')
-    #plt.show()
+    if var == "charge":
+      area = np.array(area_list)
+      area = area/AtQfactor
+      data_var = area[(area>=xLower) & (area<=xUpper)]
+    else:
+      pmax = np.array(pmax_list)
+      data_var = pmax[(pmax>=xLower) & (pmax<=xUpper)]
+    histo, bins, _ = plt.hist(data_var, bins=nBins, range=(xLower, xUpper), color='blue', edgecolor='black', alpha=0.6, density=True)
 
     bin_centers = bins[:-1] + np.diff(bins) / 2
-    popt, pcov, fitted_hist, bin_centers = binned_fit_langauss(area, nBins, xUpper, ch_ind)
+
+    popt, pcov, fitted_hist, bin_centers = binned_fit_langauss(data_var, nBins, xUpper, ch_ind)
     
     arr_of_ch.append("Ch"+str(ch_ind))
     arr_of_biases.append(bias_of_channel)
@@ -122,23 +122,21 @@ def plot_langaus(file, file_index, tree, channel_array, nBins, xLower, xUpper, s
     arr_of_width.append(popt[1])
     arr_of_sigma.append(popt[2])
 
-    count_1p0mpv = sum(1 for value in area if value > popt[0])
-    count_1p5mpv = sum(1 for value in area if value > 1.5*popt[0])
-    #print("fEv@1.5:")
-    #print(count_1p5mpv/count_1p0mpv)
+    count_1p0mpv = sum(1 for value in data_var if value > popt[0])
+    count_1p5mpv = sum(1 for value in data_var if value > 1.5*popt[0])
     arr_threshold_frac.append(count_1p5mpv/count_1p0mpv)
 
     fig = go.Figure()
     fig.update_layout(
-      xaxis_title='Charge [fC]',
+      xaxis_title=dict_of_vars[var],
       yaxis_title='Probability Density',
       title='Langauss Fit',
     )
 
     fig.add_trace(
       go.Histogram(
-        x=area,
-        name='Histogram of area',
+        x=data_var,
+        name='Histogram',
         histnorm='probability density',
         nbinsx=nBins,
         opacity=0.6,
@@ -156,15 +154,15 @@ def plot_langaus(file, file_index, tree, channel_array, nBins, xLower, xUpper, s
       )
     )
 
-    if not os.path.exists("charge"):
-      os.makedirs("charge")
-    fig.write_image("charge/"+savename+"_Ch"+str(ch_ind)+".png")
-    print("[BETA ANALYSIS]: [LANGAUS PLOTTER] Saved file charge/"+savename+"_Ch"+str(ch_ind)+".png")
+    if not os.path.exists(var):
+      os.makedirs(var)
+    fig.write_image(var+"/"+savename+"_Ch"+str(ch_ind)+".png")
+    print("[BETA ANALYSIS]: [LANGAUS PLOTTER] Saved file "+var+"/"+savename+"_Ch"+str(ch_ind)+".png")
 
   df_of_results = pd.DataFrame({
     "Channel": arr_of_ch,
     "Bias": arr_of_biases,
-    "MPV Charge": arr_of_MPV,
+    "MPV": arr_of_MPV,
     "Landau width": arr_of_width,
     "Gaussian sigma": arr_of_sigma,
     "Frac above 1p5": arr_threshold_frac,

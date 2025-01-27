@@ -32,7 +32,7 @@ def round_to_sig_figs(x, sig):
   else:
     return round(x, sig - int(math.floor(math.log10(abs(x)))) - 1)
 
-def get_fit_results(arr_of_fits,arr_of_biases,decomp_sigma=False,simplified=False,add_threshold_frac=None):
+def get_fit_results(arr_of_fits,arr_of_biases,channel_of_dut, decomp_sigma=False,simplified=False,add_threshold_frac=None):
   arr_of_ch = []
   arr_of_biases_fitted = []
   arr_of_mean = []
@@ -42,8 +42,6 @@ def get_fit_results(arr_of_fits,arr_of_biases,decomp_sigma=False,simplified=Fals
   arr_of_red_chi2 = []
 
   for channel_i, fit_func in enumerate(arr_of_fits):
-    if (fit_func) == None: continue
-
     if fit_func.GetNpar() > 3: # NEED TO CHANGE THIS TO TYPE OF TIME RES FIT
       langaus_sig = fit_func.GetParameter(3)
     else:
@@ -58,7 +56,7 @@ def get_fit_results(arr_of_fits,arr_of_biases,decomp_sigma=False,simplified=Fals
     arr_of_sigma.append(round_to_sig_figs(sigma,4))
     arr_of_ampl.append(round_to_sig_figs(amplitude,3))
     arr_langaus_sig.append(round_to_sig_figs(langaus_sig,4))
-    arr_of_ch.append("Ch" + str(channel_i))
+    arr_of_ch.append("Ch" + str(channel_of_dut[channel_i]))
     arr_of_biases_fitted.append(arr_of_biases[channel_i])
     if ndf == 0:
       ndf = 1
@@ -75,22 +73,25 @@ def get_fit_results(arr_of_fits,arr_of_biases,decomp_sigma=False,simplified=Fals
 
   return df_of_results
 
-def getBias(filename):
-  pattern = r"_(\d{2,3}V)."
-  match = re.search(pattern, str(filename))
-  if match:
-    return str(match.group(1))
-  else:
-    pattern_hyp = r"-(\d{2,3}V)."
-    match = re.search(pattern_hyp, str(filename))
-    if match:
-      return str(match.group(1))
+def getBias(filename, chnum):
+  pattern_ch = f"Ch{chnum}"
+  ch_match = re.search(pattern_ch, filename)
+  if ch_match:
+    start_index = ch_match.end()
+    substring_to_search = filename[start_index:]
+        
+    pattern_bias = r"-(\d{2,4}V)"
+    bias_match = re.search(pattern_bias, substring_to_search)
+    if bias_match:
+      return bias_match.group(1)
     else:
       print("[GetBias] : BIAS NOT FOUND")
       return None
+  else:
+    return None
 
 def hist_tree_file_basics(tree,file,var,index,nBins,xLower,xUpper,biasVal,cut_cond,ch,toaThreshold):
-  var_dict = {"tmax":"t_{max} / 10 ns" , "pmax":"p_max / mV" , "negpmax":"-p_max / mV", "risetime":"Rise time / ns", "charge":"Q / fC", "area_new":"Area / pWb" , "rms":"RMS / mV"}
+  var_dict = {"tmax":"t_{max} / 10 ns" , "pmax":"p_max / mV" , "negpmax":"-p_max / mV", "risetime":"Rise time / ns", "area_new":"Area / pWb" , "rms":"RMS / mV"}
   if var == "charge":
     thisHist = root.TH1F("CH "+str(ch)+" "+biasVal, var+";"+var_dict[var]+"/4.7;Events", nBins, xLower, xUpper)
     nEntries = tree.GetEntries()

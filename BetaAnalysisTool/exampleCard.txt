@@ -3,12 +3,10 @@
 
 # Specify the list of files to read and analyse here, in comma-separated format string
 
-files = "../../../../DESY_TB_Dec_24/data_TB/Run0_W1_T20C/stats_Sr_Run0_Ch1-155V_Ch2-155V_Ch3-2750V_trig230V.root,
-         ../../../../DESY_TB_Dec_24/data_TB/Run0_W1_T20C/stats_Sr_Run0_Ch1-160V_Ch2-160V_Ch3-2750V_trig230V.root,
-         ../../../../DESY_TB_Dec_24/data_TB/Run0_W1_T20C/stats_Sr_Run0_Ch1-165V_Ch2-165V_Ch3-2750V_trig230V.root,
-         ../../../../DESY_TB_Dec_24/data_TB/Run0_W1_T20C/stats_Sr_Run0_Ch1-170V_Ch2-170V_Ch3-2750V_trig230V.root,
-         ../../../../DESY_TB_Dec_24/data_TB/Run0_W1_T20C/stats_Sr_Run0_Ch1-175V_Ch2-175V_Ch3-2750V_trig230V.root,
-         ../../../../DESY_TB_Dec_24/data_TB/Run0_W1_T20C/stats_Sr_Run0_Ch1-180V_Ch2-180V_Ch3-2750V_trig230V.root"
+files = "../../../../DESY_TB_Dec_24/data_TB/Run4_W5_RT_Ex1/stats_Sr_Run4_Ch1-125V_Ch2-125V_Ch3-2750V_trig230V.root,
+         ../../../../DESY_TB_Dec_24/data_TB/Run4_W5_RT_Ex1/stats_Sr_Run4_Ch1-130V_Ch2-128V_Ch3-2750V_trig230V.root,
+         ../../../../DESY_TB_Dec_24/data_TB/Run4_W5_RT_Ex1/stats_Sr_Run4_Ch1-135V_Ch2-128V_Ch3-2750V_trig230V.root,
+         ../../../../DESY_TB_Dec_24/data_TB/Run4_W5_RT_Ex1/stats_Sr_Run4_Ch1-140V_Ch2-130V_Ch3-2750V_trig230V.root"
 
 # To use a channel, specify whether it is a DUT or MCP or REF.
 # For DUT, a fit will be performed.
@@ -28,19 +26,20 @@ CH_8 = 0
 # Specify what results and fits are to be performed
 
 tmax = False
-pmax = False
+pmax = True
 negpmax = False
+amplitude = True
 risetime = False
-charge = False
-rms = True
-timeres = True
+charge = True
+rms = False
+timeres = False
 discretisation = False
 waveform = False
 all_with_no_plots = False
 
 # For charge, RMS, and time resolution, specify the number of bins, lower bound, and upper bound to plot
 
-pmax_nB_xL_xU = 200,0,200
+pmax_nB_xL_xU = 200,0,220
 negpmax_nB_xL_xU = 50,-40,10
 charge_nB_xL_xU = 100,0,20
 rms_nB_xL_xU = 40,0,4
@@ -54,9 +53,9 @@ timeres_nB_xL_xU = 200,-2.0,0.0
 # If the value is 0 (or [] or 0 for PMAX_LOWER), no cut will be performed.
 
 CH1_cut = 0,0,0,0,0
-CH2_cut = [8,8,8,8,8,20],120,-15,-1.0,0.5
-CH3_cut = [10,10,10,10,10,20],120,-15,-0.5,1.0
-CH4_cut = [20,20,20,20,20,20],540,-35,-0.5,1.0
+CH2_cut = [8,8,8,20],120,-15,-1.0,0.5
+CH3_cut = [10,10,10,20],120,-15,-0.5,1.0
+CH4_cut = [20,20,20,20],540,-35,-0.5,1.0
 CH5_cut = 0,0,0,0,0
 CH6_cut = 0,0,0,0,0
 CH7_cut = 0,0,0,0,0
