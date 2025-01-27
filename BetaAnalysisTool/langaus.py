@@ -162,7 +162,7 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
   df_of_results = pd.DataFrame({
     "Channel": arr_of_ch,
     "Bias": arr_of_biases,
-    "MPV": arr_of_MPV,
+    var.capitalize() + " MPV": arr_of_MPV,
     "Landau width": arr_of_width,
     "Gaussian sigma": arr_of_sigma,
     "Frac above 1p5": arr_threshold_frac,

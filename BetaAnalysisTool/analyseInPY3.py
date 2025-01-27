@@ -20,6 +20,7 @@ from classPlotter import plotVar
 from classTRPlotter import plotTRVar
 from cardReader import read_text_card
 from langaus import plot_langaus
+from export_data import direct_to_table
 
 def main():
   parser = argparse.ArgumentParser(description='Read a text card containing information and location of ROOT analysis files and plot distributions of corresponding variables.')
@@ -108,6 +109,8 @@ def main():
   print("    ***************************************************************************************************************************************************************************\n\n\n\n")
   input("Press any key to continue")
 
+  data_out = []
+
   if config.get('tmax', False) == True:
     print(f"[BETA ANALYSIS]: [PLOTTER] Plotting TMAX distribution (note that for TMAX no selections are applied to the phase space)")
     for file_ind, file_real in enumerate(file_array):
@@ -130,6 +133,7 @@ def main():
       amplitude_dfs.append(df_data)
     amplitude_data = pd.concat(amplitude_dfs, ignore_index=True)
     print(amplitude_data.sort_values(by=['Channel','Bias']))
+    data_out.append(('amplitude', amplitude_data.sort_values(by=['Channel','Bias'])))
   if config.get('risetime', False) == True:
     print(f"[BETA ANALYSIS]: [PLOTTER] Performing Gaussian fit to RISETIME distribution")
     risetime_dfs = []
@@ -139,6 +143,7 @@ def main():
       risetime_dfs.append(df_data)
     risetime_data = pd.concat(risetime_dfs, ignore_index=True)
     print(risetime_data.sort_values(by=['Channel','Bias']))
+    data_out.append(('risetime', risetime_data.sort_values(by=['Channel','Bias'])))
   if config.get('charge', False) == True:
     charge_dfs = []
     for file_ind, file_real in enumerate(file_array):
@@ -146,6 +151,7 @@ def main():
       charge_dfs.append(df_data)
     charge_data = pd.concat(charge_dfs, ignore_index=True)
     print(charge_data.sort_values(by=['Channel','Bias']))
+    data_out.append(('charge', charge_data.sort_values(by=['Channel','Bias'])))
   if config.get('rms', False) == True:
     print(f"[BETA ANALYSIS]: [PLOTTER] Performing Gaussian fit to DUT channels")
     rms_dfs = []
@@ -155,6 +161,7 @@ def main():
       rms_dfs.append(df_data)
     rms_data = pd.concat(rms_dfs, ignore_index=True)
     print(rms_data.sort_values(by=['Channel','Bias']))
+    data_out.append(('rms', rms_data.sort_values(by=['Channel','Bias'])))
   if config.get('timeres', False) == True:
     print(f"[BETA ANALYSIS]: [TIME RESOLUTION] Performing Gaussian fit to DUT-MCP channels")
     time_res_dfs = []
@@ -164,6 +171,9 @@ def main():
       time_res_dfs.append(df_data)
     time_res_data = pd.concat(time_res_dfs, ignore_index=True)
     print(time_res_data.sort_values(by=['Channel','Bias']))
+    data_out.append(('timeres', time_res_data.sort_values(by=['Channel','Bias'])))
+
+  if len(data_out) > 1: direct_to_table(data_out, config['channels'], output_name)
 
   #if args.doDiscretisation: risingEdgeDiscretisation.run(file_array,tree_array,args.ch-1,total_number_channels)
   #if args.doWaveform: plot_waveform.run(file_array,tree_array,args.ch-1,total_number_channels)
