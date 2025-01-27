@@ -19,7 +19,7 @@ import math
 import sys
 
 '''
-from proc_tools import get_fit_results, hist_tree_file_basics, plot_fit_curves, getBias
+from proc_tools_TR import get_fit_results_TR, hist_tree_file_basics, plot_fit_curves, getBias
 '''
 
 root.gErrorIgnoreLevel = root.kWarning
@@ -32,7 +32,7 @@ def round_to_sig_figs(x, sig):
   else:
     return round(x, sig - int(math.floor(math.log10(abs(x)))) - 1)
 
-def get_fit_results_TR(arr_of_fits,arr_of_biases,mcp_channel, simplified=False):
+def get_fit_results_TR(arr_of_fits,arr_of_biases,dut_channels,mcp_channel, simplified=False):
   arr_of_ch = []
   arr_of_biases_fitted = []
   arr_of_mean = []
@@ -56,7 +56,7 @@ def get_fit_results_TR(arr_of_fits,arr_of_biases,mcp_channel, simplified=False):
     arr_down_var.append(var_down)
     arr_up_var.append(var_up)
     arr_of_ampl.append(round_to_sig_figs(amplitude,3))
-    arr_of_ch.append("Ch" + str(channel_i))
+    arr_of_ch.append("Ch" + str(dut_channels[channel_i]))
     arr_of_biases_fitted.append(arr_of_biases[channel_i])
     if ndf == 0:
       ndf = 1
@@ -119,10 +119,10 @@ def hist_tree_file_timeres(tree,file,var,ch,nBins,xLower,xUpper,biasVal,cut_cond
   thisHist.SetLineColor(ch+1)
   return thisHist
 
-def plot_fit_curves(xLower,xUpper,fit_type,hist_to_fit,index,biasVal):
-  thisFit = TF1(fit_type+"_hist"+biasVal, fit_type, xLower, xUpper)
+def plot_fit_curves(xLower,xUpper,fit_type,hist_to_fit,channel_index,biasVal):
+  thisFit = TF1(fit_type+"_hist"+biasVal+" CH "+str(channel_index+1), fit_type, xLower, xUpper)
   hist_to_fit.Fit(thisFit, "Q")
   thisFit.SetLineWidth(3)
-  thisFit.SetLineColor(index+1)
+  thisFit.SetLineColor(channel_index+1)
   #thisFit.SetLineStyle(2)
   return thisFit

@@ -46,10 +46,12 @@ class plotTRVar:
       result.append(condition)
 
     duts_to_analyse = []
+    channel_of_dut = []
     mcp_exists = False
     for j in range(len(channel_array)):
       if (channel_array[j][0] == 1):
         duts_to_analyse.append([["cfd["+str(j)+"][2]-cfd[","cfd["+str(j)+"][0]-cfd[","cfd["+str(j)+"][4]-cfd["], result[j], j])
+        channel_of_dut.append(j)
       elif (channel_array[j][0] == 2):
         mcp_channel = [[str(j)+"][2]",str(j)+"][0]",str(j)+"][4]"], result[j]]
         mcp_exists = True
@@ -63,11 +65,14 @@ class plotTRVar:
       print("NEED THE THREE CHANNEL DUT SETUP")
       sys.exit(0)
 
+    hists_to_plot = []
     for j in range(len(duts_vars_cuts)):
       bias = getBias(file)
       hist_down_up_dev = []
-      for dut_var in duts_vars_cuts[j][0]:
+      for dut_var_ind, dut_var in enumerate(duts_vars_cuts[j][0]):
         thisHist = hist_tree_file_timeres(tree, file, dut_var, duts_vars_cuts[j][2], self.nBins, self.xLower, self.xUpper, bias, duts_vars_cuts[j][1])
+        if dut_var_ind == 0:
+          hists_to_plot.append(thisHist)
         hist_down_up_dev.append(thisHist)
       arr_of_hists.append(hist_down_up_dev)
       arr_of_biases.append(bias)
@@ -76,34 +81,35 @@ class plotTRVar:
     if self.log_scale:
       c1.SetLogy()
 
-
-    max_y = max(hist.GetMaximum() for hist in arr_of_hists[:][0]) * 1.05
-    arr_of_hists[0][0].GetYaxis().SetRangeUser(1 if self.log_scale else 0, max_y)
-    arr_of_hists[0][0].SetTitle(f"Distribution time resolution")
-    arr_of_hists[0][0].Draw()
-    if len(arr_of_hists) > 1:
-      for hist_to_draw in arr_of_hists[1:][0]:
+    max_y = max(hist.GetMaximum() for hist in hists_to_plot) * 1.05
+    hists_to_plot[0].GetYaxis().SetRangeUser(1 if self.log_scale else 0, max_y)
+    hists_to_plot[0].SetTitle(f"Distribution time resolution")
+    hists_to_plot[0].Draw()
+    if len(hists_to_plot) > 1:
+      for hist_to_draw in hists_to_plot[1:]:
         hist_to_draw.Draw("SAME")
 
-    arr_of_fits = []
-    for i, thisHist in enumerate(arr_of_hists):
-      fit_down_up_dev = []
-      for j, toa_thresh_hist in enumerate(thisHist):
-        thisFit = plot_fit_curves(self.xLower, self.xUpper, "gaus", toa_thresh_hist, i, arr_of_biases[i])
-        if j == 0:
-          thisFit.Draw("SAME")
-        fit_down_up_dev.append(thisFit)
-      arr_of_fits.append(fit_down_up_dev)
+    for i, thisHist in enumerate(hists_to_plot):
+      thisFit = plot_fit_curves(self.xLower, self.xUpper, "gaus", hists_to_plot[i], channel_of_dut[i], arr_of_biases[i])
+      thisFit.Draw("SAME")
 
     legend = root.TLegend(0.7, 0.7, 0.9, 0.9)
-    for i in range(len(arr_of_hists)):
-      legend.AddEntry(arr_of_hists[i][0], arr_of_biases[i] + " CH " + str(i+1), "l")
-
+    for i in range(len(hists_to_plot)):
+      legend.AddEntry(hists_to_plot[i], arr_of_biases[i] + " CH " + str(channel_of_dut[i]), "l")
     legend.Draw()
+
     if not os.path.exists("timeres"):
       os.makedirs("timeres")
     c1.SaveAs("timeres/"+self.save_name)
-    print(f"[BETA ANALYSIS]: [TIME RESOLUTION] Saved time resolution as "+self.save_name)
+    print(f"[BETA ANALYSIS]: [TIME RESOLUTION] Saved time resolution as timeres/"+self.save_name)
 
-    fit_results = get_fit_results_TR(arr_of_fits,arr_of_biases,mcp_exists)
+    arr_of_fits = []
+    for i, nom_up_down_hists in enumerate(arr_of_hists):
+      fit_down_up_dev = []
+      for j, toa_thresh_hist in enumerate(nom_up_down_hists):
+        thisFit = plot_fit_curves(self.xLower, self.xUpper, "gaus", toa_thresh_hist, channel_of_dut[i], arr_of_biases[i])
+        fit_down_up_dev.append(thisFit)
+      arr_of_fits.append(fit_down_up_dev)
+
+    fit_results = get_fit_results_TR(arr_of_fits,arr_of_biases,channel_of_dut,mcp_exists)
     return fit_results

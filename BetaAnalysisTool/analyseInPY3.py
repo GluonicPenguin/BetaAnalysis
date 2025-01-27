@@ -102,10 +102,11 @@ def main():
   for i, ch in enumerate(config['channels']):
     print(f"        CH {i} : {channel_mapping.get(ch[0])} {board_mapping.get(ch[1])}")
 
-  print("\n\n\n\n")
-  print("[EPILEPSY WARNING] : This plotter will cause rapid imagery to appear on the screen that may trigger seizures or other symptoms in individuals with photosensitive epilepsy.")
-  print("If you experience dizziness, altered vision, muscle twitching, disorientation, or any other unusual symptoms, immediately stop the programme and seek medical attention.")
-  print("\n\n\n\n")
+  print("\n\n\n\n    ***************************************************************************************************************************************************************************\n")
+  print("    [EPILEPSY WARNING] : This plotter will cause rapid imagery to appear on the screen that may trigger seizures or other symptoms in individuals with photosensitive epilepsy.")
+  print("     If you experience dizziness, altered vision, muscle twitching, disorientation, or any other unusual symptoms, immediately stop the programme and seek medical attention.\n")
+  print("    ***************************************************************************************************************************************************************************\n\n\n\n")
+  input("Press any key to continue")
   if config.get('tmax', False) == True:
     print(f"[BETA ANALYSIS]: [PLOTTER] Plotting TMAX distribution (note that for TMAX no selections are applied to the phase space)")
     for file_ind, file_real in enumerate(file_array):

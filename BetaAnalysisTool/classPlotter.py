@@ -87,7 +87,7 @@ class plotVar:
     if not os.path.exists(self.var):
       os.makedirs(self.var)
     c1.SaveAs(self.var+"/"+self.save_name)
-    print(f"[BETA ANALYSIS]: [PLOTTER] Saved {self.var} as "+self.save_name)
+    print(f"[BETA ANALYSIS]: [PLOTTER] Saved {self.var} as {self.var}/"+self.save_name)
 
     if (self.fit) is not None:
       fit_results = get_fit_results(arr_of_fits,arr_of_biases)

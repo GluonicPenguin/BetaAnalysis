@@ -156,10 +156,10 @@ def plot_langaus(file, file_index, tree, channel_array, nBins, xLower, xUpper, s
       )
     )
 
-    if not os.path.exists("langaus"):
-      os.makedirs("langaus")
-    fig.write_image("langaus/"+savename+"_Ch"+str(ch_ind)+".png")
-    print("[BETA ANALYSIS]: [LANGAUS PLOTTER] Saved file "+savename+"_Ch"+str(ch_ind)+".png")
+    if not os.path.exists("charge"):
+      os.makedirs("charge")
+    fig.write_image("charge/"+savename+"_Ch"+str(ch_ind)+".png")
+    print("[BETA ANALYSIS]: [LANGAUS PLOTTER] Saved file charge/"+savename+"_Ch"+str(ch_ind)+".png")
 
   df_of_results = pd.DataFrame({
     "Channel": arr_of_ch,
