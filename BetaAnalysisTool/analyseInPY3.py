@@ -110,30 +110,30 @@ def main():
     print(f"[BETA ANALYSIS]: [PLOTTER] Plotting TMAX distribution (note that for TMAX no selections are applied to the phase space)")
     for file_ind, file_real in enumerate(file_array):
       plot_tmax = plotVar("tmax", 1000, -10, 10, True, output_name_array[file_ind]+"_tmax.png", fit=None)
-      plot_tmax.run(file_real, tree_array[file_ind], config['channels'])
+      plot_tmax.run(file_real, file_ind, tree_array[file_ind], config['channels'])
   if config.get('pmax', False) == True:
     print(f"[BETA ANALYSIS]: [PLOTTER] Plotting PMAX distribution (note that for PMAX no selections are applied to the phase space)")
     for file_ind, file_real in enumerate(file_array):
       plot_pmax = plotVar("pmax", pmax_params[0], pmax_params[1], pmax_params[2], True, output_name_array[file_ind]+"_pmax.png", fit=None)
-      plot_pmax.run(file_real, tree_array[file_ind], config['channels'])
+      plot_pmax.run(file_real, file_ind, tree_array[file_ind], config['channels'])
   if config.get('negpmax', False) == True:
     print(f"[BETA ANALYSIS]: [PLOTTER] Plotting NEGPMAX distribution (note that for NEGPMAX no selections are applied to the phase space)")
     for file_ind, file_real in enumerate(file_array):
       plot_negpmax = plotVar("negpmax", negpmax_params[0], negpmax_params[1], negpmax_params[2], True, output_name_array[file_ind]+"_negpmax.png", fit=None)
-      plot_negpmax.run(file_real, tree_array[file_ind], config['channels'])
+      plot_negpmax.run(file_real, file_ind, tree_array[file_ind], config['channels'])
   if config.get('risetime', False) == True:
     print(f"[BETA ANALYSIS]: [PLOTTER] Performing Gaussian fit to RISETIME distribution")
     risetime_dfs = []
     for file_ind, file_real in enumerate(file_array):
       plot_risetime = plotVar("risetime", 150, 0, 1.5, True, output_name_array[file_ind]+"_risetime.png", fit="gaus")
-      df_data = plot_risetime.run(file_real, tree_array[file_ind], config['channels'])
+      df_data = plot_risetime.run(file_real, file_ind, tree_array[file_ind], config['channels'])
       risetime_dfs.append(df_data)
     risetime_data = pd.concat(risetime_dfs, ignore_index=True)
     print(risetime_data.sort_values(by=['Channel','Bias']))
   if config.get('charge', False) == True:
     charge_dfs = []
     for file_ind, file_real in enumerate(file_array):
-      df_data = plot_langaus(file_real, tree_array[file_ind], config['channels'], charge_params[0], charge_params[1], charge_params[2], output_name_array[file_ind]+"_charge")
+      df_data = plot_langaus(file_real, file_ind, tree_array[file_ind], config['channels'], charge_params[0], charge_params[1], charge_params[2], output_name_array[file_ind]+"_charge")
       charge_dfs.append(df_data)
     charge_data = pd.concat(charge_dfs, ignore_index=True)
     print(charge_data.sort_values(by=['Channel','Bias']))
@@ -142,7 +142,7 @@ def main():
     rms_dfs = []
     for file_ind, file_real in enumerate(file_array):
       plot_rms = plotVar("rms", rms_params[0], rms_params[1], rms_params[2], True, output_name_array[file_ind]+"_rms.png", fit="gaus")
-      df_data = plot_rms.run(file_real, tree_array[file_ind], config['channels'])
+      df_data = plot_rms.run(file_real, file_ind, tree_array[file_ind], config['channels'])
       rms_dfs.append(df_data)
     rms_data = pd.concat(rms_dfs, ignore_index=True)
     print(rms_data.sort_values(by=['Channel','Bias']))
@@ -151,7 +151,7 @@ def main():
     time_res_dfs = []
     for file_ind, file_real in enumerate(file_array):
       plot_timeres = plotTRVar("timeres", timeres_params[0], timeres_params[1], timeres_params[2], True, output_name_array[file_ind]+"_timeres.png")
-      df_data = plot_timeres.run(file_real, tree_array[file_ind], config['channels'])
+      df_data = plot_timeres.run(file_real, file_ind, tree_array[file_ind], config['channels'])
       time_res_dfs.append(df_data)
     time_res_data = pd.concat(time_res_dfs, ignore_index=True)
     print(time_res_data.sort_values(by=['Channel','Bias']))

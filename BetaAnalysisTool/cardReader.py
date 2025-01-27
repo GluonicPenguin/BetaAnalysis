@@ -72,9 +72,36 @@ def read_text_card(file_path):
           channel_value = channel_area_to_charge_mapping.get(additional_str, 1)
 
           channels[index] = [channel_type, channel_value, None]
-        elif key.startswith("CH") and key.endswith("_cut"):  # Handle CH_cut keys
+
+        elif key.startswith("CH") and key.endswith("_cut"):
           channel_index = int(key[2]) - 1
-          lower_bound, upper_bound, additional_condition, tlow, thigh = map(float, value.split(","))
+
+          match = re.match(r"^\s*(\[\s*(?:-?\d+(?:\.\d+)?\s*,\s*)*-?\d+(?:\.\d+)?\s*\]|\[\s*\]|0)\s*,\s*(.*)$", value)
+          if not match:
+            raise ValueError(f"Invalid format for {key}: Must start with an array '[x,y,...]', '[]', or '0'.")
+
+          raw_lower_bound = match.group(1).strip()
+          remaining_values = match.group(2).strip()
+
+          if raw_lower_bound == "[]" or raw_lower_bound == "0":
+            lower_bound = []
+          else:
+            lower_bound = list(map(float, raw_lower_bound.strip("[]").split(",")))
+
+            if len(lower_bound) != len(config.get('files', [])):
+              raise ValueError(
+                  f"Invalid length for lower_bound in {key}: Must match the number of files ({len(config['files'])})."
+              )
+
+          remaining_parts = remaining_values.split(",")
+          if len(remaining_parts) != 4:
+            raise ValueError(f"Invalid format for {key}: Must contain exactly 4 additional comma-separated values.")
+
+          try:
+            upper_bound, additional_condition, tlow, thigh = map(float, remaining_parts)
+          except ValueError:
+            raise ValueError(f"Invalid format for {key}: The last 4 values must all be floats.")
+
           channels[channel_index][2] = (lower_bound, upper_bound, additional_condition, tlow, thigh)
 
         elif key in plot_flags:  # Handle plot flags

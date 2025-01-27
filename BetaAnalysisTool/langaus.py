@@ -60,7 +60,7 @@ def round_to_sig_figs(x, sig):
   else:
     return round(x, sig - int(math.floor(math.log10(abs(x)))) - 1)
 
-def plot_langaus(file, tree, channel_array, nBins, xLower, xUpper, savename):
+def plot_langaus(file, file_index, tree, channel_array, nBins, xLower, xUpper, savename):
 
   pmax_list = []
   area_list = []
@@ -77,6 +77,10 @@ def plot_langaus(file, tree, channel_array, nBins, xLower, xUpper, savename):
     area_list = []
     sensorType, AtQfactor, (A, B, C, D, E) = ch_val
     if sensorType == 1:
+      if (A == 0.0) or (A == []):
+        A = 0.0
+      else:
+        A = A[file_index]
       if B == 0: B = 1000
       if C == 0: C = -100
       if D == 0: D = -50

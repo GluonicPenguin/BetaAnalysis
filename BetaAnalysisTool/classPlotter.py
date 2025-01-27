@@ -31,7 +31,7 @@ class plotVar:
     self.save_name = save_name
     self.fit = fit
 
-  def run(self, file, tree, channel_array):
+  def run(self, file, file_index, tree, channel_array):
 
     arr_of_hists = []
     arr_of_biases = []
@@ -40,7 +40,10 @@ class plotVar:
 
     result = []
     for i, (_, _, (A, B, C, D, E)) in enumerate(channel_array):
-      condition = f"pmax[{i}] > {A} && pmax[{i}] < {B} && negpmax[{i}] > {C} && tmax[{i}] > {D} && tmax[{i}] < {E}"
+      if (A == 0.0) or (A == []):
+        condition = f"pmax[{i}] > 0.0 && pmax[{i}] < {B} && negpmax[{i}] > {C} && tmax[{i}] > {D} && tmax[{i}] < {E}"
+      else:
+        condition = f"pmax[{i}] > {A[file_index]} && pmax[{i}] < {B} && negpmax[{i}] > {C} && tmax[{i}] > {D} && tmax[{i}] < {E}"
       result.append(condition)
 
     for j in range(len(channel_array)):

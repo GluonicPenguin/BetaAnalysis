@@ -27,12 +27,12 @@ CH_8 = 0
 
 # Specify what results and fits are to be performed
 
-tmax = True
+tmax = False
 pmax = True
-negpmax = True
-risetime = True
+negpmax = False
+risetime = False
 charge = True
-rms = True
+rms = False
 timeres = True
 discretisation = False
 waveform = False
@@ -49,11 +49,13 @@ timeres_nB_xL_xU = 80,2.4,2.8
 # Specify which selections should be applied to which channel (these are not applied simultaneously unless calculating time resolution
 # For time resolution, the MCP channel selection is applied with the corresponding DUT.
 # If the three-DUT setup is used, the cuts for the relevant channels for time resolution extraction will be applied
-# The inputs are PMAX_LOWER,PMAX_UPPER,NEGPMAX_LOWER,TMAX_LOWER,TMAX_UPPER (in mV and ns), written e.g. 20,160,-20,-0.5,0.5. If the value is 0, no cut will be performed.
+# The inputs are PMAX_LOWER,PMAX_UPPER,NEGPMAX_LOWER,TMAX_LOWER,TMAX_UPPER (in mV and ns), written e.g. [20,34,40],160,-20,-0.5,0.5.
+# PMAX_LOWER has to be an array of comma-separated values of length equal to the number of files.
+# If the value is 0 (or [] or 0 for PMAX_LOWER), no cut will be performed.
 
 CH1_cut = 0,0,0,0,0
-CH2_cut = 0,120,0,0,0
-CH3_cut = 0,120,0,0,0
+CH2_cut = [2,3,4,5,6,8.8],120,0,0,0
+CH3_cut = [],120,0,0,0
 CH4_cut = 0,0,0,0,0
 CH5_cut = 0,0,0,0,0
 CH6_cut = 0,0,0,0,0
