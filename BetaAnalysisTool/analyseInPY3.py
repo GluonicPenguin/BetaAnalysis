@@ -21,8 +21,6 @@ from classTRPlotter import plotTRVar
 from cardReader import read_text_card
 from langaus import plot_langaus
 
-#var_dict = {"tmax":"t_{max} / 10 ns" , "pmax":"p_max / mV" , "negpmax":"-p_max / mV", "charge":"Q / fC", "area_new":"Area / pWb" , "rms":"RMS / mV"}
-
 def main():
   parser = argparse.ArgumentParser(description='Read a text card containing information and location of ROOT analysis files and plot distributions of corresponding variables.')
   parser.add_argument('config', type=str, help='Path to the configuration text card (e.g., config.txt)')
@@ -93,7 +91,7 @@ def main():
   else:
     print(f"[BETA ANALYSIS] : [FILE READER] Total {len(file_array)} input ROOT files read.")
 
-  plot_variables = [var for var, flag in config.items() if var in ['tmax', 'pmax', 'negpmax', 'charge', 'rms', 'timeres', 'discretisation', 'waveform'] and flag]  
+  plot_variables = [var for var, flag in config.items() if var in ['tmax', 'pmax', 'negpmax', 'risetime', 'charge', 'rms', 'timeres', 'discretisation', 'waveform'] and flag]  
 
   if plot_variables:
     sentence = "will plot " + ", ".join(plot_variables)
@@ -104,10 +102,14 @@ def main():
   for i, ch in enumerate(config['channels']):
     print(f"        CH {i} : {channel_mapping.get(ch[0])} {board_mapping.get(ch[1])}")
 
+  print("\n\n\n\n")
+  print("[EPILEPSY WARNING] : This plotter will cause rapid imagery to appear on the screen that may trigger seizures or other symptoms in individuals with photosensitive epilepsy.")
+  print("If you experience dizziness, altered vision, muscle twitching, disorientation, or any other unusual symptoms, immediately stop the programme and seek medical attention.")
+  print("\n\n\n\n")
   if config.get('tmax', False) == True:
     print(f"[BETA ANALYSIS]: [PLOTTER] Plotting TMAX distribution (note that for TMAX no selections are applied to the phase space)")
     for file_ind, file_real in enumerate(file_array):
-      plot_tmax = plotVar("tmax", 1000, -2, 2, False, output_name_array[file_ind]+"_tmax.png", fit=None)
+      plot_tmax = plotVar("tmax", 1000, -10, 10, True, output_name_array[file_ind]+"_tmax.png", fit=None)
       plot_tmax.run(file_real, tree_array[file_ind], config['channels'])
   if config.get('pmax', False) == True:
     print(f"[BETA ANALYSIS]: [PLOTTER] Plotting PMAX distribution (note that for PMAX no selections are applied to the phase space)")
@@ -119,13 +121,22 @@ def main():
     for file_ind, file_real in enumerate(file_array):
       plot_negpmax = plotVar("negpmax", negpmax_params[0], negpmax_params[1], negpmax_params[2], True, output_name_array[file_ind]+"_negpmax.png", fit=None)
       plot_negpmax.run(file_real, tree_array[file_ind], config['channels'])
+  if config.get('risetime', False) == True:
+    print(f"[BETA ANALYSIS]: [PLOTTER] Performing Gaussian fit to RISETIME distribution")
+    risetime_dfs = []
+    for file_ind, file_real in enumerate(file_array):
+      plot_risetime = plotVar("risetime", 150, 0, 1.5, True, output_name_array[file_ind]+"_risetime.png", fit="gaus")
+      df_data = plot_risetime.run(file_real, tree_array[file_ind], config['channels'])
+      risetime_dfs.append(df_data)
+    risetime_data = pd.concat(risetime_dfs, ignore_index=True)
+    print(risetime_data.sort_values(by=['Channel','Bias']))
   if config.get('charge', False) == True:
     charge_dfs = []
     for file_ind, file_real in enumerate(file_array):
       df_data = plot_langaus(file_real, tree_array[file_ind], config['channels'], charge_params[0], charge_params[1], charge_params[2], output_name_array[file_ind]+"_charge")
       charge_dfs.append(df_data)
     charge_data = pd.concat(charge_dfs, ignore_index=True)
-    print(charge_data.sort_values(by='Channel'))
+    print(charge_data.sort_values(by=['Channel','Bias']))
   if config.get('rms', False) == True:
     print(f"[BETA ANALYSIS]: [PLOTTER] Performing Gaussian fit to DUT channels")
     rms_dfs = []
@@ -134,7 +145,7 @@ def main():
       df_data = plot_rms.run(file_real, tree_array[file_ind], config['channels'])
       rms_dfs.append(df_data)
     rms_data = pd.concat(rms_dfs, ignore_index=True)
-    print(rms_data.sort_values(by='Channel'))
+    print(rms_data.sort_values(by=['Channel','Bias']))
   if config.get('timeres', False) == True:
     print(f"[BETA ANALYSIS]: [TIME RESOLUTION] Performing Gaussian fit to DUT-MCP channels")
     time_res_dfs = []
@@ -143,7 +154,7 @@ def main():
       df_data = plot_timeres.run(file_real, tree_array[file_ind], config['channels'])
       time_res_dfs.append(df_data)
     time_res_data = pd.concat(time_res_dfs, ignore_index=True)
-    print(time_res_data.sort_values(by='Channel'))
+    print(time_res_data.sort_values(by=['Channel','Bias']))
 
   #if args.doDiscretisation: risingEdgeDiscretisation.run(file_array,tree_array,args.ch-1,total_number_channels)
   #if args.doWaveform: plot_waveform.run(file_array,tree_array,args.ch-1,total_number_channels)

@@ -89,6 +89,7 @@ def plot_langaus(file, tree, channel_array, nBins, xLower, xUpper, savename):
         if (pmax_sig < A) or (pmax_sig > B) or (negpmax_sig < C) or (tmax_sig < D) or (tmax_sig > E):
           continue
         else:
+          #if (pmax_sig > A) and (pmax_sig < B) and (negpmax_sig > C) and (tmax_sig > D) and (tmax_sig < E):
           area_sig = entry.area_new[ch_ind]
           pmax_list.append(pmax_sig)
           area_list.append(area_sig)
@@ -151,7 +152,9 @@ def plot_langaus(file, tree, channel_array, nBins, xLower, xUpper, savename):
       )
     )
 
-    fig.write_image(savename+"_Ch"+str(ch_ind)+".png")
+    if not os.path.exists("langaus"):
+      os.makedirs("langaus")
+    fig.write_image("langaus/"+savename+"_Ch"+str(ch_ind)+".png")
     print("[BETA ANALYSIS]: [LANGAUS PLOTTER] Saved file "+savename+"_Ch"+str(ch_ind)+".png")
 
   df_of_results = pd.DataFrame({

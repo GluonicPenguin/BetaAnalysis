@@ -20,6 +20,7 @@ def read_text_card(file_path):
     "tmax": False,
     "pmax": False,
     "negpmax": False,
+    "risetime": False,
     "charge": False,
     "rms": False,
     "timeres": False,
@@ -73,7 +74,7 @@ def read_text_card(file_path):
           channels[index] = [channel_type, channel_value, None]
         elif key.startswith("CH") and key.endswith("_cut"):  # Handle CH_cut keys
           channel_index = int(key[2]) - 1
-          lower_bound, upper_bound, additional_condition, tlow, thigh = map(int, value.split(","))
+          lower_bound, upper_bound, additional_condition, tlow, thigh = map(float, value.split(","))
           channels[channel_index][2] = (lower_bound, upper_bound, additional_condition, tlow, thigh)
 
         elif key in plot_flags:  # Handle plot flags

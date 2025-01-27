@@ -69,8 +69,6 @@ class plotTRVar:
       arr_of_hists.append(hist_down_up_dev)
       arr_of_biases.append(bias)
 
-    print(f"[BETA ANALYSIS]: [TIME RESOLUTION] Plotting time resolution with specified selections on the phase space")
-
     c1 = root.TCanvas("c1", f"Distribution time resolution", 800, 600)
     if self.log_scale:
       c1.SetLogy()
@@ -99,7 +97,9 @@ class plotTRVar:
       legend.AddEntry(arr_of_hists[i][0], arr_of_biases[i] + " CH " + str(i+1), "l")
 
     legend.Draw()
-    c1.SaveAs(self.save_name)
+    if not os.path.exists("timeres"):
+      os.makedirs("timeres")
+    c1.SaveAs("timeres/"+self.save_name)
     print(f"[BETA ANALYSIS]: [TIME RESOLUTION] Saved time resolution as "+self.save_name)
 
     fit_results = get_fit_results_TR(arr_of_fits,arr_of_biases,mcp_exists)

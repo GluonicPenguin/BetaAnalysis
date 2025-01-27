@@ -90,7 +90,7 @@ def getBias(filename):
       return None
 
 def hist_tree_file_basics(tree,file,var,index,nBins,xLower,xUpper,biasVal,cut_cond,ch,toaThreshold):
-  var_dict = {"tmax":"t_{max} / 10 ns" , "pmax":"p_max / mV" , "negpmax":"-p_max / mV", "charge":"Q / fC", "area_new":"Area / pWb" , "rms":"RMS / mV"}
+  var_dict = {"tmax":"t_{max} / 10 ns" , "pmax":"p_max / mV" , "negpmax":"-p_max / mV", "risetime":"Rise time / ns", "charge":"Q / fC", "area_new":"Area / pWb" , "rms":"RMS / mV"}
   if var == "charge":
     thisHist = root.TH1F("CH "+str(ch)+" "+biasVal, var+";"+var_dict[var]+"/4.7;Events", nBins, xLower, xUpper)
     nEntries = tree.GetEntries()

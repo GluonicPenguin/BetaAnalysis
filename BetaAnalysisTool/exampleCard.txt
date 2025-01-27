@@ -30,6 +30,7 @@ CH_8 = 0
 tmax = True
 pmax = True
 negpmax = True
+risetime = True
 charge = True
 rms = True
 timeres = True

@@ -81,7 +81,9 @@ class plotVar:
       legend.AddEntry(valid_hists[i], arr_of_biases[i] + " CH " + str(i+1), "l")
 
     legend.Draw()
-    c1.SaveAs(self.save_name)
+    if not os.path.exists(self.var):
+      os.makedirs(self.var)
+    c1.SaveAs(self.var+"/"+self.save_name)
     print(f"[BETA ANALYSIS]: [PLOTTER] Saved {self.var} as "+self.save_name)
 
     if (self.fit) is not None:
