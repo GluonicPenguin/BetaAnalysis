@@ -15,8 +15,8 @@ files = "../../../../DESY_TB_Dec_24/data_TB/Run4_W5_RT_Ex1/stats_Sr_Run4_Ch1-125
 # Specify channel with the board type, e.g. "DUT, SC" so during analysis the area can be accurately converted to charge
 
 CH_1 = "REF, SC"
-CH_2 = "DUT, SC"
-CH_3 = "DUT, SC"
+CH_2 = "DUT, SC, 30"
+CH_3 = "DUT, SC, 30"
 CH_4 = "MCP, None"
 CH_5 = 0
 CH_6 = 0

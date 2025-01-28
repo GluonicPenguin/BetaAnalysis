@@ -20,10 +20,13 @@ import sys
 
 from proc_tools import getBias
 
-def direct_to_table(name_and_df_couples, channel_configs, output_savename):
+def direct_to_table(name_and_df_couples, channel_configs, output_savename, thickness_info):
 
   number_of_duts = sum(1 for element in channel_configs if element[0] == 1)
   number_of_bias_pts = int(len(name_and_df_couples[0][1]) / number_of_duts)
+  thickness_info = list(map(int, thickness_info))
+  thickness_col = np.repeat(np.array(thickness_info), number_of_bias_pts)
+
   pmax_low = []
   pmax_high = []
   nmax_low = []
@@ -88,6 +91,7 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename):
       df_charge.loc[:, 'Charge MPV'] = df_charge['Charge MPV'].round(1)
       df_charge.loc[:, 'Frac above 1p5'] = df_charge['Frac above 1p5'].round(3)
       df_charge = df_charge.rename(columns={'Charge MPV':'Charge / fC'})
+      df_charge['Gain'] = 100*(df_charge['Charge / fC'] / thickness_col).round(2)
       dfs_to_concat.append(df_charge)
     elif var == "rms":
       if first_df_found == False:
@@ -107,7 +111,16 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename):
       dfs_to_concat.append(df_tr)
   
   dfs_comb = pd.concat(dfs_to_concat, axis=1)
-  dfs_comb.loc[:, 'Bias'] = dfs_comb['Bias'].str[:-1]
+  dfs_comb.loc[:, 'Bias'] = dfs_comb['Bias'].str[:-1].astype(int)
+  dfs_comb['Thickness / um'] = thickness_col
+  dfs_comb['E field / V/cm'] = 10000*(dfs_comb['Bias'] / dfs_comb['Thickness / um'])
+  dfs_comb.loc[:, 'E field / V/cm'] = dfs_comb['E field / V/cm'] // 1
+  columns = dfs_comb.columns.tolist()
+  for col_to_move in ['Thickness / um','E field / V/cm']:
+    columns.remove(col_to_move)
+  columns[2:2] = ['Thickness / um','E field / V/cm']
+  dfs_comb = dfs_comb[columns]
+  
 
   dfs_comb['PMAX low / mV'] = np.ravel(pmax_low)
   dfs_comb['PMAX high / mV'] = np.ravel(pmax_high)

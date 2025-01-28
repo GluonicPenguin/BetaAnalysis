@@ -28,7 +28,8 @@ def main():
   args = parser.parse_args()
 
   print(f"[BETA ANALYSIS] : [CARD READER] Reading text card {args.config}.")
-  config = read_text_card(args.config)
+  config, thicknesses = read_text_card(args.config)
+  thicknesses = [thickness for thickness in thicknesses if thickness != "nDUT"]
   output_name = os.path.splitext(os.path.basename(args.config))[0]
 
   file_list = config.get('files', [])
@@ -175,7 +176,7 @@ def main():
     print(time_res_data.sort_values(by=['Channel','Bias']))
     data_out.append(('timeres', time_res_data.sort_values(by=['Channel','Bias'])))
 
-  if len(data_out) > 1: direct_to_table(data_out, config['channels'], output_name)
+  if len(data_out) > 1: direct_to_table(data_out, config['channels'], output_name, thicknesses)
 
   #if args.doDiscretisation: risingEdgeDiscretisation.run(file_array,tree_array,args.ch-1,total_number_channels)
   #if args.doWaveform: plot_waveform.run(file_array,tree_array,args.ch-1,total_number_channels)

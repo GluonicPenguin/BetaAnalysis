@@ -41,6 +41,7 @@ def read_text_card(file_path):
   with open(file_path, 'r') as f:
     current_key = None  # Track the current key being processed
     current_value = []  # Collect multi-line values
+    thickness_info = []
     for line in f:
       line = line.strip()
       if not line or line.startswith('#'):  # Skip empty lines and comments
@@ -68,9 +69,11 @@ def read_text_card(file_path):
           parts = [part.strip() for part in value.split(',')]
           type_str = parts[0]
           additional_str = parts[1] if len(parts) > 1 else ""
+          thickness_str = parts[2] if len(parts) > 2 else "nDUT"
 
           channel_type = channel_type_mapping.get(type_str.upper(), 0)
           channel_value = channel_area_to_charge_mapping.get(additional_str, 1)
+          thickness_info.append(thickness_str)
 
           channels[index] = [channel_type, channel_value, None]
 
@@ -129,4 +132,4 @@ def read_text_card(file_path):
   config['channels'] = channels
   config.update(plot_flags)
   config.update(plot_params)
-  return config
+  return config, thickness_info
