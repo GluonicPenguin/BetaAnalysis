@@ -67,6 +67,7 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename):
     if var == "amplitude":
       df_ampl = df[['Channel','Bias','Amplitude MPV']]
       first_df_found = True
+      df_ampl.loc[:, 'Amplitude MPV'] = df_ampl['Amplitude MPV'].round(1)
       df_ampl = df_ampl.rename(columns={'Amplitude MPV':'Amplitude / mV'})
       dfs_to_concat.append(df_ampl)
     elif var == "risetime":
@@ -75,6 +76,7 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename):
         df_rt = df[['Channel','Bias','Mean']]
       else:
         df_rt = df[['Mean']]*1000
+      df_rt.loc[:, 'Mean'] = df_rt['Mean'].round(0)
       df_rt = df_rt.rename(columns={'Mean':'Rise time / ps'})
       dfs_to_concat.append(df_rt)
     elif var == "charge":
@@ -83,6 +85,8 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename):
         df_charge = df[['Channel','Bias','Charge MPV','Frac above 1p5']]
       else:
         df_charge = df[['Charge MPV','Frac above 1p5']]
+      df_charge.loc[:, 'Charge MPV'] = df_charge['Charge MPV'].round(1)
+      df_charge.loc[:, 'Frac above 1p5'] = df_charge['Frac above 1p5'].round(3)
       df_charge = df_charge.rename(columns={'Charge MPV':'Charge / fC'})
       dfs_to_concat.append(df_charge)
     elif var == "rms":
@@ -103,6 +107,8 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename):
       dfs_to_concat.append(df_tr)
   
   dfs_comb = pd.concat(dfs_to_concat, axis=1)
+  dfs_comb.loc[:, 'Bias'] = dfs_comb['Bias'].str[:-1]
+
   dfs_comb['PMAX low / mV'] = np.ravel(pmax_low)
   dfs_comb['PMAX high / mV'] = np.ravel(pmax_high)
   dfs_comb['NMAX low / mV'] = np.ravel(nmax_low)
