@@ -68,6 +68,8 @@ def main():
   tree_array = []
   output_name_array = []
 
+  root.gROOT.SetBatch(True)
+
   for pattern in file_list:
     root_files = glob.glob(pattern)
     output_name_const = output_name
@@ -104,7 +106,7 @@ def main():
     print(f"        CH {i} : {channel_mapping.get(ch[0])} {board_mapping.get(ch[1])}")
 
   print("\n\n\n\n    ***************************************************************************************************************************************************************************\n")
-  print("    [EPILEPSY WARNING] : This plotter will cause rapid imagery to appear on the screen that may trigger seizures or other symptoms in individuals with photosensitive epilepsy.")
+  print("    [EPILEPSY WARNING] : This plotter can cause rapid imagery to appear on the screen that may trigger seizures or other symptoms in individuals with photosensitive epilepsy.")
   print("     If you experience dizziness, altered vision, muscle twitching, disorientation, or any other unusual symptoms, immediately stop the programme and seek medical attention.\n")
   print("    ***************************************************************************************************************************************************************************\n\n\n\n")
   input("Press any key to continue")

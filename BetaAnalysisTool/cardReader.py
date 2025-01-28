@@ -112,6 +112,9 @@ def read_text_card(file_path):
           if plot_flags.get(param_key, False):  # Check if this plot is enabled
             nBins, xLower, xUpper = map(float, value.split(","))
             plot_params[param_key+"_params"] = (int(nBins), xLower, xUpper)
+          elif (plot_flags.get("amplitude", False)) and (param_key != "negpmax"):
+            nBins, xLower, xUpper = map(float, value.split(","))
+            plot_params["pmax_params"] = (int(nBins), xLower, xUpper)
         else:  # Handle generic key-value pairs
           config[key] = value
       elif current_key:  # Handle continuation lines
