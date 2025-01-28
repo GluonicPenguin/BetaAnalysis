@@ -117,7 +117,7 @@ def main():
   if config.get('tmax', False) == True:
     print(f"[BETA ANALYSIS]: [PLOTTER] Plotting TMAX distribution (note that for TMAX no selections are applied to the phase space)")
     for file_ind, file_real in enumerate(file_array):
-      plot_tmax = plotVar("tmax", 1000, -10, 10, True, output_name_array[file_ind]+"_tmax.png", fit=None)
+      plot_tmax = plotVar("tmax", 600, -6, 6, True, output_name_array[file_ind]+"_tmax.png", fit=None)
       plot_tmax.run(file_real, file_ind, tree_array[file_ind], config['channels'])
   if config.get('pmax', False) == True:
     print(f"[BETA ANALYSIS]: [PLOTTER] Plotting PMAX distribution (note that for PMAX no selections are applied to the phase space)")
@@ -135,8 +135,8 @@ def main():
       df_data = plot_langaus('amplitude', file_real, file_ind, tree_array[file_ind], config['channels'], pmax_params[0], pmax_params[1], pmax_params[2], output_name_array[file_ind]+"_amplitude")
       amplitude_dfs.append(df_data)
     amplitude_data = pd.concat(amplitude_dfs, ignore_index=True)
-    print(amplitude_data.sort_values(by=['Channel','Bias']))
-    data_out.append(('amplitude', amplitude_data.sort_values(by=['Channel','Bias'])))
+    print(amplitude_data.sort_values(by='Channel'))
+    data_out.append(('amplitude', amplitude_data.sort_values(by='Channel')))
   if config.get('risetime', False) == True:
     print(f"[BETA ANALYSIS]: [PLOTTER] Performing Gaussian fit to RISETIME distribution")
     risetime_dfs = []
@@ -145,16 +145,16 @@ def main():
       df_data = plot_risetime.run(file_real, file_ind, tree_array[file_ind], config['channels'])
       risetime_dfs.append(df_data)
     risetime_data = pd.concat(risetime_dfs, ignore_index=True)
-    print(risetime_data.sort_values(by=['Channel','Bias']))
-    data_out.append(('risetime', risetime_data.sort_values(by=['Channel','Bias'])))
+    print(risetime_data.sort_values(by='Channel'))
+    data_out.append(('risetime', risetime_data.sort_values(by='Channel')))
   if config.get('charge', False) == True:
     charge_dfs = []
     for file_ind, file_real in enumerate(file_array):
       df_data = plot_langaus('charge', file_real, file_ind, tree_array[file_ind], config['channels'], charge_params[0], charge_params[1], charge_params[2], output_name_array[file_ind]+"_charge")
       charge_dfs.append(df_data)
     charge_data = pd.concat(charge_dfs, ignore_index=True)
-    print(charge_data.sort_values(by=['Channel','Bias']))
-    data_out.append(('charge', charge_data.sort_values(by=['Channel','Bias'])))
+    print(charge_data.sort_values(by='Channel'))
+    data_out.append(('charge', charge_data.sort_values(by='Channel')))
   if config.get('rms', False) == True:
     print(f"[BETA ANALYSIS]: [PLOTTER] Performing Gaussian fit to DUT channels")
     rms_dfs = []
@@ -163,8 +163,8 @@ def main():
       df_data = plot_rms.run(file_real, file_ind, tree_array[file_ind], config['channels'])
       rms_dfs.append(df_data)
     rms_data = pd.concat(rms_dfs, ignore_index=True)
-    print(rms_data.sort_values(by=['Channel','Bias']))
-    data_out.append(('rms', rms_data.sort_values(by=['Channel','Bias'])))
+    print(rms_data.sort_values(by='Channel'))
+    data_out.append(('rms', rms_data.sort_values(by='Channel')))
   if config.get('timeres', False) == True:
     print(f"[BETA ANALYSIS]: [TIME RESOLUTION] Performing Gaussian fit to DUT-MCP channels")
     time_res_dfs = []
@@ -173,8 +173,8 @@ def main():
       df_data = plot_timeres.run(file_real, file_ind, tree_array[file_ind], config['channels'])
       time_res_dfs.append(df_data)
     time_res_data = pd.concat(time_res_dfs, ignore_index=True)
-    print(time_res_data.sort_values(by=['Channel','Bias']))
-    data_out.append(('timeres', time_res_data.sort_values(by=['Channel','Bias'])))
+    print(time_res_data.sort_values(by='Channel'))
+    data_out.append(('timeres', time_res_data.sort_values(by='Channel')))
 
   if len(data_out) > 1: direct_to_table(data_out, config['channels'], output_name, thicknesses)
 
