@@ -180,7 +180,6 @@ def main():
 
   #if args.doDiscretisation: risingEdgeDiscretisation.run(file_array,tree_array,args.ch-1,total_number_channels)
   #if args.doWaveform: plot_waveform.run(file_array,tree_array,args.ch-1,total_number_channels)
-  #if args.csvOut: makeCSV.run(file_array,tree_array,total_number_channels)
 
 if __name__ == "__main__":
     main()

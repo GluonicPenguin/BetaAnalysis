@@ -33,9 +33,7 @@ risetime = True
 charge = True
 rms = True
 timeres = True
-discretisation = False
 waveform = False
-all_with_no_plots = False
 
 # For charge, RMS, and time resolution, specify the number of bins, lower bound, and upper bound to plot
 
