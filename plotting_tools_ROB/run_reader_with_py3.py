@@ -577,7 +577,6 @@ def timeRes(files,trees,ch,total_number_channels):
     vars.append(var)
     cut_conds.append(cut_cond)
   elif total_number_channels == 1:
-    print("HERE")
     var = "cfd["+str(ch)+"]["+str(toaThreshold)+"]-cfd[1]["+str(toaThreshold)+"]"
     cut_cond = "negpmax[1] > -40 && pmax[1] < 400 && " + myGlobalCut
     vars.append(var)

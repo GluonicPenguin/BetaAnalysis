@@ -13,6 +13,7 @@ files = "../../../../DESY_TB_Dec_24/data_TB/Run4_W5_RT_Ex1/stats_Sr_Run4_Ch1-125
 # For MCP, time resolution will be extracted from the DUT temporally to this.
 # For REF, the channel will be shown in plotting but not fitted or used for time resolution
 # Specify channel with the board type, e.g. "DUT, SC" so during analysis the area can be accurately converted to charge
+# Also specify the thickness of the sensor, in microns
 
 CH_1 = "REF, SC"
 CH_2 = "DUT, SC, 30"

@@ -37,6 +37,7 @@ def get_fit_results_TR(arr_of_fits,arr_of_biases,dut_channels,mcp_channel, simpl
   arr_of_biases_fitted = []
   arr_of_mean = []
   arr_of_sigma = []
+  arr_of_unc_sig = []
   arr_down_var = []
   arr_up_var = []
   arr_of_ampl = []
@@ -46,6 +47,7 @@ def get_fit_results_TR(arr_of_fits,arr_of_biases,dut_channels,mcp_channel, simpl
 
     mean = fit_func[0].GetParameter(1)  # Mean of the gauss distribution
     sigma = fit_func[0].GetParameter(2) # Sigma of the gauss distribution
+    unc_sig = fit_func[0].GetParError(2)
     var_down = fit_func[1].GetParameter(2)
     var_up = fit_func[2].GetParameter(2)
     amplitude = fit_func[0].GetParameter(0)  # Amplitude of the gauss distribution
@@ -53,6 +55,7 @@ def get_fit_results_TR(arr_of_fits,arr_of_biases,dut_channels,mcp_channel, simpl
     ndf = fit_func[0].GetNDF()  # Number of degrees of freedom
     arr_of_mean.append(round_to_sig_figs(mean,4))
     arr_of_sigma.append(sigma)
+    arr_of_unc_sig.append(unc_sig)
     arr_down_var.append(var_down)
     arr_up_var.append(var_up)
     arr_of_ampl.append(round_to_sig_figs(amplitude,3))
@@ -79,8 +82,10 @@ def get_fit_results_TR(arr_of_fits,arr_of_biases,dut_channels,mcp_channel, simpl
     print(f"[BETA ANALYSIS]: [TIME RESOLUTION] Calculating time resolution for DUT, assuming MCP time resolution {mcp_tr*1000} +/- {mcp_tr_err*1000} ps")
     for ch_ind, ch_val in enumerate(arr_of_sigma):
       sig1 = np.sqrt(ch_val**2 - mcp_tr**2)
-      unc_sig1_nominal = np.abs(arr_up_var[ch_ind] - arr_down_var[ch_ind]) / 2
-      sig1err = np.sqrt((ch_val*unc_sig1_nominal)**2 + (mcp_tr*mcp_tr_err)**2)/sig1
+      #unc_sig1_nominal = np.abs(arr_up_var[ch_ind] - arr_down_var[ch_ind]) / 2
+      #sig1err = np.sqrt((ch_val*unc_sig1_nominal)**2 + (mcp_tr*mcp_tr_err)**2)/sig1
+      sig1err = np.sqrt((arr_of_sigma[0]*arr_of_unc_sig[0])**2 + (mcp_tr*mcp_tr_err)**2)/sig1
+      
       sig_dut_values.append(round_to_sig_figs(1000*sig1,3))
       sig_dut_errors.append(round_to_sig_figs(1000*sig1err,2))
     df_of_results['Resolution'] = sig_dut_values

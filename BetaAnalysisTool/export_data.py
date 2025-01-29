@@ -85,21 +85,24 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
     elif var == "charge":
       if first_df_found == False:
         first_df_found = True
-        df_charge = df[['Channel','Bias','Charge MPV','Frac above 1p5']]
+        df_charge = df[['Channel','Bias','Charge MPV','Landau width','Gaussian sigma','Frac above 1p5']]
       else:
-        df_charge = df[['Charge MPV','Frac above 1p5']]
+        df_charge = df[['Charge MPV','Landau width','Gaussian sigma','Frac above 1p5']]
       df_charge.loc[:, 'Charge MPV'] = df_charge['Charge MPV'].round(1)
+      df_charge.loc[:, 'Landau width'] = df_charge['Landau width'].round(3)
+      df_charge.loc[:, 'Gaussian sigma'] = df_charge['Gaussian sigma'].round(3)
       df_charge.loc[:, 'Frac above 1p5'] = df_charge['Frac above 1p5'].round(3)
-      df_charge = df_charge.rename(columns={'Charge MPV':'Charge / fC'})
+      df_charge = df_charge.rename(columns={'Charge MPV':'Charge / fC','Landau width':'Landau Cpt Charge','Gaussian sigma':'Gaussian Cpt Charge','Frac above 1p5':'Frac Charge >1.5xMPV'})
       df_charge['Gain'] = 100*(df_charge['Charge / fC'] / thickness_col).round(2)
       dfs_to_concat.append(df_charge)
     elif var == "rms":
       if first_df_found == False:
         first_df_found = True
-        df_rms = df[['Channel','Bias','Mean']]
+        df_rms = df[['Channel','Bias','Mean','Sigma']]
       else:
-        df_rms = df[['Mean']]
-      df_rms = df_rms.rename(columns={'Mean':'RMS Noise / mV'})
+        df_rms = df[['Mean','Sigma']]
+      df_rms.loc[:, 'Sigma'] = df_rms['Sigma'].round(2)
+      df_rms = df_rms.rename(columns={'Mean':'RMS Noise / mV', 'Sigma':'RMS Uncertainty / mV'})
       dfs_to_concat.append(df_rms)
     elif var == "timeres":
       if first_df_found == False:
@@ -115,6 +118,12 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
   dfs_comb['Thickness / um'] = thickness_col
   dfs_comb['E field / V/cm'] = 10000*(dfs_comb['Bias'] / dfs_comb['Thickness / um'])
   dfs_comb.loc[:, 'E field / V/cm'] = dfs_comb['E field / V/cm'] // 1
+  if ('Rise time / ps' in dfs_comb.columns) and ('Amplitude / mV' in dfs_comb.columns) and ('RMS Noise / mV' in dfs_comb.columns):
+    dfs_comb['Jitter / ps'] = dfs_comb['Rise time / ps'] / dfs_comb['Amplitude / mV']
+    dfs_comb.loc[:, 'Jitter / ps'] = dfs_comb['Jitter / ps'].round(1)
+    if 'Time Resolution / ps' in dfs_comb.columns:
+      dfs_comb['Landau TR Cpt / ps'] = np.sqrt(dfs_comb['Time Resolution / ps']**2 - dfs_comb['Jitter / ps']**2)
+      dfs_comb.loc[:, 'Landau TR Cpt / ps'] = dfs_comb['Landau TR Cpt / ps'].round(1)
   columns = dfs_comb.columns.tolist()
   for col_to_move in ['Thickness / um','E field / V/cm']:
     columns.remove(col_to_move)
