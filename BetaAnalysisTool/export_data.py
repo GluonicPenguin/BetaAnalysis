@@ -145,15 +145,18 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
   dfs_comb['PMAX low / mV'] = np.ravel(pmax_low)
   dfs_comb['PMAX high / mV'] = np.ravel(pmax_high)
   dfs_comb['NMAX low / mV'] = np.ravel(nmax_low)
-  dfs_comb['TMAX low / mV'] = np.ravel(tmax_low)
-  dfs_comb['TMAX high / mV'] = np.ravel(tmax_high)
+  dfs_comb['TMAX low / ns'] = np.ravel(tmax_low)
+  dfs_comb['TMAX high / ns'] = np.ravel(tmax_high)
 
   if mcp_channel == True:
     dfs_comb['MCP PMAX low / mV'] = np.tile(pmax_low_mcp, number_of_duts)
     dfs_comb['MCP PMAX high / mV'] = np.tile(pmax_high_mcp, number_of_duts)
     dfs_comb['MCP NMAX low / mV'] = np.tile(nmax_low_mcp, number_of_duts)
-    dfs_comb['MCP TMAX low / mV'] = np.tile(tmax_low_mcp, number_of_duts)
-    dfs_comb['MCP TMAX high / mV'] = np.tile(tmax_high_mcp, number_of_duts)
+    dfs_comb['MCP TMAX low / ns'] = np.tile(tmax_low_mcp, number_of_duts)
+    dfs_comb['MCP TMAX high / ns'] = np.tile(tmax_high_mcp, number_of_duts)
+
+  dfs_comb['Bias'] = pd.to_numeric(dfs_comb['Bias'], errors='coerce')
+  dfs_comb = dfs_comb.sort_values(by=['Channel','Bias'])
 
   print(f"[BETA ANALYSIS] : [DATA COLLATOR] Writing data to {output_savename}.csv.")
   dfs_comb.to_csv(output_savename+'.csv', index=False)

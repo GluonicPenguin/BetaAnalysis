@@ -73,11 +73,12 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
   arr_threshold_frac = []
 
   dict_of_vars = {"amplitude": "Amplitude / mV", "charge": "Charge / fC"}
-
   for ch_ind, ch_val in enumerate(channel_array):
     pmax_list = []
     area_list = []
     sensorType, AtQfactor, (A, B, C, D, E) = ch_val
+    if AtQfactor == 0:
+      AtQfactor = 1
     if sensorType == 1:
       if (A == 0.0) or (A == []):
         A = 0.0

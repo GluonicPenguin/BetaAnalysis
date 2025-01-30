@@ -48,21 +48,29 @@ def main():
   if config.get('timeres', False):
     timeres_params = config.get('timeres_params', None)
 
-  filtered_channels = [ch for ch in config['channels'] if ch[0] != 0] # drop channels that are not specified in the textCard
-  modified_channels = [[ch[0], ch[1], (ch[2][0], 1000 if ch[2][1] == 0 else ch[2][1], -100 if ch[2][2] >= 0 else ch[2][2], -50 if ch[2][3] == 0 else ch[2][3], 50 if ch[2][4] == 0 else ch[2][4])] for ch in filtered_channels] # set +ve negpmax lower bounds to -100 mV if they are +ve or 0 in the textCard (and tmax cuts on full range if specified as 0,0)
+  while config['channels'] and config['channels'][-1][0] == 0:
+    config['channels'].pop()
+
+  #filtered_channels = [ch for ch in config['channels'] if ch[0] != 0] # drop channels that are not specified in the textCard
+  #modified_channels = [[ch[0], ch[1], (ch[2][0], 1000 if ch[2][1] == 0 else ch[2][1], -100 if ch[2][2] >= 0 else ch[2][2], -50 if ch[2][3] == 0 else ch[2][3], 50 if ch[2][4] == 0 else ch[2][4])] for ch in filtered_channels]
+  
+  for ch in config['channels']:
+    if ch[0] == 0: ch[1] = 0
+  modified_channels = [[ch[0], ch[1], (ch[2][0], 1000 if ch[2][1] == 0 else ch[2][1], -100 if ch[2][2] >= 0 else ch[2][2], -50 if ch[2][3] == 0 else ch[2][3], 50 if ch[2][4] == 0 else ch[2][4])] for ch in config['channels']] # set +ve negpmax lower bounds to -100 mV if they are +ve or 0 in the textCard (and tmax cuts on full range if specified as 0,0)
   config['channels'] = modified_channels
 
   channel_mapping = {
     1: "DUT",
     2: "MCP",
     3: "Reference sensor",
-    0: "Unknown"
+    0: "Unknown or unused channel"
   }
 
   board_mapping = {
     4.7: "on SC board",
     5: "on Mignone board",
-    1: "unmounted"
+    1: "unmounted",
+    0: ""
   }
 
   file_array = []
@@ -113,7 +121,6 @@ def main():
   input("Press any key to continue")
 
   data_out = []
-
   if config.get('tmax', False) == True:
     print(f"[BETA ANALYSIS]: [PLOTTER] Plotting TMAX distribution (note that for TMAX no selections are applied to the phase space)")
     for file_ind, file_real in enumerate(file_array):
@@ -135,26 +142,26 @@ def main():
       df_data = plot_langaus('amplitude', file_real, file_ind, tree_array[file_ind], config['channels'], pmax_params[0], pmax_params[1], pmax_params[2], output_name_array[file_ind]+"_amplitude")
       amplitude_dfs.append(df_data)
     amplitude_data = pd.concat(amplitude_dfs, ignore_index=True)
-    print(amplitude_data.sort_values(by='Channel'))
-    data_out.append(('amplitude', amplitude_data.sort_values(by='Channel')))
+    print(amplitude_data.sort_values(by=['Channel','Bias']))
+    data_out.append(('amplitude', amplitude_data.sort_values(by=['Channel','Bias'])))
   if config.get('risetime', False) == True:
     print(f"[BETA ANALYSIS]: [PLOTTER] Performing Gaussian fit to RISETIME distribution")
     risetime_dfs = []
     for file_ind, file_real in enumerate(file_array):
-      plot_risetime = plotVar("risetime", 150, 0, 1.5, True, output_name_array[file_ind]+"_risetime.png", fit="gaus")
+      plot_risetime = plotVar("risetime", 150, 0, 1.0, True, output_name_array[file_ind]+"_risetime.png", fit="gaus")
       df_data = plot_risetime.run(file_real, file_ind, tree_array[file_ind], config['channels'])
       risetime_dfs.append(df_data)
     risetime_data = pd.concat(risetime_dfs, ignore_index=True)
-    print(risetime_data.sort_values(by='Channel'))
-    data_out.append(('risetime', risetime_data.sort_values(by='Channel')))
+    print(risetime_data.sort_values(by=['Channel','Bias']))
+    data_out.append(('risetime', risetime_data.sort_values(by=['Channel','Bias'])))
   if config.get('charge', False) == True:
     charge_dfs = []
     for file_ind, file_real in enumerate(file_array):
       df_data = plot_langaus('charge', file_real, file_ind, tree_array[file_ind], config['channels'], charge_params[0], charge_params[1], charge_params[2], output_name_array[file_ind]+"_charge")
       charge_dfs.append(df_data)
     charge_data = pd.concat(charge_dfs, ignore_index=True)
-    print(charge_data.sort_values(by='Channel'))
-    data_out.append(('charge', charge_data.sort_values(by='Channel')))
+    print(charge_data.sort_values(by=['Channel','Bias']))
+    data_out.append(('charge', charge_data.sort_values(by=['Channel','Bias'])))
   if config.get('rms', False) == True:
     print(f"[BETA ANALYSIS]: [PLOTTER] Performing Gaussian fit to DUT channels")
     rms_dfs = []
@@ -163,8 +170,8 @@ def main():
       df_data = plot_rms.run(file_real, file_ind, tree_array[file_ind], config['channels'])
       rms_dfs.append(df_data)
     rms_data = pd.concat(rms_dfs, ignore_index=True)
-    print(rms_data.sort_values(by='Channel'))
-    data_out.append(('rms', rms_data.sort_values(by='Channel')))
+    print(rms_data.sort_values(by=['Channel','Bias']))
+    data_out.append(('rms', rms_data.sort_values(by=['Channel','Bias'])))
   if config.get('timeres', False) == True:
     print(f"[BETA ANALYSIS]: [TIME RESOLUTION] Performing Gaussian fit to DUT-MCP channels")
     time_res_dfs = []
@@ -173,8 +180,8 @@ def main():
       df_data = plot_timeres.run(file_real, file_ind, tree_array[file_ind], config['channels'])
       time_res_dfs.append(df_data)
     time_res_data = pd.concat(time_res_dfs, ignore_index=True)
-    print(time_res_data.sort_values(by='Channel'))
-    data_out.append(('timeres', time_res_data.sort_values(by='Channel')))
+    print(time_res_data.sort_values(by=['Channel','Bias']))
+    data_out.append(('timeres', time_res_data.sort_values(by=['Channel','Bias'])))
 
   if len(data_out) > 1: direct_to_table(data_out, config['channels'], output_name, thicknesses)
 

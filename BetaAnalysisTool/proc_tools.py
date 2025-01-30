@@ -90,24 +90,13 @@ def getBias(filename, chnum):
   else:
     return None
 
-def hist_tree_file_basics(tree,file,var,index,nBins,xLower,xUpper,biasVal,cut_cond,ch,toaThreshold):
+def hist_tree_file_basics(tree,file,var,index,nBins,xLower,xUpper,biasVal,cut_cond,ch):
   var_dict = {"tmax":"t_{max} / 10 ns" , "pmax":"p_max / mV" , "negpmax":"-p_max / mV", "risetime":"Rise time / ns", "area_new":"Area / pWb" , "rms":"RMS / mV"}
-  if var == "charge":
-    thisHist = root.TH1F("CH "+str(ch)+" "+biasVal, var+";"+var_dict[var]+"/4.7;Events", nBins, xLower, xUpper)
-    nEntries = tree.GetEntries()
-    for i in range(nEntries):
-      tree.GetEntry(i)
-      python_cut_cond = cut_cond.replace("&&", "and").replace("||", "or")
-      if eval(python_cut_cond, {}, {"event": tree.event, "pmax": tree.pmax, "negpmax": tree.negpmax, "tmax": tree.tmax}):
-        scaled_value = tree.area_new[ch] / 4.7
-        thisHist.Fill(scaled_value)
-
+  thisHist = root.TH1F("CH "+str(ch)+" "+biasVal, var+";"+var_dict[var]+";Events", nBins, xLower, xUpper)
+  if (var == "pmax") or (var == "negpmax") or (var == "tmax"):
+    tree.Draw(var+"["+str(ch)+"]>>CH "+str(ch)+" "+biasVal,"event>-1")
   else:
-    thisHist = root.TH1F("CH "+str(ch)+" "+biasVal, var+";"+var_dict[var]+";Events", nBins, xLower, xUpper)
-    if (var == "pmax") or (var == "negpmax") or (var == "tmax"):
-      tree.Draw(var+"["+str(ch)+"]>>CH "+str(ch)+" "+biasVal,"event>-1")
-    else:
-      tree.Draw(var+"["+str(ch)+"]>>CH "+str(ch)+" "+biasVal,cut_cond)
+    tree.Draw(var+"["+str(ch)+"]>>CH "+str(ch)+" "+biasVal,cut_cond)
   thisHist.SetLineWidth(2)
   thisHist.SetLineColor(index+1)
   return thisHist

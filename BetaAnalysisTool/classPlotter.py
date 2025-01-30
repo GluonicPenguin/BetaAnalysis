@@ -51,7 +51,7 @@ class plotVar:
       bias = getBias(str(file), j)
       if (channel_array[j][0] == 1) or (channel_array[j][0] == 2):
         if (channel_array[j][0] == 1): channel_of_dut.append(j)
-        thisHist = hist_tree_file_basics(tree, file, self.var, j, self.nBins, self.xLower, self.xUpper, bias, result[j], j, 0)
+        thisHist = hist_tree_file_basics(tree, file, self.var, j, self.nBins, self.xLower, self.xUpper, bias, result[j], j)
       else:
         thisHist = None
       arr_of_hists.append(thisHist)
