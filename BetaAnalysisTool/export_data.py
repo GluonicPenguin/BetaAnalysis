@@ -76,11 +76,12 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
     elif var == "risetime":
       if first_df_found == False:
         first_df_found = True
-        df_rt = df[['Channel','Bias','Mean']]
+        df_rt = df[['Channel','Bias','Mean','Sigma']]
       else:
-        df_rt = df[['Mean']]*1000
-      df_rt.loc[:, 'Mean'] = df_rt['Mean'].round(0)
-      df_rt = df_rt.rename(columns={'Mean':'Rise time / ps'})
+        df_rt = df[['Mean','Sigma']]
+      df_rt.loc[:, 'Mean'] = (1000*df_rt['Mean']).round(0)
+      df_rt.loc[:, 'Sigma'] = (1000*df_rt['Sigma']).round(0)
+      df_rt = df_rt.rename(columns={'Mean':'Rise time / ps','Sigma':'Rise time Unc / ps'})
       dfs_to_concat.append(df_rt)
     elif var == "charge":
       if first_df_found == False:
@@ -102,7 +103,7 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
       else:
         df_rms = df[['Mean','Sigma']]
       df_rms.loc[:, 'Sigma'] = df_rms['Sigma'].round(2)
-      df_rms = df_rms.rename(columns={'Mean':'RMS Noise / mV', 'Sigma':'RMS Uncertainty / mV'})
+      df_rms = df_rms.rename(columns={'Mean':'RMS Noise / mV', 'Sigma':'RMS Unc / mV'})
       dfs_to_concat.append(df_rms)
     elif var == "timeres":
       if first_df_found == False:
@@ -121,9 +122,19 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
   if ('Rise time / ps' in dfs_comb.columns) and ('Amplitude / mV' in dfs_comb.columns) and ('RMS Noise / mV' in dfs_comb.columns):
     dfs_comb['Jitter / ps'] = dfs_comb['Rise time / ps'] / dfs_comb['Amplitude / mV']
     dfs_comb.loc[:, 'Jitter / ps'] = dfs_comb['Jitter / ps'].round(1)
+    unc_cpt_rms = dfs_comb['RMS Unc / mV'] / dfs_comb['RMS Noise / mV']
+    unc_cpt_risetime = dfs_comb['Rise time Unc / ps'] / dfs_comb['Rise time / ps']
+    unc_cpt_ampl = 0 # idk the unc for a Langaus fit
+    dfs_comb['Jitter Unc / ps'] = dfs_comb['Jitter / ps'] * np.sqrt(unc_cpt_rms**2 + unc_cpt_risetime**2 + unc_cpt_ampl**2)
+    dfs_comb.loc[:, 'Jitter Unc / ps'] = dfs_comb['Jitter Unc / ps'].round(1)
     if 'Time Resolution / ps' in dfs_comb.columns:
       dfs_comb['Landau TR Cpt / ps'] = np.sqrt(dfs_comb['Time Resolution / ps']**2 - dfs_comb['Jitter / ps']**2)
+      unc_cpt_jit = dfs_comb['Jitter / ps']*dfs_comb['Jitter Unc / ps']
+      unc_cpt_tr = dfs_comb['Time Resolution / ps']*dfs_comb['Resolution Unc / ps']
+      dfs_comb['Landau TR Unc / ps'] = np.sqrt(unc_cpt_jit**2 + unc_cpt_tr**2) / dfs_comb['Landau TR Cpt / ps']
       dfs_comb.loc[:, 'Landau TR Cpt / ps'] = dfs_comb['Landau TR Cpt / ps'].round(1)
+      dfs_comb.loc[:, 'Landau TR Unc / ps'] = dfs_comb['Landau TR Unc / ps'].round(1)
+
   columns = dfs_comb.columns.tolist()
   for col_to_move in ['Thickness / um','E field / V/cm']:
     columns.remove(col_to_move)
