@@ -108,10 +108,10 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
     elif var == "timeres":
       if first_df_found == False:
         first_df_found = True
-        df_tr = df[['Channel','Bias','Resolution','Uncertainty']]
+        df_tr = df[['Channel','Bias','Resolution @ 30%','Uncertainty @ 30%','Resolution @ 50%','Uncertainty @ 50%']]
       else:
-        df_tr = df[['Resolution','Uncertainty']]
-      df_tr = df_tr.rename(columns={'Resolution':'Time Resolution / ps', 'Uncertainty':'Resolution Unc / ps'})
+        df_tr = df[['Resolution @ 30%','Uncertainty @ 30%','Resolution @ 50%','Uncertainty @ 50%']]
+      df_tr = df_tr.rename(columns={'Resolution @ 30%':'TR @ 30% / ps', 'Uncertainty @ 30%':'TR Unc @ 30% / ps', 'Resolution @ 50%':'TR @ 50% / ps', 'Uncertainty @ 50%':'TR Unc @ 50% / ps'})
       dfs_to_concat.append(df_tr)
   
   dfs_comb = pd.concat(dfs_to_concat, axis=1)
@@ -127,10 +127,10 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
     unc_cpt_ampl = 0 # idk the unc for a Langaus fit
     dfs_comb['Jitter Unc / ps'] = dfs_comb['Jitter / ps'] * np.sqrt(unc_cpt_rms**2 + unc_cpt_risetime**2 + unc_cpt_ampl**2)
     dfs_comb.loc[:, 'Jitter Unc / ps'] = dfs_comb['Jitter Unc / ps'].round(1)
-    if 'Time Resolution / ps' in dfs_comb.columns:
-      dfs_comb['Landau TR Cpt / ps'] = np.sqrt(dfs_comb['Time Resolution / ps']**2 - dfs_comb['Jitter / ps']**2)
+    if 'TR @ 30% / ps' in dfs_comb.columns:
+      dfs_comb['Landau TR Cpt / ps'] = np.sqrt(dfs_comb['TR @ 30% / ps']**2 - dfs_comb['Jitter / ps']**2)
       unc_cpt_jit = dfs_comb['Jitter / ps']*dfs_comb['Jitter Unc / ps']
-      unc_cpt_tr = dfs_comb['Time Resolution / ps']*dfs_comb['Resolution Unc / ps']
+      unc_cpt_tr = dfs_comb['TR @ 30% / ps']*dfs_comb['TR Unc @ 30% / ps']
       dfs_comb['Landau TR Unc / ps'] = np.sqrt(unc_cpt_jit**2 + unc_cpt_tr**2) / dfs_comb['Landau TR Cpt / ps']
       dfs_comb.loc[:, 'Landau TR Cpt / ps'] = dfs_comb['Landau TR Cpt / ps'].round(1)
       dfs_comb.loc[:, 'Landau TR Unc / ps'] = dfs_comb['Landau TR Unc / ps'].round(1)
