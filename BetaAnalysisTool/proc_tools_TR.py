@@ -32,7 +32,7 @@ def round_to_sig_figs(x, sig):
   else:
     return round(x, sig - int(math.floor(math.log10(abs(x)))) - 1)
 
-def get_fit_results_TR(arr_of_fits,arr_of_biases,dut_channels,mcp_channel, simplified=False):
+def get_fit_results_TR(arr_of_fits, arr_of_biases, dut_channels, mcp_channel):
   arr_of_ch = []
   arr_of_biases_fitted = []
   arr_of_mean = []
@@ -74,14 +74,14 @@ def get_fit_results_TR(arr_of_fits,arr_of_biases,dut_channels,mcp_channel, simpl
     "RChi2": arr_of_red_chi2
   })
 
-  if mcp_channel:
+  if mcp_channel is not None:
     sig_dut_values_30 = []
     sig_dut_errors_30 = []
     sig_dut_values_50 = []
     sig_dut_errors_50 = []
-    mcp_tr = 0.010 #0.005
-    mcp_tr_err = 0.004 #0.002
-    print(f"[BETA ANALYSIS]: [TIME RESOLUTION] Calculating time resolution for DUT, assuming MCP time resolution {mcp_tr*1000} +/- {mcp_tr_err*1000} ps")
+    mcp_tr = mcp_channel[0]/1000
+    mcp_tr_err = mcp_channel[1]/1000
+    print(f"[BETA ANALYSIS]: [TIME RESOLUTION] Calculating time resolution for DUT, assuming MCP time resolution {1000*mcp_tr} +/- {1000*mcp_tr_err} ps")
     for ch_ind, ch_val in enumerate(arr_of_sigma):
       sig30 = np.sqrt(ch_val**2 - mcp_tr**2)
       sig30err = np.sqrt((ch_val*arr_of_unc_sig[ch_ind])**2 + (mcp_tr*mcp_tr_err)**2)/sig30
@@ -102,11 +102,7 @@ def get_fit_results_TR(arr_of_fits,arr_of_biases,dut_channels,mcp_channel, simpl
     df_of_results['Sigma_cpt'] = ["sigma_1","sigma_2","sigma_3"]
     df_of_results['Sigma_value'] = [sig1,sig2,sig3]
 
-  if simplified:
-    return df_of_results[["Bias","Sigma_cpt","Sigma_value"]]
-
-  else:
-    return df_of_results
+  return df_of_results
 
 def hist_tree_file_timeres(tree,file,var,ch,nBins,xLower,xUpper,biasVal,cut_cond):
   thisHist = root.TH1F("CH "+str(ch)+" "+biasVal, var+";tn-tn+1 / ns ;Events", nBins, xLower, xUpper)

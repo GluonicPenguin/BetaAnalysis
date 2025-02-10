@@ -8,6 +8,8 @@ files = "../../../../DESY_TB_Dec_24/data_TB/Run4_W5_RT_Ex1/stats_Sr_Run4_Ch1-125
          ../../../../DESY_TB_Dec_24/data_TB/Run4_W5_RT_Ex1/stats_Sr_Run4_Ch1-135V_Ch2-128V_Ch3-2750V_trig230V.root,
          ../../../../DESY_TB_Dec_24/data_TB/Run4_W5_RT_Ex1/stats_Sr_Run4_Ch1-140V_Ch2-130V_Ch3-2750V_trig230V.root"
 
+run_safe_mode = True
+
 # To use a channel, specify whether it is a DUT or MCP or REF.
 # For DUT, a fit will be performed.
 # For MCP, time resolution will be extracted from the DUT temporally to this.
@@ -18,7 +20,7 @@ files = "../../../../DESY_TB_Dec_24/data_TB/Run4_W5_RT_Ex1/stats_Sr_Run4_Ch1-125
 CH_1 = "REF, SC"
 CH_2 = "DUT, SC, 30"
 CH_3 = "DUT, SC, 30"
-CH_4 = "MCP, None"
+CH_4 = "MCP, None, 10, 4"
 CH_5 = 0
 CH_6 = 0
 CH_7 = 0

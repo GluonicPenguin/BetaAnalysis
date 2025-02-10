@@ -31,7 +31,7 @@ class plotTRVar:
     self.log_scale = log_scale
     self.save_name = save_name
 
-  def run(self, file, file_index, tree, channel_array):
+  def run(self, file, file_index, tree, channel_array, mcp_tr):
 
     arr_of_hists = []
     arr_of_biases = []
@@ -114,5 +114,5 @@ class plotTRVar:
         fit_down_up_dev.append(thisFit)
       arr_of_fits.append(fit_down_up_dev)
 
-    fit_results = get_fit_results_TR(arr_of_fits,arr_of_biases,channel_of_dut,mcp_exists)
+    fit_results = get_fit_results_TR(arr_of_fits, arr_of_biases, channel_of_dut, mcp_tr)
     return fit_results

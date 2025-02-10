@@ -134,13 +134,16 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
       dfs_comb['Landau TR Unc / ps'] = np.sqrt(unc_cpt_jit**2 + unc_cpt_tr**2) / dfs_comb['Landau TR Cpt / ps']
       dfs_comb.loc[:, 'Landau TR Cpt / ps'] = dfs_comb['Landau TR Cpt / ps'].round(1)
       dfs_comb.loc[:, 'Landau TR Unc / ps'] = dfs_comb['Landau TR Unc / ps'].round(1)
+      dfs_comb['WF6 Param / ps/um'] = dfs_comb['Landau TR Cpt / ps'] / dfs_comb['Thickness / um']
+      dfs_comb['WF6 Param Unc / ps/um'] = dfs_comb['WF6 Param / ps/um'] * dfs_comb['Landau TR Unc / ps'] / dfs_comb['Landau TR Cpt / ps']
+      dfs_comb.loc[:, 'WF6 Param / ps/um'] = dfs_comb['WF6 Param / ps/um'].round(2)
+      dfs_comb.loc[:, 'WF6 Param Unc / ps/um'] = dfs_comb['WF6 Param Unc / ps/um'].round(2)
 
   columns = dfs_comb.columns.tolist()
   for col_to_move in ['Thickness / um','E field / V/cm']:
     columns.remove(col_to_move)
   columns[2:2] = ['Thickness / um','E field / V/cm']
   dfs_comb = dfs_comb[columns]
-  
 
   dfs_comb['PMAX low / mV'] = np.ravel(pmax_low)
   dfs_comb['PMAX high / mV'] = np.ravel(pmax_high)

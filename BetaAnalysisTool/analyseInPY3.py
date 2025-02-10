@@ -28,7 +28,7 @@ def main():
   args = parser.parse_args()
 
   print(f"[BETA ANALYSIS] : [CARD READER] Reading text card {args.config}.")
-  config, thicknesses = read_text_card(args.config)
+  config, thicknesses, mcp_specs, safemode = read_text_card(args.config)
   thicknesses = [thickness for thickness in thicknesses if thickness != "nDUT"]
   output_name = os.path.splitext(os.path.basename(args.config))[0]
 
@@ -77,11 +77,12 @@ def main():
     0: ""
   }
 
+  if safemode:
+    root.gROOT.SetBatch(True)
+
   file_array = []
   tree_array = []
   output_name_array = []
-
-  root.gROOT.SetBatch(True)
 
   for pattern in file_list:
     root_files = glob.glob(pattern)
@@ -118,11 +119,12 @@ def main():
   for i, ch in enumerate(config['channels']):
     print(f"        CH {i} : {channel_mapping.get(ch[0])} {board_mapping.get(ch[1])}")
 
-  print("\n\n\n\n    ***************************************************************************************************************************************************************************\n")
-  print("    [EPILEPSY WARNING] : This plotter can cause rapid imagery to appear on the screen that may trigger seizures or other symptoms in individuals with photosensitive epilepsy.")
-  print("     If you experience dizziness, altered vision, muscle twitching, disorientation, or any other unusual symptoms, immediately stop the programme and seek medical attention.\n")
-  print("    ***************************************************************************************************************************************************************************\n\n\n\n")
-  input("Press any key to continue")
+  if not safemode:
+    print("\n\n\n\n    ***************************************************************************************************************************************************************************\n")
+    print("    [EPILEPSY WARNING] : This plotter can cause rapid imagery to appear on the screen that may trigger seizures or other symptoms in individuals with photosensitive epilepsy.")
+    print("     If you experience dizziness, altered vision, muscle twitching, disorientation, or any other unusual symptoms, immediately stop the programme and seek medical attention.\n")
+    print("    ***************************************************************************************************************************************************************************\n\n\n\n")
+    input("Press any key to continue")
 
   data_out = []
   if config.get('tmax', False) == True:
@@ -181,7 +183,7 @@ def main():
     time_res_dfs = []
     for file_ind, file_real in enumerate(file_array):
       plot_timeres = plotTRVar("timeres", timeres_params[0], timeres_params[1], timeres_params[2], True, output_name_array[file_ind]+"_timeres.png")
-      df_data = plot_timeres.run(file_real, file_ind, tree_array[file_ind], config['channels'])
+      df_data = plot_timeres.run(file_real, file_ind, tree_array[file_ind], config['channels'], mcp_specs)
       time_res_dfs.append(df_data)
     time_res_data = pd.concat(time_res_dfs, ignore_index=True)
     print(time_res_data.sort_values(by=['Channel','Bias']))
