@@ -37,10 +37,14 @@ def main():
 
   print(f"[BETA ANALYSIS] : [FILE READER] Reading files {file_list}.")
 
+  if config.get('tmax', False):
+    tmax_params = config.get('tmax_params', None)
   if (config.get('pmax', False)) or (config.get('amplitude', False)):
     pmax_params = config.get('pmax_params', None)
   if config.get('negpmax', False):
     negpmax_params = config.get('negpmax_params', None)
+  if config.get('risetime', False):
+    risetime_params = config.get('risetime_params', None)
   if config.get('charge', False):
     charge_params = config.get('charge_params', None)
   if config.get('rms', False):
@@ -124,7 +128,7 @@ def main():
   if config.get('tmax', False) == True:
     print(f"[BETA ANALYSIS]: [PLOTTER] Plotting TMAX distribution (note that for TMAX no selections are applied to the phase space)")
     for file_ind, file_real in enumerate(file_array):
-      plot_tmax = plotVar("tmax", 600, -6, 6, True, output_name_array[file_ind]+"_tmax.png", fit=None)
+      plot_tmax = plotVar("tmax", tmax_params[0], tmax_params[1], tmax_params[2], True, output_name_array[file_ind]+"_tmax.png", fit=None)
       plot_tmax.run(file_real, file_ind, tree_array[file_ind], config['channels'])
   if config.get('pmax', False) == True:
     print(f"[BETA ANALYSIS]: [PLOTTER] Plotting PMAX distribution (note that for PMAX no selections are applied to the phase space)")
@@ -148,7 +152,7 @@ def main():
     print(f"[BETA ANALYSIS]: [PLOTTER] Performing Gaussian fit to RISETIME distribution")
     risetime_dfs = []
     for file_ind, file_real in enumerate(file_array):
-      plot_risetime = plotVar("risetime", 150, 0, 1.0, True, output_name_array[file_ind]+"_risetime.png", fit="gaus")
+      plot_risetime = plotVar("risetime", risetime_params[0], risetime_params[1], risetime_params[2], True, output_name_array[file_ind]+"_risetime.png", fit="gaus")
       df_data = plot_risetime.run(file_real, file_ind, tree_array[file_ind], config['channels'])
       risetime_dfs.append(df_data)
     risetime_data = pd.concat(risetime_dfs, ignore_index=True)

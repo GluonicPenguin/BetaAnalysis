@@ -31,8 +31,10 @@ def read_text_card(file_path):
   }
 
   plot_params = {
+    "tmax_params": None,
     "pmax_params": None,
     "negpmax_params": None,
+    "risetime_params": None,
     "charge_params": None,
     "rms_params": None,
     "timeres_params": None

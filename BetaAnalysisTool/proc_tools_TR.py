@@ -79,8 +79,8 @@ def get_fit_results_TR(arr_of_fits,arr_of_biases,dut_channels,mcp_channel, simpl
     sig_dut_errors_30 = []
     sig_dut_values_50 = []
     sig_dut_errors_50 = []
-    mcp_tr = 0.005
-    mcp_tr_err = 0.002
+    mcp_tr = 0.010 #0.005
+    mcp_tr_err = 0.004 #0.002
     print(f"[BETA ANALYSIS]: [TIME RESOLUTION] Calculating time resolution for DUT, assuming MCP time resolution {mcp_tr*1000} +/- {mcp_tr_err*1000} ps")
     for ch_ind, ch_val in enumerate(arr_of_sigma):
       sig30 = np.sqrt(ch_val**2 - mcp_tr**2)
