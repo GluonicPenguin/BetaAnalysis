@@ -86,14 +86,15 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
     elif var == "charge":
       if first_df_found == False:
         first_df_found = True
-        df_charge = df[['Channel','Bias','Charge MPV','Landau width','Gaussian sigma','Frac above 1p5']]
+        df_charge = df[['Channel','Bias','Charge MPV','Landau width','Gaussian sigma','Frac above 1p5 MPV', 'Frac above 1p5 Qmax']]
       else:
-        df_charge = df[['Charge MPV','Landau width','Gaussian sigma','Frac above 1p5']]
+        df_charge = df[['Charge MPV','Landau width','Gaussian sigma','Frac above 1p5 MPV', 'Frac above 1p5 Qmax']]
       df_charge.loc[:, 'Charge MPV'] = df_charge['Charge MPV'].round(1)
       df_charge.loc[:, 'Landau width'] = df_charge['Landau width'].round(3)
       df_charge.loc[:, 'Gaussian sigma'] = df_charge['Gaussian sigma'].round(3)
-      df_charge.loc[:, 'Frac above 1p5'] = df_charge['Frac above 1p5'].round(3)
-      df_charge = df_charge.rename(columns={'Charge MPV':'Charge / fC','Landau width':'Landau Cpt Charge','Gaussian sigma':'Gaussian Cpt Charge','Frac above 1p5':'Frac Charge >1.5xMPV'})
+      df_charge.loc[:, 'Frac above 1p5 MPV'] = df_charge['Frac above 1p5 MPV'].round(3)
+      df_charge.loc[:, 'Frac above 1p5 Qmax'] = df_charge['Frac above 1p5 Qmax'].round(3)
+      df_charge = df_charge.rename(columns={'Charge MPV':'Charge / fC','Landau width':'Landau Cpt Charge','Gaussian sigma':'Gaussian Cpt Charge','Frac above 1p5 MPV':'Frac Charge >1.5xMPV','Frac above 1p5 Qmax':'Frac Charge >1.5xQmax'})
       df_charge['Gain'] = 100*(df_charge['Charge / fC'] / thickness_col).round(2)
       dfs_to_concat.append(df_charge)
     elif var == "rms":

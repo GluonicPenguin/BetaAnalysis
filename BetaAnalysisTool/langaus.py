@@ -70,7 +70,8 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
   arr_of_MPV = []
   arr_of_width = []
   arr_of_sigma = []
-  arr_threshold_frac = []
+  arr_mpv_frac = []
+  arr_qmax_frac = []
 
   dict_of_vars = {"amplitude": "Amplitude / mV", "charge": "Charge / fC"}
   for ch_ind, ch_val in enumerate(channel_array):
@@ -125,7 +126,13 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
 
     count_1p0mpv = sum(1 for value in data_var if value > popt[0])
     count_1p5mpv = sum(1 for value in data_var if value > 1.5*popt[0])
-    arr_threshold_frac.append(count_1p5mpv/count_1p0mpv)
+    arr_mpv_frac.append(count_1p5mpv/count_1p0mpv)
+
+    max_bin_index = np.argmax(histo)
+    max_bin_center = bin_centers[max_bin_index]
+    count_max_bin = sum(1 for value in data_var if value > max_bin_center)
+    count_1p5max_bin = sum(1 for value in data_var if value > 1.5 * max_bin_center)
+    arr_qmax_frac.append(count_1p5max_bin / count_max_bin if count_max_bin > 0 else 0)
 
     fig = go.Figure()
     fig.update_layout(
@@ -166,6 +173,7 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
     var.capitalize() + " MPV": arr_of_MPV,
     "Landau width": arr_of_width,
     "Gaussian sigma": arr_of_sigma,
-    "Frac above 1p5": arr_threshold_frac,
+    "Frac above 1p5 MPV": arr_mpv_frac,
+    "Frac above 1p5 Qmax": arr_qmax_frac,
   })
   return df_of_results

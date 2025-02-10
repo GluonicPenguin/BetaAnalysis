@@ -69,7 +69,7 @@ def read_text_card(file_path):
           current_value.append(value)
 
         elif key == "run_safe_mode":
-          safemode = value
+          safemode = value.lower() == "true"
 
         elif key.startswith("CH_") and key[3:].isdigit():  # Handle CH_ keys
           index = int(key[3:]) - 1  # Convert to 0-based index
