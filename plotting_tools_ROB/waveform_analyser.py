@@ -84,12 +84,15 @@ def main():
 
   plt.figure(figsize=(10, 6))
 
-  colours = ['orange','blue']
+  colours = ['black','dodgerblue']
+  #colours = ['black','blue']
   alphas = [1.0,0.8]
   edges = ['black','none']
-  labels = ["W5 non irradiated (120 V)","W13 35e14 (420 V)"]
+  #labels = ["W5 non irradiated (120 V) G = 8","W13 35e14 (420 V) G = 35"]
+  labels = ["W5 non irradiated (120 V) G = 8","W12 15e14 (210 V) G = 4"]
 
   for i in range(2):
+    if i == 0: continue
     time_data = t_data[i]*(10**9)
     print(len(time_data))
     reshaped_time_data = time_data.reshape(10,502)
@@ -104,10 +107,10 @@ def main():
   plt.xticks(fontsize=14)
   plt.yticks(fontsize=14)
   plt.xlim(9,14)
-  plt.legend(fontsize=14)
+  #plt.legend(fontsize=14)
   #plt.yscale('log')
   plt.grid(True, linestyle='--', alpha=0.5)
-  plt.savefig("./ampl_shape_W5new_v_W1335e14S.png",dpi=300,facecolor='w')
+  plt.savefig("./W13_35e14.png",dpi=300,facecolor='w')
   plt.show()
 
 
