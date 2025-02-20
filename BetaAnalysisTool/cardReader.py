@@ -83,7 +83,10 @@ def read_text_card(file_path):
           thickness_info.append(thickness_str)
 
           if (type_str.upper() == "MCP"):
-            MCP_specs = (float(parts[2]), float(parts[3]))
+            if (parts[2] == 0) & (parts[3] == 0):
+              MCP_specs = (0, 0)
+            else:
+              MCP_specs = (float(parts[2]), float(parts[3]))
 
           channels[index] = [channel_type, channel_value, None]
 
@@ -122,10 +125,10 @@ def read_text_card(file_path):
           plot_flags[key] = value.lower() == "true"
         elif key.endswith("_nB_xL_xU"):  # Handle plot parameters
           param_key = key.split("_nB_xL_xU")[0]
-          if plot_flags.get(param_key, False):  # Check if this plot is enabled
+          if plot_flags.get(param_key, False) == True:  # Check if this plot is enabled
             nBins, xLower, xUpper = map(float, value.split(","))
             plot_params[param_key+"_params"] = (int(nBins), xLower, xUpper)
-          elif (plot_flags.get("amplitude", False)) and (param_key != "negpmax"):
+          elif (plot_flags.get("amplitude", False)) and (param_key == "pmax"):
             nBins, xLower, xUpper = map(float, value.split(","))
             plot_params["pmax_params"] = (int(nBins), xLower, xUpper)
         else:  # Handle generic key-value pairs

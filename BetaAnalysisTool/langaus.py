@@ -62,6 +62,8 @@ def round_to_sig_figs(x, sig):
 
 def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpper, savename):
 
+  print(nBins, xLower, xUpper)
+
   pmax_list = []
   area_list = []
 
@@ -95,6 +97,7 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
         negpmax_sig = entry.negpmax[ch_ind]
         tmax_sig = entry.tmax[ch_ind]
         if (pmax_sig < A) or (pmax_sig > B) or (negpmax_sig < C) or (tmax_sig < D) or (tmax_sig > E):
+          #print(f"BAD EVENTS {A} {B} {C} {D} {E}")
           continue
         else:
           #if (pmax_sig > A) and (pmax_sig < B) and (negpmax_sig > C) and (tmax_sig > D) and (tmax_sig < E):
@@ -107,12 +110,15 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
     plt.figure(figsize=(10, 6))
     if var == "charge":
       area = np.array(area_list)
+      print(area)
       area = area/AtQfactor
       data_var = area[(area>=xLower) & (area<=xUpper)]
     else:
       pmax = np.array(pmax_list)
       data_var = pmax[(pmax>=xLower) & (pmax<=xUpper)]
+
     histo, bins, _ = plt.hist(data_var, bins=nBins, range=(xLower, xUpper), color='blue', edgecolor='black', alpha=0.6, density=True)
+    print(len(data_var)) # for number of events selected per channel
 
     bin_centers = bins[:-1] + np.diff(bins) / 2
 

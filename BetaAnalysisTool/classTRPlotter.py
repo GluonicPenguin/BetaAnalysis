@@ -49,7 +49,7 @@ class plotTRVar:
     duts_to_analyse = []
     channel_of_dut = []
     mcp_exists = False
-    arr_of_biases
+
     for j in range(len(channel_array)):
       if (channel_array[j][0] == 1):
         bias = getBias(str(file), j)
@@ -61,13 +61,20 @@ class plotTRVar:
         mcp_exists = True
 
     duts_vars_cuts = []
-    if mcp_exists == True:
+    if (mcp_exists == True) & (mcp_tr != (0, 0)):
       for dut in duts_to_analyse:
         vars_cuts_defined = ([x + y for x, y in zip(dut[0], mcp_channel[0])], dut[1] + " && " + mcp_channel[1], dut[2])
         duts_vars_cuts.append(vars_cuts_defined)
-    if mcp_exists == False:
-      print("NEED THE THREE CHANNEL DUT SETUP")
-      sys.exit(0)
+    if (mcp_exists == False) | (mcp_tr == (0, 0)):
+      for dut in duts_to_analyse:
+        vars_cuts_defined = ([x + y for x, y in zip(dut[0], mcp_channel[0])], dut[1] + " && " + mcp_channel[1], dut[2])
+        duts_vars_cuts.append(vars_cuts_defined)
+      adapted_dut_channel = [second_plane[4:9] for second_plane in duts_to_analyse[1][0]]
+      dual_plane_var = [x + y for x, y in zip(duts_to_analyse[0][0], adapted_dut_channel)]
+      dual_plane_duts = [dual_plane_var, duts_to_analyse[0][1]+" && "+duts_to_analyse[1][1], int(mcp_channel[0][1][0])]
+      duts_vars_cuts.append(dual_plane_duts)
+      arr_of_biases.append("MCP")
+      channel_of_dut.append(int(mcp_channel[0][1][0]))
 
     hists_to_plot = []
     for j in range(len(duts_vars_cuts)):

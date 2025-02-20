@@ -33,6 +33,7 @@ def round_to_sig_figs(x, sig):
     return round(x, sig - int(math.floor(math.log10(abs(x)))) - 1)
 
 def get_fit_results_TR(arr_of_fits, arr_of_biases, dut_channels, mcp_channel):
+
   arr_of_ch = []
   arr_of_biases_fitted = []
   arr_of_mean = []
@@ -74,7 +75,14 @@ def get_fit_results_TR(arr_of_fits, arr_of_biases, dut_channels, mcp_channel):
     "RChi2": arr_of_red_chi2
   })
 
-  if mcp_channel is not None:
+  arr_of_sig_fit_30 = arr_of_sigma
+  arr_of_sig_total_30 = [np.sqrt(sig_fit**2 + (1/600)) for sig_fit in arr_of_sig_fit_30]
+  arr_of_sig_fit_50 = arr_up_var
+  arr_of_sig_total_50 = [np.sqrt(sig_fit**2 + (1/600)) for sig_fit in arr_of_sig_fit_50]
+  arr_of_unc_total_30 = np.array(arr_of_unc_sig) * np.array(arr_of_sig_fit_30) / np.array(arr_of_sig_total_30)
+  arr_of_unc_total_50 = np.array(arr_up_var_unc) * np.array(arr_of_sig_fit_50) / np.array(arr_of_sig_total_50)
+
+  if (mcp_channel is not None) & (mcp_channel != (0, 0)):
     sig_dut_values_30 = []
     sig_dut_errors_30 = []
     sig_dut_values_50 = []
@@ -84,10 +92,12 @@ def get_fit_results_TR(arr_of_fits, arr_of_biases, dut_channels, mcp_channel):
     print(f"[BETA ANALYSIS]: [TIME RESOLUTION] Calculating time resolution for DUT, assuming MCP time resolution {1000*mcp_tr} +/- {1000*mcp_tr_err} ps")
     for ch_ind, ch_val in enumerate(arr_of_sigma):
       sig30 = np.sqrt(ch_val**2 - mcp_tr**2)
+      #sig30err = np.sqrt((ch_val*arr_of_unc_sig[ch_ind])**2 + (mcp_tr*mcp_tr_err)**2)/sig30
       sig30err = np.sqrt((ch_val*arr_of_unc_sig[ch_ind])**2 + (mcp_tr*mcp_tr_err)**2)/sig30
       sig_dut_values_30.append((1000*sig30).round(1))
       sig_dut_errors_30.append((1000*sig30err).round(1))
       sig50 = np.sqrt(arr_up_var[ch_ind]**2 - mcp_tr**2)
+      #sig50err = np.sqrt((arr_up_var[ch_ind]*arr_up_var_unc[ch_ind])**2 + (mcp_tr*mcp_tr_err)**2)/sig50
       sig50err = np.sqrt((arr_up_var[ch_ind]*arr_up_var_unc[ch_ind])**2 + (mcp_tr*mcp_tr_err)**2)/sig50
       sig_dut_values_50.append((1000*sig50).round(1))
       sig_dut_errors_50.append((1000*sig50err).round(1))
@@ -96,11 +106,31 @@ def get_fit_results_TR(arr_of_fits, arr_of_biases, dut_channels, mcp_channel):
     df_of_results['Resolution @ 50%'] = sig_dut_values_50
     df_of_results['Uncertainty @ 50%'] = sig_dut_errors_50
   else:
-    sig1 = np.sqrt(0.5*(arr_of_sigma[0]**2 + arr_of_sigma[2]**2 - arr_of_sigma[1]**2))
-    sig2 = np.sqrt(0.5*(arr_of_sigma[0]**2 + arr_of_sigma[1]**2 - arr_of_sigma[2]**2))
-    sig3 = np.sqrt(0.5*(arr_of_sigma[1]**2 + arr_of_sigma[2]**2 - arr_of_sigma[0]**2))
-    df_of_results['Sigma_cpt'] = ["sigma_1","sigma_2","sigma_3"]
-    df_of_results['Sigma_value'] = [sig1,sig2,sig3]
+    print(f"[BETA ANALYSIS]: [TIME RESOLUTION] Calculating time resolution for a dual-plane setup, with unknown time resolutions")
+    sig_30_p1 = np.sqrt(0.5*(arr_of_sigma[0]**2 + arr_of_sigma[2]**2 - arr_of_sigma[1]**2))
+    sig_30_p2 = np.sqrt(0.5*(arr_of_sigma[1]**2 + arr_of_sigma[2]**2 - arr_of_sigma[0]**2))
+    sig_30_p3 = np.sqrt(0.5*(arr_of_sigma[0]**2 + arr_of_sigma[1]**2 - arr_of_sigma[2]**2))
+    sig_30_err = np.sqrt(np.sum((np.array(arr_of_unc_sig)*np.array(arr_of_sigma))**2))
+    sig_30_err1 = sig_30_err / sig_30_p1
+    sig_30_err2 = sig_30_err / sig_30_p2
+    sig_30_err3 = sig_30_err / sig_30_p3
+    sig_50_p1 = np.sqrt(0.5*(arr_up_var[0]**2 + arr_up_var[2]**2 - arr_up_var[1]**2))
+    sig_50_p2 = np.sqrt(0.5*(arr_up_var[1]**2 + arr_up_var[2]**2 - arr_up_var[0]**2))
+    sig_50_p3 = np.sqrt(0.5*(arr_up_var[0]**2 + arr_up_var[1]**2 - arr_up_var[2]**2))
+    sig_50_err = np.sqrt(np.sum((np.array(arr_up_var_unc)*np.array(arr_up_var))**2))
+    sig_50_err1 = sig_50_err / sig_50_p1
+    sig_50_err2 = sig_50_err / sig_50_p2
+    sig_50_err3 = sig_50_err / sig_50_p3
+
+    sig_dut_values_30 = [(1000*sig_30_p1).round(1),(1000*sig_30_p2).round(1),(1000*sig_30_p3).round(1)]
+    sig_dut_errors_30 = [(1000*sig_30_err1).round(1),(1000*sig_30_err2).round(1),(1000*sig_30_err3).round(1)]
+    sig_dut_values_50 = [(1000*sig_50_p1).round(1),(1000*sig_50_p2).round(1),(1000*sig_50_p3).round(1)]
+    sig_dut_errors_50 = [(1000*sig_50_err1).round(1),(1000*sig_50_err2).round(1),(1000*sig_50_err3).round(1)]
+
+    df_of_results['Resolution @ 30%'] = sig_dut_values_30
+    df_of_results['Uncertainty @ 30%'] = sig_dut_errors_30
+    df_of_results['Resolution @ 50%'] = sig_dut_values_50
+    df_of_results['Uncertainty @ 50%'] = sig_dut_errors_50
 
   return df_of_results
 
