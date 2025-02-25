@@ -62,11 +62,6 @@ def round_to_sig_figs(x, sig):
 
 def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpper, savename):
 
-  print(nBins, xLower, xUpper)
-
-  pmax_list = []
-  area_list = []
-
   arr_of_ch = []
   arr_of_biases = []
   arr_of_MPV = []
@@ -101,7 +96,8 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
           continue
         else:
           #if (pmax_sig > A) and (pmax_sig < B) and (negpmax_sig > C) and (tmax_sig > D) and (tmax_sig < E):
-          area_sig = entry.area_new[ch_ind]
+          #area_sig = entry.area_new[ch_ind]
+          area_sig = entry.area[ch_ind]
           pmax_list.append(pmax_sig)
           area_list.append(area_sig)
     else:
@@ -110,7 +106,6 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
     plt.figure(figsize=(10, 6))
     if var == "charge":
       area = np.array(area_list)
-      print(area)
       area = area/AtQfactor
       data_var = area[(area>=xLower) & (area<=xUpper)]
     else:

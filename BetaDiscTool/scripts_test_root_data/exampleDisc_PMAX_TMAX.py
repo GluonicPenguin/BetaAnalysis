@@ -122,8 +122,9 @@ class SignalProbabilityModel(nn.Module):
 
 precision = 0.0005
 plot_every = precision*1
+dec_p = len(str(precision)) - 2
 arr_num_epochs = [10000]
-arr_prob_threshold = np.round(np.arange(0.050,0.070,precision), 4)
+arr_prob_threshold = np.round(np.arange(0.060,0.068,precision), dec_p)
 
 data_list = []
 for num_epochs in arr_num_epochs:
@@ -154,7 +155,7 @@ for num_epochs in arr_num_epochs:
     A_gauss, mu_gauss, sigma_gauss = popt_gaussian
     filtered_heights, filtered_edges = np.histogram(filtered_amplitudes, bins=bin_edges, density=True)
     filtered_centres = (filtered_edges[:-1] + filtered_edges[1:]) / 2
-    popt_langaus, _ = curve_fit(langaus, bin_centres, filtered_heights, p0=[sig_events / num_events, 30, 1.0, 1.0])
+    popt_langaus, _ = curve_fit(langaus, bin_centres, filtered_heights, p0=[sig_events / num_events, 25, 1.0, 1.0])
     signal_event_count = len(filtered_amplitudes)
     total_event_count = len(max_amplitudes)
     scale_factor = signal_event_count / total_event_count
@@ -177,7 +178,7 @@ for num_epochs in arr_num_epochs:
       axes[0].set_ylabel("Normalised Counts")
       axes[0].set_title("Raw Signal + Noise Distribution")
       axes[0].set_yscale('log')
-      axes[0].set_ylim(1/num_events, None)
+      axes[0].set_ylim(1/num_events, 1)
       axes[0].legend()
       
       axes[1].hist(filtered_amplitudes, bins=150, range=(0, 150), alpha=0.4, label="Filtered Signal", color='g', density=True)
@@ -187,12 +188,12 @@ for num_epochs in arr_num_epochs:
       axes[1].set_ylabel("Normalised Counts")
       axes[1].set_title("Filtered Signal Distribution")
       axes[1].legend()
-      axes[1].annotate(f'{prob_threshold:.4f}', xy=(0.6,0.5), xycoords='axes fraction', fontsize=25, fontweight='bold')
+      axes[1].annotate(str(format(prob_threshold, "."+str(dec_p)+"f")), xy=(0.6,0.5), xycoords='axes fraction', fontsize=25, fontweight='bold')
       plt.tight_layout()
-      plt.savefig("pmax_"+str(num_epochs)+"_"+str(format(prob_threshold, ".4f"))[2:]+".png",facecolor='w')
+      plt.savefig("pmax_"+str(num_epochs)+"_"+str(format(prob_threshold, "."+str(dec_p)+"f"))[2:]+".png",facecolor='w')
 
     modchi2 = rchi2*pow(len(filtered_amplitudes),-1.4)
-    data_list.append([num_epochs, prob_threshold, len(filtered_amplitudes), mu_lang.round(2), sse.round(3), chi2.round(1), rchi2.round(3), modchi2])
+    data_list.append([num_epochs, prob_threshold, len(filtered_amplitudes), mu_lang.round(2), sse.round(6), chi2.round(2), rchi2.round(4), modchi2])
 
 column_headings = ["Number of epochs","Probability threshold","Signal event count","MPV amplitude","SSE score","Chi2 value","Red. Chi2 value","Mod. Chi2 value"]
 df = pd.DataFrame(data_list, columns=column_headings)
