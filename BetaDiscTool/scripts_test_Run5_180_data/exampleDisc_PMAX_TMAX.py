@@ -144,7 +144,8 @@ for num_epochs in arr_num_epochs:
         print(name, param.grad)
 
   scores = model(max_amplitudes, max_times).detach().numpy()
-  print(scores)
+  df = pd.DataFrame(scores)
+  df.to_csv("PMAX_TMAX.csv", index=False, header=False)
 
   for prob_threshold in arr_prob_threshold:
     selected_events = scores > prob_threshold
