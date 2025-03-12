@@ -27,32 +27,32 @@ from scipy.optimize import curve_fit
 
 from proc_tools import getBias
 
-def binned_fit_langauss(samples, bins, max_x_val, channel, nan='remove'):
+def binned_fit_langauss(samples, bins, min_x_val, max_x_val, channel, nan='remove'):
   if nan == 'remove':
     samples = samples[~np.isnan(samples)]
+  print(np.array(samples))
 
-  hist, bin_edges = np.histogram(samples, bins, range=(0,max_x_val), density=True)
-  bin_centers = bin_edges[:-1] + np.diff(bin_edges) / 2
+  hist, bin_edges = np.histogram(samples, bins, range=(min_x_val,max_x_val), density=True)
+  bin_centres = bin_edges[:-1] + np.diff(bin_edges) / 2
 
   hist = np.insert(hist, 0, sum(samples < bin_edges[0]))
-  bin_centers = np.insert(bin_centers, 0, bin_centers[0] - np.diff(bin_edges)[0])
+  bin_centres = np.insert(bin_centres, 0, bin_centres[0] - np.diff(bin_edges)[0])
   hist = np.append(hist, sum(samples > bin_edges[-1]))
-  bin_centers = np.append(bin_centers, bin_centers[-1] + np.diff(bin_edges)[0])
+  bin_centres = np.append(bin_centres, bin_centres[-1] + np.diff(bin_edges)[0])
 
-  hist = hist[1:]
-  bin_centers = bin_centers[1:]
-
-  landau_x_mpv_guess = bin_centers[np.argmax(hist)]
+  hist = hist[1:-1]
+  bin_centres = bin_centres[1:-1]
+  landau_x_mpv_guess = bin_centres[np.argmax(hist)]
   landau_xi_guess = median_abs_deviation(samples) / 5
   gauss_sigma_guess = landau_xi_guess / 10
 
   popt, pcov = curve_fit(
     lambda x, mpv, xi, sigma: langauss.pdf(x, mpv, xi, sigma),
-    xdata=bin_centers,
+    xdata=bin_centres,
     ydata=hist,
     p0=[landau_x_mpv_guess, landau_xi_guess, gauss_sigma_guess],
   )
-  return popt, pcov, hist, bin_centers
+  return popt, pcov, hist, bin_centres #hist, bin_centres
 
 def round_to_sig_figs(x, sig):
   if x == 0:
@@ -69,6 +69,8 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
   arr_of_sigma = []
   arr_mpv_frac = []
   arr_qmax_frac = []
+  arr_of_sse = []
+  arr_of_rchi2 = []
 
   dict_of_vars = {"amplitude": "Amplitude / mV", "charge": "Charge / fC"}
   for ch_ind, ch_val in enumerate(channel_array):
@@ -111,14 +113,14 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
     else:
       pmax = np.array(pmax_list)
       data_var = pmax[(pmax>=xLower) & (pmax<=xUpper)]
+    print(xUpper)
 
     histo, bins, _ = plt.hist(data_var, bins=nBins, range=(xLower, xUpper), color='blue', edgecolor='black', alpha=0.6, density=True)
-    print(len(data_var)) # for number of events selected per channel
+    print(len(data_var))
 
-    bin_centers = bins[:-1] + np.diff(bins) / 2
+    bin_centres = bins[:-1] + np.diff(bins) / 2
 
-    popt, pcov, fitted_hist, bin_centers = binned_fit_langauss(data_var, nBins, xUpper, ch_ind)
-    
+    popt, pcov, fitted_hist, bin_centres = binned_fit_langauss(data_var, nBins, xLower, xUpper, ch_ind)
     arr_of_ch.append("Ch"+str(ch_ind))
     arr_of_biases.append(bias_of_channel)
     arr_of_MPV.append(popt[0])
@@ -130,10 +132,31 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
     arr_mpv_frac.append(count_1p5mpv/count_1p0mpv)
 
     max_bin_index = np.argmax(histo)
-    max_bin_center = bin_centers[max_bin_index]
-    count_max_bin = sum(1 for value in data_var if value > max_bin_center)
-    count_1p5max_bin = sum(1 for value in data_var if value > 1.5 * max_bin_center)
+    max_bin_centre = bin_centres[max_bin_index]
+    count_max_bin = sum(1 for value in data_var if value > max_bin_centre)
+    count_1p5max_bin = sum(1 for value in data_var if value > 1.5 * max_bin_centre)
     arr_qmax_frac.append(count_1p5max_bin / count_max_bin if count_max_bin > 0 else 0)
+
+    mpv, xi, sigma = popt
+    y_fit = langauss.pdf(bin_centres, mpv, xi, sigma)
+    residuals = histo - y_fit
+
+    SSE = np.sum(residuals**2)
+    normSSE = SSE / len(data_var)
+    arr_of_sse.append(SSE)
+    sigma = np.sqrt(histo)
+    sigma[sigma == 0] = 1
+    chi2 = np.sum((residuals / sigma) ** 2)
+
+    N = len(histo)
+    p = len(popt)
+    nu = N - p
+    chi2_red = chi2 / nu
+    print("SSE")
+    print(SSE)
+    print("chi2")
+    print(chi2)
+    arr_of_rchi2.append(chi2_red)
 
     fig = go.Figure()
     fig.update_layout(
@@ -176,5 +199,7 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
     "Gaussian sigma": arr_of_sigma,
     "Frac above 1p5 MPV": arr_mpv_frac,
     "Frac above 1p5 Qmax": arr_qmax_frac,
+    "SSE score": arr_of_sse,
+    "Red. Chi2": arr_of_rchi2,
   })
   return df_of_results

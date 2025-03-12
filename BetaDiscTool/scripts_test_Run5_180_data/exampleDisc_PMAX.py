@@ -161,9 +161,28 @@ for num_epochs in arr_num_epochs:
     langaus_scaled = langaus(bin_centres, *popt_langaus) * scale_factor
     A_lang, mu_lang, sigma_lang, k_lang = popt_langaus
     
+    #residuals = filtered_heights - langaus(bin_centres, *popt_langaus)
+    zero_for_no_events = filtered_heights
+    zero_for_no_events[zero_for_no_events < 1/total_event_count] = 0
+    residuals =  zero_for_no_events - langaus(bin_centres, *popt_langaus)
+    sse = np.sum(residuals ** 2)
+    norm_sse = sse / len(zero_for_no_events)
+    sigma_for_chi2 = np.sqrt(zero_for_no_events)
+    sigma_for_chi2[sigma_for_chi2 == 0] = 1
+    chi2 = np.sum( (residuals / sigma_for_chi2) ** 2)
+    rchi2 = chi2 / (len(bin_centres) - len(popt_langaus))
+    print("NUMBER EVENTS")
+    print(len(filtered_amplitudes))
+    print("SSE")
+    print(sse)
+    print("Chi2")
+    print(rchi2)
+
+    '''
     sse = np.sum((filtered_heights - langaus(bin_centres, *popt_langaus)) ** 2)
     chi2 = np.sum((filtered_heights - langaus(bin_centres, *popt_langaus)) ** 2 / (langaus(bin_centres, *popt_langaus) + 1e-10))
     rchi2 = chi2 / (len(bin_centres) - len(popt_langaus))
+    '''
 
     if np.isclose(prob_threshold / plot_every, np.round(prob_threshold / plot_every)) == True:
       print(f"Number of epochs: {num_epochs} | Probability threshold: {prob_threshold}")
@@ -192,7 +211,7 @@ for num_epochs in arr_num_epochs:
       plt.savefig("pmax_"+str(num_epochs)+"_"+str(format(prob_threshold, "."+str(dec_p)+"f"))[2:]+".png",facecolor='w')
 
     modchi2 = chi2 / signal_event_count #rchi2*pow(len(filtered_amplitudes),-1.4)
-    data_list.append([num_epochs, prob_threshold, len(filtered_amplitudes), mu_lang.round(2), sse.round(6), chi2.round(2), rchi2.round(4), modchi2])
+    data_list.append([num_epochs, prob_threshold, len(filtered_amplitudes), mu_lang.round(2), sse.round(6), chi2.round(4), rchi2.round(6), modchi2])
 
 column_headings = ["Number of epochs","Probability threshold","Signal event count","MPV amplitude","SSE score","Chi2 value","Red. Chi2 value","Mod. Chi2 value"]
 df = pd.DataFrame(data_list, columns=column_headings)

@@ -3,10 +3,11 @@ import torch.nn as nn
 import torch.optim as optim
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.stats import norm
-from scipy.optimize import curve_fit
+from scipy.stats import norm, poisson, median_abs_deviation
+from scipy.optimize import curve_fit, minimize
 from scipy.special import erf
 import pandas as pd
+from landaupy import langauss
 
 import ROOT as root
 from ROOT import TF1
@@ -16,6 +17,32 @@ import re
 import os
 import csv
 import sys
+
+def binned_fit_langauss(samples, bins, min_x_val, max_x_val, channel, nan='remove'):
+  if nan == 'remove':
+    samples = samples[~np.isnan(samples)]
+
+  hist, bin_edges = np.histogram(samples, bins, range=(min_x_val,max_x_val), density=True)
+  bin_centres = bin_edges[:-1] + np.diff(bin_edges) / 2
+  hist = np.insert(hist, 0, sum(samples < bin_edges[0]))
+  bin_centres = np.insert(bin_centres, 0, bin_centres[0] - np.diff(bin_edges)[0])
+  print(hist)
+  hist = np.append(hist, sum(samples > bin_edges[-1]))
+  bin_centres = np.append(bin_centres, bin_centres[-1] + np.diff(bin_edges)[0])
+
+  hist = hist[1:-1]
+  bin_centres = bin_centres[1:-1]
+  landau_x_mpv_guess = bin_centres[np.argmax(hist)]
+  landau_xi_guess = median_abs_deviation(samples) / 5
+  gauss_sigma_guess = landau_xi_guess / 10
+
+  popt, pcov = curve_fit(
+    lambda x, mpv, xi, sigma: langauss.pdf(x, mpv, xi, sigma),
+    xdata=bin_centres,
+    ydata=hist,
+    p0=[landau_x_mpv_guess, landau_xi_guess, gauss_sigma_guess],
+  )
+  return popt, pcov, hist, bin_centres
 
 # Function to generate an approximate Langaus distribution
 def langaus_sample(size, landau_loc=5, landau_scale=1.2, gauss_scale=0.5):
@@ -157,7 +184,7 @@ precision = 0.0005
 plot_every = precision*1
 dec_p = len(str(precision)) - 2
 arr_num_epochs = [10000]
-arr_prob_threshold = np.round(np.arange(0.046,0.052,precision), dec_p)
+arr_prob_threshold = np.round(np.arange(0.054,0.0544,precision), dec_p)
 
 data_list = []
 for num_epochs in arr_num_epochs:
@@ -179,17 +206,84 @@ for num_epochs in arr_num_epochs:
   df = pd.DataFrame(scores)
   df.to_csv("PMAX_TMAX_WIDTH30.csv", index=False, header=False)
 
+  arr_of_MPV = []
+  arr_of_width = []
+  arr_of_sigma = []
+  arr_mpv_frac = []
+  arr_qmax_frac = []
+  arr_of_sse = []
+  arr_of_rchi2 = []
+  plt.figure(figsize=(10, 6))
+
   for prob_threshold in arr_prob_threshold:
     selected_events = scores > prob_threshold
     filtered_amplitudes = max_amplitudes[selected_events].numpy()
-    max_x_bin = 150
 
-    bin_heights, bin_edges = np.histogram(max_amplitudes.numpy(), bins=max_x_bin, range=(0, max_x_bin), density=True)
+    data_var = filtered_amplitudes
+    xLower = 0
+    xUpper = 150
+    nBins = 150
+    ch_ind = 1
+
+    histo, bins, _ = plt.hist(data_var, bins=nBins, range=(xLower, xUpper), color='blue', edgecolor='black', alpha=0.6, density=True)
+    print(len(data_var))
+
+    bin_centres = bins[:-1] + np.diff(bins) / 2
+
+    popt, pcov, fitted_hist, bin_centres = binned_fit_langauss(data_var, nBins, xLower, xUpper, ch_ind)
+    arr_of_MPV.append(popt[0])
+    arr_of_width.append(popt[1])
+    arr_of_sigma.append(popt[2])
+
+    count_1p0mpv = sum(1 for value in data_var if value > popt[0])
+    count_1p5mpv = sum(1 for value in data_var if value > 1.5*popt[0])
+    arr_mpv_frac.append(count_1p5mpv/count_1p0mpv)
+
+    max_bin_index = np.argmax(histo)
+    max_bin_centre = bin_centres[max_bin_index]
+    count_max_bin = sum(1 for value in data_var if value > max_bin_centre)
+    count_1p5max_bin = sum(1 for value in data_var if value > 1.5 * max_bin_centre)
+    arr_qmax_frac.append(count_1p5max_bin / count_max_bin if count_max_bin > 0 else 0)
+
+    mpv, xi, sigma = popt
+    mu_lang, sigma_lang, k_lang = popt
+    y_fit = langauss.pdf(bin_centres, mpv, xi, sigma)
+
+    residuals = histo - y_fit
+
+    sse = np.sum(residuals**2)
+    norm_sse = sse / len(data_var)
+    arr_of_sse.append(sse)
+    sigma = np.sqrt(histo)
+    sigma[sigma == 0] = 1
+    chi2 = np.sum((residuals / sigma) ** 2)
+
+    N = len(histo)
+    p = len(popt)
+    nu = N - p
+    chi2_red = chi2 / nu
+    print("SSE")
+    print(sse)
+    print("chi2")
+    print(chi2)
+    arr_of_rchi2.append(chi2_red)
+    rchi2 = chi2_red
+    print("red chi2")
+    print(rchi2)
+
+    bin_heights, bin_edges = np.histogram(max_amplitudes.numpy(), bins=150, range=(0, 150), density=True)
     bin_centres = (bin_edges[:-1] + bin_edges[1:]) / 2
     popt_gaussian, _ = curve_fit(gaussian, bin_centres, bin_heights, p0=[1-(sig_events / num_events), 0.5*ansatz_cut, 3.0])
     A_gauss, mu_gauss, sigma_gauss = popt_gaussian
     filtered_heights, filtered_edges = np.histogram(filtered_amplitudes, bins=bin_edges, density=True)
     filtered_centres = (filtered_edges[:-1] + filtered_edges[1:]) / 2
+    
+    signal_event_count = len(filtered_amplitudes)
+    total_event_count = len(max_amplitudes)
+    scale_factor = signal_event_count / total_event_count
+    langaus_scaled = langauss.pdf(bin_centres, *popt) * scale_factor
+
+    '''
     popt_langaus, _ = curve_fit(langaus, bin_centres, filtered_heights, p0=[sig_events / num_events, 2.5*ansatz_cut, 3.0, 3.0])
     signal_event_count = len(filtered_amplitudes)
     total_event_count = len(max_amplitudes)
@@ -212,14 +306,13 @@ for num_epochs in arr_num_epochs:
     print("SSE")
     print(sse)
     print("Chi2")
-    print(chi2)
-    print("Red. Chi2")
     print(rchi2)
+    '''
 
     if np.isclose(prob_threshold / plot_every, np.round(prob_threshold / plot_every)) == True:
       print(f"Number of epochs: {num_epochs} | Probability threshold: {prob_threshold}")
       fig, axes = plt.subplots(1, 2, figsize=(12, 5))
-      axes[0].hist(max_amplitudes.numpy(), bins=max_x_bin, range=(0, max_x_bin), alpha=0.7, label="Signal + Noise", color='lightgray', density=True)
+      axes[0].hist(max_amplitudes.numpy(), bins=150, range=(0, 150), alpha=0.7, label="Signal + Noise", color='lightgray', density=True)
       gaus_label = f"Gauss (Noise) Fit\nμ = {A_gauss:.2f}, σ = {mu_gauss:.2f}, k = {sigma_gauss:.2f}"
       axes[0].plot(bin_centres, gaussian(bin_centres, *popt_gaussian), color='orange', linestyle='-', label=gaus_label, linewidth=2)
       langaus_label1 = f"Rescaled Langaus (Signal) Fit\nμ = {mu_lang:.2f}, σ = {sigma_lang:.2f}, k = {k_lang:.2f}"
@@ -231,9 +324,9 @@ for num_epochs in arr_num_epochs:
       axes[0].set_ylim(1/num_events, 1)
       axes[0].legend()
       
-      axes[1].hist(filtered_amplitudes, bins=max_x_bin, range=(0, max_x_bin), alpha=0.4, label="Filtered Signal", color='g', density=True)
+      axes[1].hist(filtered_amplitudes, bins=150, range=(0, 150), alpha=0.4, label="Filtered Signal", color='g', density=True)
       langaus_label = f"Langaus (Signal) Fit\nμ = {mu_lang:.2f}, σ = {sigma_lang:.2f}, k = {k_lang:.2f}\nRed. $\chi^{2}$ = {rchi2:.2e}"
-      axes[1].plot(filtered_centres, langaus(filtered_centres, *popt_langaus), 'k--', label=langaus_label, linewidth=2)
+      axes[1].plot(filtered_centres, langauss.pdf(filtered_centres, *popt), 'k--', label=langaus_label, linewidth=2)
       axes[1].set_xlabel("Max Amplitude")
       axes[1].set_ylabel("Normalised Counts")
       axes[1].set_title("Filtered Signal Distribution")
@@ -243,7 +336,7 @@ for num_epochs in arr_num_epochs:
       plt.savefig("pmax_"+str(num_epochs)+"_"+str(format(prob_threshold, "."+str(dec_p)+"f"))[2:]+".png",facecolor='w')
 
     modchi2 = rchi2*pow(len(filtered_amplitudes),-1.4)
-    data_list.append([num_epochs, prob_threshold, len(filtered_amplitudes), mu_lang.round(2), sse.round(6), norm_sse.round(10), chi2.round(4), rchi2.round(6), modchi2])
+    data_list.append([num_epochs, prob_threshold, len(filtered_amplitudes), mu_lang.round(2), sse.round(6), norm_sse.round(10), chi2.round(2), rchi2.round(4), modchi2])
 
 column_headings = ["Number of epochs","Probability threshold","Signal event count","MPV amplitude","SSE score","SSE / No. events","Chi2 value","Red. Chi2 value","Mod. Chi2 value"]
 df = pd.DataFrame(data_list, columns=column_headings)

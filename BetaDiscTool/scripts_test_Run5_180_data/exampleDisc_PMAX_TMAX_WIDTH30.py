@@ -153,11 +153,11 @@ class SignalProbabilityModel(nn.Module):
 #arr_num_epochs = [450,500,550,600,650,700,750,800]
 #arr_prob_threshold = np.round(np.arange(0.35,0.81,0.01), 2) #[0.35,0.4,0.45,0.5,0.55,0.6,0.65,0.7,0.75,0.8]
 
-precision = 0.001
+precision = 0.0005
 plot_every = precision*1
 dec_p = len(str(precision)) - 2
 arr_num_epochs = [10000]
-arr_prob_threshold = np.round(np.arange(0.048,0.070,precision), dec_p)
+arr_prob_threshold = np.round(np.arange(0.055,0.066,precision), dec_p)
 
 data_list = []
 for num_epochs in arr_num_epochs:
@@ -170,10 +170,10 @@ for num_epochs in arr_num_epochs:
     loss = -torch.mean(labels * torch.log(scores + 1e-6) + (1 - labels) * torch.log(1 - scores + 1e-6))  
     loss.backward()
     optimizer.step()
-    if epoch % 500 == 0:
+    if epoch % 2000 == 0:
       print(f"Epoch {epoch}, Loss: {loss.item()}")
-      for name, param in model.named_parameters():
-        print(name, param.grad)
+      #for name, param in model.named_parameters():
+      #  print(name, param.grad)
 
   scores = model(max_amplitudes, max_times, max_pow).detach().numpy()
   df = pd.DataFrame(scores)
@@ -196,9 +196,22 @@ for num_epochs in arr_num_epochs:
     langaus_scaled = langaus(bin_centres, *popt_langaus) * scale_factor
     A_lang, mu_lang, sigma_lang, k_lang = popt_langaus
     
-    sse = np.sum((filtered_heights - langaus(bin_centres, *popt_langaus)) ** 2)
-    chi2 = np.sum((filtered_heights - langaus(bin_centres, *popt_langaus)) ** 2 / (langaus(bin_centres, *popt_langaus) + 1e-10))
+    #residuals = filtered_heights - langaus(bin_centres, *popt_langaus)
+    zero_for_no_events = filtered_heights
+    zero_for_no_events[zero_for_no_events < 1/total_event_count] = 0
+    residuals =  zero_for_no_events - langaus(bin_centres, *popt_langaus)
+    sse = np.sum(residuals ** 2)
+    norm_sse = sse / len(zero_for_no_events)
+    sigma_for_chi2 = np.sqrt(zero_for_no_events)
+    sigma_for_chi2[sigma_for_chi2 == 0] = 1
+    chi2 = np.sum( (residuals / sigma_for_chi2) ** 2)
     rchi2 = chi2 / (len(bin_centres) - len(popt_langaus))
+    print("NUMBER EVENTS")
+    print(len(filtered_amplitudes))
+    print("SSE")
+    print(sse)
+    print("Chi2")
+    print(rchi2)
 
     if np.isclose(prob_threshold / plot_every, np.round(prob_threshold / plot_every)) == True:
       print(f"Number of epochs: {num_epochs} | Probability threshold: {prob_threshold}")
@@ -215,8 +228,7 @@ for num_epochs in arr_num_epochs:
       axes[0].set_ylim(1/num_events, 1)
       axes[0].legend()
       
-      sel_counts, sel_bins, sel_patches = axes[1].hist(filtered_amplitudes, bins=150, range=(0, 150), alpha=0.4, label="Filtered Signal", color='g', density=True)
-      occupied_bins = np.count_nonzero(sel_counts)
+      axes[1].hist(filtered_amplitudes, bins=150, range=(0, 150), alpha=0.4, label="Filtered Signal", color='g', density=True)
       langaus_label = f"Langaus (Signal) Fit\nμ = {mu_lang:.2f}, σ = {sigma_lang:.2f}, k = {k_lang:.2f}\nRed. $\chi^{2}$ = {rchi2:.2e}"
       axes[1].plot(filtered_centres, langaus(filtered_centres, *popt_langaus), 'k--', label=langaus_label, linewidth=2)
       axes[1].set_xlabel("Max Amplitude")
@@ -228,9 +240,9 @@ for num_epochs in arr_num_epochs:
       plt.savefig("pmax_"+str(num_epochs)+"_"+str(format(prob_threshold, "."+str(dec_p)+"f"))[2:]+".png",facecolor='w')
 
     modchi2 = rchi2*pow(len(filtered_amplitudes),-1.4)
-    data_list.append([num_epochs, prob_threshold, len(filtered_amplitudes), mu_lang.round(2), sse.round(6), chi2.round(4), rchi2.round(4), occupied_bins, modchi2])
+    data_list.append([num_epochs, prob_threshold, len(filtered_amplitudes), mu_lang.round(2), sse.round(6), norm_sse.round(10), chi2.round(4), rchi2.round(6), modchi2])
 
-column_headings = ["Number of epochs","Probability threshold","Signal event count","MPV amplitude","SSE score","Chi2 value","Red. Chi2 value","Number of bins","Mod. Chi2 value"]
+column_headings = ["Number of epochs","Probability threshold","Signal event count","MPV amplitude","SSE score","SSE / No. events","Chi2 value","Red. Chi2 value","Mod. Chi2 value"]
 df = pd.DataFrame(data_list, columns=column_headings)
 df.to_csv("disc_analysis.csv", index=False)
 
@@ -268,9 +280,9 @@ y_fit_quad = poly_eq(x_fit_quad)
 def power_law(x, A):
   return x ** A
 
-A_opt, _ = curve_fit(power_law, df['Signal event count'], df['Red. Chi2 value'])
-x_fit_pow = np.linspace(min(df['Signal event count']), max(df['Signal event count']), 100)
-y_fit_pow = power_law(x_fit_pow, A_opt[0])
+#A_opt, _ = curve_fit(power_law, df['Signal event count'], df['Red. Chi2 value'])
+#x_fit_pow = np.linspace(min(df['Signal event count']), max(df['Signal event count']), 100)
+#y_fit_pow = power_law(x_fit_pow, A_opt[0])
 
 '''
 # Post-fit selection
@@ -291,9 +303,9 @@ for i, y_column in enumerate(['SSE score', 'Red. Chi2 value', 'Mod. Chi2 value']
   if i == 0:
     ax.plot(x_fit_quad, y_fit_quad, color='k', linestyle='--', label=f"Quadratic Fit: {coeffs_quad[0]:.2e}x² + {coeffs_quad[1]:.2e}x + {coeffs_quad[2]:.2e}")
     ax.legend()
-  if i == 1:
-    ax.plot(x_fit_pow, y_fit_pow, color='k', linestyle='--', label=f"Quadratic Fit: x^{A_opt[0]:.4f}")
-    ax.legend()
+  #if i == 1:
+    #ax.plot(x_fit_pow, y_fit_pow, color='k', linestyle='--', label=f"Quadratic Fit: x^{A_opt[0]:.4f}")
+    #ax.legend()
 
 plt.tight_layout()
 plt.savefig("pdscorevsize_linear.png",facecolor='w')
@@ -308,9 +320,9 @@ for i, y_column in enumerate(['SSE score', 'Red. Chi2 value', 'Mod. Chi2 value']
   if i == 0: 
     ax.plot(x_fit_quad, y_fit_quad, color='k', linestyle='--', label=f"Quadratic Fit: {coeffs_quad[0]:.2e}x² + {coeffs_quad[1]:.2e}x + {coeffs_quad[2]:.2e}")
     ax.legend()
-  if i == 1: 
-    ax.plot(x_fit_pow, y_fit_pow, color='k', linestyle='--', label=f"Quadratic Fit: x^{A_opt[0]:.4f}")
-    ax.legend()
+  #if i == 1: 
+    #ax.plot(x_fit_pow, y_fit_pow, color='k', linestyle='--', label=f"Quadratic Fit: x^{A_opt[0]:.4f}")
+    #ax.legend()
   ax.set_xscale("log")
   ax.set_yscale("log")
 
