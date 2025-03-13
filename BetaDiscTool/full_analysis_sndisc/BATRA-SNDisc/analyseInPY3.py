@@ -22,6 +22,8 @@ from cardReader import read_text_card
 from langaus import plot_langaus
 from export_data import direct_to_table
 
+#from SNDisc import SNDisc_extract_signal
+
 def main():
   parser = argparse.ArgumentParser(description='Read a text card containing information and location of ROOT analysis files and plot distributions of corresponding variables.')
   parser.add_argument('config', type=str, help='Path to the configuration text card (e.g., config.txt)')
@@ -106,6 +108,15 @@ def main():
       plot_pmax = plotVar("pmax", config['pass_criteria'][1], config['pass_criteria'][1], True, output_name_array[file_ind]+"_pmax.png", fit=None)
       plot_pmax.run(file_real, file_ind, tree_array[file_ind], config['channels'])
   if config['pass_criteria'][0] == False:
+    print(f"[BETA ANALYSIS] : [SIGNAL-NOISE DISCRIMINATOR] Running SNDisc NN to extract signal events from the ROOT file")
+    signal_event_array = []
+    #for file_ind, file_real in enumerate(file_array):
+    #  signal_events = SNDisc_extract_signal(file_real, config['channels'], config['pass_criteria'][1])
+    #  signal_event_array.append(signal_events)
+
+
+
+
     amplitude_dfs = []
     for file_ind, file_real in enumerate(file_array):
       df_data = plot_langaus('amplitude', file_real, file_ind, tree_array[file_ind], config['channels'], config['pass_criteria'][1], config['pass_criteria'][1], output_name_array[file_ind]+"_amplitude")
