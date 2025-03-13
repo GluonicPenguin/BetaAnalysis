@@ -19,7 +19,7 @@ import math
 import sys
 
 from proc_tools_TR import get_fit_results_TR, hist_tree_file_timeres, plot_fit_curves
-from proc_tools import getBias
+from firstPass_ProcTools import getBias
 
 class plotTRVar:
   def __init__(self, var, nBins, xUpper, log_scale, save_name):

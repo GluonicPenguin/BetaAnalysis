@@ -18,7 +18,7 @@ import csv
 import math
 import sys
 
-from proc_tools import getBias
+from firstPass_ProcTools import getBias
 
 def direct_to_table(name_and_df_couples, channel_configs, output_savename, thickness_info):
 

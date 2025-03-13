@@ -16,7 +16,7 @@ import csv
 import math
 import sys
 
-from classPlotter import plotVar
+from firstPass_ClassPlotter import plotVar
 from classTRPlotter import plotTRVar
 from cardReader import read_text_card
 from langaus import plot_langaus
@@ -92,7 +92,7 @@ def main():
   else:
     print(f"[BETA ANALYSIS] : [FILE READER] Total {len(file_array)} input ROOT files read.")
 
-  if config['pass_criteria'] == True:
+  if config['pass_criteria'][0] == True:
     sentence = "First pass to plot unabridged PMAX distributions to calculate ansatz PMAX cuts between signal and background"
   else:
     sentence = "Second pass to plot AMPLITUDE, RISE TIME, CHARGE, RMS, and TIME RESOLUTION distributions, with specified selections"
@@ -105,16 +105,16 @@ def main():
   if config['pass_criteria'][0] == True:
     print(f"[BETA ANALYSIS]: [PLOTTER] Plotting PMAX distribution (note that on the first pass no selections are applied to the phase space)")
     for file_ind, file_real in enumerate(file_array):
-      plot_pmax = plotVar("pmax", config['pass_criteria'][1], config['pass_criteria'][1], True, output_name_array[file_ind]+"_pmax.png", fit=None)
+      plot_pmax = plotVar("pmax", config['pass_criteria'][1], config['pass_criteria'][1], True, output_name_array[file_ind]+"_pmax.png")
       plot_pmax.run(file_real, file_ind, tree_array[file_ind], config['channels'])
   if config['pass_criteria'][0] == False:
     print(f"[BETA ANALYSIS] : [SIGNAL-NOISE DISCRIMINATOR] Running SNDisc NN to extract signal events from the ROOT file")
     signal_event_array = []
-    #for file_ind, file_real in enumerate(file_array):
-    #  signal_events = SNDisc_extract_signal(file_real, config['channels'], config['pass_criteria'][1])
-    #  signal_event_array.append(signal_events)
-
-
+    if not os.path.exists("SNDisc_performance"):
+      os.makedirs("SNDisc_performance")
+    for file_ind, file_real in enumerate(file_array):
+      signal_events = SNDisc_extract_signal(file_real, file_ind, tree_array[file_ind], config['channels'], config['pass_criteria'][1], "SNDisc_performance/"+output_name_array[file_ind])
+      signal_event_array.append(signal_events)
 
 
     amplitude_dfs = []

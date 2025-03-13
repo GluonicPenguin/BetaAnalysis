@@ -25,7 +25,7 @@ from array import array
 from landaupy import langauss
 from scipy.optimize import curve_fit
 
-from proc_tools import getBias
+from firstPass_ProcTools import getBias
 
 def binned_fit_langauss(samples, bins, min_x_val, max_x_val, channel, nan='remove'):
   if nan == 'remove':
