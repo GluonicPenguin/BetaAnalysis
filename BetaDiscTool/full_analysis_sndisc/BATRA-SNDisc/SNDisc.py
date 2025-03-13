@@ -18,6 +18,8 @@ import os
 import csv
 import sys
 
+from firstPass_ProcTools import getBias
+
 def binned_fit_langauss(samples, bins, min_x_val, max_x_val, channel, nan='remove'):
   if nan == 'remove':
     samples = samples[~np.isnan(samples)]
@@ -51,11 +53,11 @@ def gaussian(x, A, mu, sigma):
 class SignalProbabilityModel(nn.Module):
   def __init__(self):
     super().__init__()
-    self.amp_mu = nn.Parameter(torch.tensor(2.5*ansatz_pmax))   # Langaus centre
+    self.amp_mu = nn.Parameter(torch.tensor(2.5*ansatz_pmax[file_index]))   # Langaus centre
     self.amp_sigma = nn.Parameter(torch.tensor(3.0)) # Langaus width
     self.time_mu = nn.Parameter(torch.tensor(-0.5))  # Gaussian centre (signal-like time)
     self.time_sigma = nn.Parameter(torch.tensor(0.5)) # Gaussian width
-    self.pow_mu = nn.Parameter(torch.tensor(2.5*ansatz_pmax))  # Langaus centre
+    self.pow_mu = nn.Parameter(torch.tensor(2.5*ansatz_pmax[file_index]))  # Langaus centre
     self.pow_sigma = nn.Parameter(torch.tensor(3.0)) # Langaus width
 
   def forward(self, amplitudes, times, pow):
@@ -98,13 +100,13 @@ def SNDisc_extract_signal(file, file_index, tree, channel_array, nBins, savename
     tmax = np.array(tmax_list)
     width = np.array(width_list)
 
-    true_pmax_sig = pmax[pmax >= ansatz_pmax]
-    true_pmax_noise = pmax[pmax < ansatz_pmax]
-    true_width_sig = width[np.where(pmax >= ansatz_pmax)[0]]
-    true_width_noise = width[np.where(pmax < ansatz_pmax)[0]]
+    true_pmax_sig = pmax[pmax >= ansatz_pmax[file_index]]
+    true_pmax_noise = pmax[pmax < ansatz_pmax[file_index]]
+    true_width_sig = width[np.where(pmax >= ansatz_pmax[file_index])[0]]
+    true_width_noise = width[np.where(pmax < ansatz_pmax[file_index])[0]]
 
     num_events = len(pmax)
-    sig_events = np.count_nonzero(pmax >= ansatz_pmax)
+    sig_events = np.count_nonzero(pmax >= ansatz_pmax[file_index])
     labels = np.concatenate([np.ones(sig_events), np.zeros(num_events - sig_events)])  # 1 = signal, 0 = noise
 
     # Convert to PyTorch tensors
@@ -112,6 +114,23 @@ def SNDisc_extract_signal(file, file_index, tree, channel_array, nBins, savename
     max_times = torch.tensor(tmax, dtype=torch.float32)
     max_pow = torch.tensor(pmax / width, dtype=torch.float32)
     labels = torch.tensor(labels, dtype=torch.float32)
+
+    # Define a differentiable signal probability model
+    class SignalProbabilityModel(nn.Module):
+      def __init__(self):
+        super().__init__()
+        self.amp_mu = nn.Parameter(torch.tensor(2.5*ansatz_pmax[file_index]))   # Langaus centre
+        self.amp_sigma = nn.Parameter(torch.tensor(3.0)) # Langaus width
+        self.time_mu = nn.Parameter(torch.tensor(-0.5))  # Gaussian centre (signal-like time)
+        self.time_sigma = nn.Parameter(torch.tensor(0.5)) # Gaussian width
+        self.pow_mu = nn.Parameter(torch.tensor(2.5*ansatz_pmax[file_index]))  # Langaus centre
+        self.pow_sigma = nn.Parameter(torch.tensor(3.0)) # Langaus width
+
+      def forward(self, amplitudes, times, pow):
+        amp_prob = torch.sigmoid((amplitudes - self.amp_mu) / self.amp_sigma)
+        time_prob = torch.exp(-0.5 * ((times - self.time_mu) / self.time_sigma) ** 2)
+        pow_prob = torch.sigmoid((pow - self.pow_mu) / self.pow_sigma)
+        return amp_prob * time_prob * pow_prob  # Combined probability
 
     precision = 0.001
     plot_every = precision*100
@@ -145,6 +164,10 @@ def SNDisc_extract_signal(file, file_index, tree, channel_array, nBins, savename
     arr_of_sse = []
     arr_of_rchi2 = []
     plt.figure(figsize=(10, 6))
+
+    # NEED TO CHECK THIS BUT SHOULD SET PROBABILITY OF EVENTS ABOVE MAX PMAX VALUE TO ZERO
+    scores[max_amplitudes > max_pmax] = 0
+
 
     for prob_threshold in arr_prob_threshold:
       selected_events = scores > prob_threshold
@@ -191,7 +214,7 @@ def SNDisc_extract_signal(file, file_index, tree, channel_array, nBins, savename
 
       bin_heights, bin_edges = np.histogram(max_amplitudes.numpy(), bins=max_pmax, range=(0, max_pmax), density=True)
       bin_centres = (bin_edges[:-1] + bin_edges[1:]) / 2
-      popt_gaussian, _ = curve_fit(gaussian, bin_centres, bin_heights, p0=[1-(sig_events / num_events), 0.5*ansatz_pmax, 3.0])
+      popt_gaussian, _ = curve_fit(gaussian, bin_centres, bin_heights, p0=[1-(sig_events / num_events), 0.5*ansatz_pmax[file_index], 3.0])
       A_gauss, mu_gauss, sigma_gauss = popt_gaussian
       filtered_heights, filtered_edges = np.histogram(filtered_amplitudes, bins=bin_edges, density=True)
       filtered_centres = (filtered_edges[:-1] + filtered_edges[1:]) / 2

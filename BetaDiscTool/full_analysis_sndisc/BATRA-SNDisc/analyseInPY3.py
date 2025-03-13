@@ -22,7 +22,7 @@ from cardReader import read_text_card
 from langaus import plot_langaus
 from export_data import direct_to_table
 
-#from SNDisc import SNDisc_extract_signal
+from SNDisc import SNDisc_extract_signal
 
 def main():
   parser = argparse.ArgumentParser(description='Read a text card containing information and location of ROOT analysis files and plot distributions of corresponding variables.')
@@ -110,54 +110,54 @@ def main():
   if config['pass_criteria'][0] == False:
     print(f"[BETA ANALYSIS] : [SIGNAL-NOISE DISCRIMINATOR] Running SNDisc NN to extract signal events from the ROOT file")
     signal_event_array = []
+    amplitude_dfs = []
     if not os.path.exists("SNDisc_performance"):
       os.makedirs("SNDisc_performance")
     for file_ind, file_real in enumerate(file_array):
-      signal_events = SNDisc_extract_signal(file_real, file_ind, tree_array[file_ind], config['channels'], config['pass_criteria'][1], "SNDisc_performance/"+output_name_array[file_ind])
+      signal_events, df_data = SNDisc_extract_signal(file_real, file_ind, tree_array[file_ind], config['channels'], config['pass_criteria'][1], "SNDisc_performance/"+output_name_array[file_ind])
       signal_event_array.append(signal_events)
-
-
-    amplitude_dfs = []
-    for file_ind, file_real in enumerate(file_array):
-      df_data = plot_langaus('amplitude', file_real, file_ind, tree_array[file_ind], config['channels'], config['pass_criteria'][1], config['pass_criteria'][1], output_name_array[file_ind]+"_amplitude")
       amplitude_dfs.append(df_data)
     amplitude_data = pd.concat(amplitude_dfs, ignore_index=True)
     print(amplitude_data.sort_values(by=['Channel','Bias']))
     data_out.append(('amplitude', amplitude_data.sort_values(by=['Channel','Bias'])))
-    print(f"[BETA ANALYSIS]: [PLOTTER] Performing Gaussian fit to RISETIME distribution")
-    risetime_dfs = []
-    for file_ind, file_real in enumerate(file_array):
-      plot_risetime = plotVar("risetime", int(0.6*config['pass_criteria'][1]), (0.06*config['pass_criteria'][1]), True, output_name_array[file_ind]+"_risetime.png", fit="gaus")
-      df_data = plot_risetime.run(file_real, file_ind, tree_array[file_ind], config['channels'])
-      risetime_dfs.append(df_data)
-    risetime_data = pd.concat(risetime_dfs, ignore_index=True)
-    print(risetime_data.sort_values(by=['Channel','Bias']))
-    data_out.append(('risetime', risetime_data.sort_values(by=['Channel','Bias'])))
+
+
+
+
+    #print(f"[BETA ANALYSIS]: [PLOTTER] Performing Gaussian fit to RISETIME distribution")
+    #risetime_dfs = []
+    #for file_ind, file_real in enumerate(file_array):
+    #  plot_risetime = plotVar("risetime", int(0.6*config['pass_criteria'][1]), (0.06*config['pass_criteria'][1]), True, signal_event_array[file_ind], output_name_array[file_ind]+"_risetime.png", fit="gaus")
+    #  df_data = plot_risetime.run(file_real, file_ind, tree_array[file_ind], config['channels'])
+    #  risetime_dfs.append(df_data)
+    #risetime_data = pd.concat(risetime_dfs, ignore_index=True)
+    #print(risetime_data.sort_values(by=['Channel','Bias']))
+    #data_out.append(('risetime', risetime_data.sort_values(by=['Channel','Bias'])))
     charge_dfs = []
     for file_ind, file_real in enumerate(file_array):
-      df_data = plot_langaus('charge', file_real, file_ind, tree_array[file_ind], config['channels'], int(0.5*config['pass_criteria'][1]), 0.2*config['pass_criteria'][1], output_name_array[file_ind]+"_charge")
+      df_data = plot_langaus('charge', file_real, file_ind, tree_array[file_ind], config['channels'], int(0.5*config['pass_criteria'][1]), 0.2*config['pass_criteria'][1], signal_event_array[file_ind], output_name_array[file_ind]+"_charge")
       charge_dfs.append(df_data)
     charge_data = pd.concat(charge_dfs, ignore_index=True)
     print(charge_data.sort_values(by=['Channel','Bias']))
     data_out.append(('charge', charge_data.sort_values(by=['Channel','Bias'])))
-    print(f"[BETA ANALYSIS]: [PLOTTER] Performing Gaussian fit to DUT channels")
-    rms_dfs = []
-    for file_ind, file_real in enumerate(file_array):
-      plot_rms = plotVar("rms", int(0.3*config['pass_criteria'][1]), 0.1*config['pass_criteria'][1], True, output_name_array[file_ind]+"_rms.png", fit="gaus")
-      df_data = plot_rms.run(file_real, file_ind, tree_array[file_ind], config['channels'])
-      rms_dfs.append(df_data)
-    rms_data = pd.concat(rms_dfs, ignore_index=True)
-    print(rms_data.sort_values(by=['Channel','Bias']))
-    data_out.append(('rms', rms_data.sort_values(by=['Channel','Bias'])))
-    print(f"[BETA ANALYSIS]: [TIME RESOLUTION] Performing Gaussian fit to DUT-MCP channels")
-    time_res_dfs = []
-    for file_ind, file_real in enumerate(file_array):
-      plot_timeres = plotTRVar("timeres", config['pass_criteria'][1], 0.08*config['pass_criteria'][1], True, output_name_array[file_ind]+"_timeres.png")
-      df_data = plot_timeres.run(file_real, file_ind, tree_array[file_ind], config['channels'], mcp_specs)
-      time_res_dfs.append(df_data)
-    time_res_data = pd.concat(time_res_dfs, ignore_index=True)
-    print(time_res_data.sort_values(by=['Channel','Bias']))
-    data_out.append(('timeres', time_res_data.sort_values(by=['Channel','Bias'])))
+    #print(f"[BETA ANALYSIS]: [PLOTTER] Performing Gaussian fit to DUT channels")
+    #rms_dfs = []
+    #for file_ind, file_real in enumerate(file_array):
+    #  plot_rms = plotVar("rms", int(0.3*config['pass_criteria'][1]), 0.1*config['pass_criteria'][1], True, signal_event_array[file_ind], output_name_array[file_ind]+"_rms.png", fit="gaus")
+    #  df_data = plot_rms.run(file_real, file_ind, tree_array[file_ind], config['channels'])
+    #  rms_dfs.append(df_data)
+    #rms_data = pd.concat(rms_dfs, ignore_index=True)
+    #print(rms_data.sort_values(by=['Channel','Bias']))
+    #data_out.append(('rms', rms_data.sort_values(by=['Channel','Bias'])))
+    #print(f"[BETA ANALYSIS]: [TIME RESOLUTION] Performing Gaussian fit to DUT-MCP channels")
+    #time_res_dfs = []
+    #for file_ind, file_real in enumerate(file_array):
+    #  plot_timeres = plotTRVar("timeres", config['pass_criteria'][1], 0.08*config['pass_criteria'][1], True, signal_event_array[file_ind], output_name_array[file_ind]+"_timeres.png")
+    #  df_data = plot_timeres.run(file_real, file_ind, tree_array[file_ind], config['channels'], mcp_specs)
+    #  time_res_dfs.append(df_data)
+    #time_res_data = pd.concat(time_res_dfs, ignore_index=True)
+    #print(time_res_data.sort_values(by=['Channel','Bias']))
+    #data_out.append(('timeres', time_res_data.sort_values(by=['Channel','Bias'])))
 
   if len(data_out) > 1: direct_to_table(data_out, config['channels'], output_name, thicknesses)
 

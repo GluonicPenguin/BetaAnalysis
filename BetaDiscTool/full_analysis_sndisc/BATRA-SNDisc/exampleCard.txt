@@ -26,7 +26,7 @@ CH_8 = 0
 
 # Specify what results and fits are to be performed
 
-first_pass = "True, 700"
+first_pass = "False, 150"
 
 # Specify which selections should be applied to which channel (these are not applied simultaneously unless calculating time resolution
 # For time resolution, the MCP channel selection is applied with the corresponding DUT.
