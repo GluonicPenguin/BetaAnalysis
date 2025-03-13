@@ -148,7 +148,7 @@ class SignalProbabilityModel(nn.Module):
     amp_prob = torch.sigmoid((amplitudes - self.amp_mu) / self.amp_sigma)
     time_prob = torch.exp(-0.5 * ((times - self.time_mu) / self.time_sigma) ** 2)
     pow_prob = torch.sigmoid((pow - self.pow_mu) / self.pow_sigma)
-    return amp_prob * pow_prob  # Combined probability
+    return amp_prob * time_prob * pow_prob  # Combined probability
 
 #arr_num_epochs = [450,500,550,600,650,700,750,800]
 #arr_prob_threshold = np.round(np.arange(0.35,0.81,0.01), 2) #[0.35,0.4,0.45,0.5,0.55,0.6,0.65,0.7,0.75,0.8]
@@ -157,7 +157,7 @@ precision = 0.0005
 plot_every = precision*1
 dec_p = len(str(precision)) - 2
 arr_num_epochs = [10000]
-arr_prob_threshold = np.round(np.arange(0.055,0.066,precision), dec_p)
+arr_prob_threshold = np.round(np.arange(0.062,0.076,precision), dec_p)
 
 data_list = []
 for num_epochs in arr_num_epochs:

@@ -117,6 +117,7 @@ def main():
       signal_events, df_data = SNDisc_extract_signal(file_real, file_ind, tree_array[file_ind], config['channels'], config['pass_criteria'][1], "SNDisc_performance/"+output_name_array[file_ind])
       signal_event_array.append(signal_events)
       amplitude_dfs.append(df_data)
+    print(amplitude_dfs)
     amplitude_data = pd.concat(amplitude_dfs, ignore_index=True)
     print(amplitude_data.sort_values(by=['Channel','Bias']))
     data_out.append(('amplitude', amplitude_data.sort_values(by=['Channel','Bias'])))

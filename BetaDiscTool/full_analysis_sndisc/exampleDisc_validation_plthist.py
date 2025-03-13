@@ -74,7 +74,7 @@ max_times = np.concatenate([signal_times, noise_times])
 # Run5_W16_W17_RT_Ex1/stats_Sr_Run5_Ch1-180V_Ch2-130V_Ch3-2750V_trig230V.root
 
 config = [[3, 4.7], [1, 4.7], [1, 4.7], [2, 1]]
-file_list = ['stats_Sr_Run5_Ch1-140V_Ch2-100V_Ch3-2750V_trig230V.root']
+file_list = ['../../../../../DESY_TB_Dec_24/data_TB/Run4_W5_RT_Ex1/stats_Sr_Run4_Ch1-125V_Ch2-125V_Ch3-2750V_trig230V.root']
 file_array = []
 tree_array = []
 
@@ -114,7 +114,7 @@ pmax = np.array(pmax_list)
 tmax = np.array(tmax_list)
 width = np.array(width_list)
 
-ansatz_cut = 8
+ansatz_cut = 30
 true_pmax_sig = pmax[pmax >= ansatz_cut]
 true_pmax_noise = pmax[pmax < ansatz_cut]
 true_width_sig = width[np.where(pmax >= ansatz_cut)[0]]
@@ -163,11 +163,11 @@ labels = torch.tensor(labels, dtype=torch.float32)
 class SignalProbabilityModel(nn.Module):
   def __init__(self):
     super().__init__()
-    self.amp_mu = nn.Parameter(torch.tensor(2.5*ansatz_cut))   # Langaus center
+    self.amp_mu = nn.Parameter(torch.tensor(2.0*ansatz_cut))   # Langaus center
     self.amp_sigma = nn.Parameter(torch.tensor(3.0)) # Langaus width
     self.time_mu = nn.Parameter(torch.tensor(-0.5))  # Gaussian center (signal-like time)
     self.time_sigma = nn.Parameter(torch.tensor(0.5)) # Gaussian width
-    self.pow_mu = nn.Parameter(torch.tensor(2.5*ansatz_cut))  # Langaus center
+    self.pow_mu = nn.Parameter(torch.tensor(2.0*ansatz_cut))  # Langaus center
     self.pow_sigma = nn.Parameter(torch.tensor(3.0)) # Langaus width
 
   def forward(self, amplitudes, times, pow):
@@ -180,11 +180,11 @@ class SignalProbabilityModel(nn.Module):
 #arr_num_epochs = [450,500,550,600,650,700,750,800]
 #arr_prob_threshold = np.round(np.arange(0.35,0.81,0.01), 2) #[0.35,0.4,0.45,0.5,0.55,0.6,0.65,0.7,0.75,0.8]
 
-precision = 0.0005
+precision = 0.005
 plot_every = precision*1
 dec_p = len(str(precision)) - 2
 arr_num_epochs = [10000]
-arr_prob_threshold = np.round(np.arange(0.045,0.055,precision), dec_p)
+arr_prob_threshold = np.round(np.arange(0.04,0.08,precision), dec_p)
 
 data_list = []
 for num_epochs in arr_num_epochs:
@@ -336,7 +336,7 @@ for num_epochs in arr_num_epochs:
       plt.savefig("pmax_"+str(num_epochs)+"_"+str(format(prob_threshold, "."+str(dec_p)+"f"))[2:]+".png",facecolor='w')
 
     modchi2 = rchi2*pow(len(filtered_amplitudes),-1.4)
-    data_list.append([num_epochs, prob_threshold, len(filtered_amplitudes), mu_lang.round(2), sse.round(6), norm_sse.round(10), chi2.round(4), rchi2.round(6), modchi2])
+    data_list.append([num_epochs, prob_threshold, len(filtered_amplitudes), mu_lang.round(2), sse.round(6), norm_sse.round(10), chi2.round(2), rchi2.round(4), modchi2])
 
 column_headings = ["Number of epochs","Probability threshold","Signal event count","MPV amplitude","SSE score","SSE / No. events","Chi2 value","Red. Chi2 value","Mod. Chi2 value"]
 df = pd.DataFrame(data_list, columns=column_headings)

@@ -28,7 +28,6 @@ def binned_fit_langauss(samples, bins, min_x_val, max_x_val, channel, nan='remov
   bin_centres = bin_edges[:-1] + np.diff(bin_edges) / 2
   hist = np.insert(hist, 0, sum(samples < bin_edges[0]))
   bin_centres = np.insert(bin_centres, 0, bin_centres[0] - np.diff(bin_edges)[0])
-  print(hist)
   hist = np.append(hist, sum(samples > bin_edges[-1]))
   bin_centres = np.append(bin_centres, bin_centres[-1] + np.diff(bin_edges)[0])
 
@@ -49,55 +48,29 @@ def binned_fit_langauss(samples, bins, min_x_val, max_x_val, channel, nan='remov
 def gaussian(x, A, mu, sigma):
   return A * np.exp(-0.5 * ((x - mu) / sigma) ** 2)
 
-# Define a differentiable signal probability model
-class SignalProbabilityModel(nn.Module):
-  def __init__(self):
-    super().__init__()
-    self.amp_mu = nn.Parameter(torch.tensor(2.5*ansatz_pmax[file_index]))   # Langaus centre
-    self.amp_sigma = nn.Parameter(torch.tensor(3.0)) # Langaus width
-    self.time_mu = nn.Parameter(torch.tensor(-0.5))  # Gaussian centre (signal-like time)
-    self.time_sigma = nn.Parameter(torch.tensor(0.5)) # Gaussian width
-    self.pow_mu = nn.Parameter(torch.tensor(2.5*ansatz_pmax[file_index]))  # Langaus centre
-    self.pow_sigma = nn.Parameter(torch.tensor(3.0)) # Langaus width
-
-  def forward(self, amplitudes, times, pow):
-
-    amp_prob = torch.sigmoid((amplitudes - self.amp_mu) / self.amp_sigma)
-    time_prob = torch.exp(-0.5 * ((times - self.time_mu) / self.time_sigma) ** 2)
-    pow_prob = torch.sigmoid((pow - self.pow_mu) / self.pow_sigma)
-    return amp_prob * pow_prob  # Combined probability
-
-
 def SNDisc_extract_signal(file, file_index, tree, channel_array, nBins, savename):
 
+  png_files = glob.glob("SNDisc_performance/*.png")
+  for file in png_files:
+    os.remove(file)
   max_pmax = nBins
   arr_signal_events = []
 
   for ch_ind, ch_val in enumerate(channel_array):
     pmax_list = []
-    tmax_list = []
     width_list = []
     sensorType, AtQfactor, ansatz_pmax = ch_val
     if sensorType == 1:
       bias_of_channel = getBias(str(file), ch_ind)
       for entry in tree:
         pmax_sig = entry.pmax[ch_ind]
-        tmax_sig = entry.tmax[ch_ind]
         width_sig = entry.width[ch_ind][2]
-        if (pmax_sig < ansatz_pmax[file_index]) or (pmax_sig > max_pmax):
-          #print(f"BAD EVENTS {ansatz_pmax[file_index]} {max_pmax}")
-          continue
-        else:
-          #area_sig = entry.area_new[ch_ind]
-          #area_sig = entry.area[ch_ind]
-          pmax_list.append(pmax_sig) # to fit Gaus noise and Langaus signal
-          width_list.append(width_sig) # to fit Gaus noise and Langaus signal on pmax/width@30%
-          tmax_list.append(tmax_sig) # to fit uniform noise and Gaus signal
+        pmax_list.append(pmax_sig) # to fit Gaus noise and Langaus signal
+        width_list.append(width_sig) # to fit Gaus noise and Langaus signal on pmax/width@30%
     else:
       continue
 
     pmax = np.array(pmax_list)
-    tmax = np.array(tmax_list)
     width = np.array(width_list)
 
     true_pmax_sig = pmax[pmax >= ansatz_pmax[file_index]]
@@ -111,7 +84,6 @@ def SNDisc_extract_signal(file, file_index, tree, channel_array, nBins, savename
 
     # Convert to PyTorch tensors
     max_amplitudes = torch.tensor(pmax, dtype=torch.float32)
-    max_times = torch.tensor(tmax, dtype=torch.float32)
     max_pow = torch.tensor(pmax / width, dtype=torch.float32)
     labels = torch.tensor(labels, dtype=torch.float32)
 
@@ -119,31 +91,29 @@ def SNDisc_extract_signal(file, file_index, tree, channel_array, nBins, savename
     class SignalProbabilityModel(nn.Module):
       def __init__(self):
         super().__init__()
-        self.amp_mu = nn.Parameter(torch.tensor(2.5*ansatz_pmax[file_index]))   # Langaus centre
+        self.amp_mu = nn.Parameter(torch.tensor(2.0*ansatz_pmax[file_index]))   # Langaus centre
         self.amp_sigma = nn.Parameter(torch.tensor(3.0)) # Langaus width
-        self.time_mu = nn.Parameter(torch.tensor(-0.5))  # Gaussian centre (signal-like time)
-        self.time_sigma = nn.Parameter(torch.tensor(0.5)) # Gaussian width
-        self.pow_mu = nn.Parameter(torch.tensor(2.5*ansatz_pmax[file_index]))  # Langaus centre
+        self.pow_mu = nn.Parameter(torch.tensor(2.0*ansatz_pmax[file_index]))  # Langaus centre
         self.pow_sigma = nn.Parameter(torch.tensor(3.0)) # Langaus width
 
-      def forward(self, amplitudes, times, pow):
+      def forward(self, amplitudes, pow):
         amp_prob = torch.sigmoid((amplitudes - self.amp_mu) / self.amp_sigma)
-        time_prob = torch.exp(-0.5 * ((times - self.time_mu) / self.time_sigma) ** 2)
         pow_prob = torch.sigmoid((pow - self.pow_mu) / self.pow_sigma)
-        return amp_prob * time_prob * pow_prob  # Combined probability
+        return amp_prob * pow_prob  # Combined probability
 
-    precision = 0.001
-    plot_every = precision*100
+    num_epochs = 10000
+    precision = 0.005
+    plot_every = precision*1
     dec_p = len(str(precision)) - 2
-    arr_prob_threshold = np.round(np.arange(0.03,0.08,precision), dec_p)
+    arr_prob_threshold = np.round(np.arange(0.04,0.07,precision), dec_p)
 
     data_list = []
     model = SignalProbabilityModel()
     optimizer = optim.Adam(model.parameters(), lr=0.01)
 
-    for epoch in range(10000):
+    for epoch in range(num_epochs):
       optimizer.zero_grad()
-      scores = model(max_amplitudes, max_times, max_pow)
+      scores = model(max_amplitudes, max_pow)
       loss = -torch.mean(labels * torch.log(scores + 1e-6) + (1 - labels) * torch.log(1 - scores + 1e-6))  
       loss.backward()
       optimizer.step()
@@ -152,9 +122,9 @@ def SNDisc_extract_signal(file, file_index, tree, channel_array, nBins, savename
         #for name, param in model.named_parameters():
         #  print(name, param.grad)
 
-    scores = model(max_amplitudes, max_times, max_pow).detach().numpy()
+    scores = model(max_amplitudes, max_pow).detach().numpy()
     df = pd.DataFrame(scores)
-    df.to_csv("SNDisc_performance/" + save_name + "SNDisc_Ch"+str(ch_ind)+".csv", index=False, header=False)
+    df.to_csv(savename + "SNDisc_Ch"+str(ch_ind)+".csv", index=False, header=False)
 
     arr_of_MPV = []
     arr_of_width = []
@@ -165,9 +135,7 @@ def SNDisc_extract_signal(file, file_index, tree, channel_array, nBins, savename
     arr_of_rchi2 = []
     plt.figure(figsize=(10, 6))
 
-    # NEED TO CHECK THIS BUT SHOULD SET PROBABILITY OF EVENTS ABOVE MAX PMAX VALUE TO ZERO
-    scores[max_amplitudes > max_pmax] = 0
-
+    scores[max_amplitudes.numpy() > max_pmax] = 0
 
     for prob_threshold in arr_prob_threshold:
       selected_events = scores > prob_threshold
@@ -175,7 +143,7 @@ def SNDisc_extract_signal(file, file_index, tree, channel_array, nBins, savename
       data_var = filtered_amplitudes
 
       histo, bins, _ = plt.hist(data_var, bins=nBins, range=(0, max_pmax), color='blue', edgecolor='black', alpha=0.6, density=True)
-      print(len(data_var))
+      print(f"Number of filtered events: {len(data_var)}")
 
       bin_centres = bins[:-1] + np.diff(bins) / 2
       popt, pcov, fitted_hist, bin_centres = binned_fit_langauss(data_var, nBins, 0, max_pmax, ch_ind)
@@ -207,8 +175,7 @@ def SNDisc_extract_signal(file, file_index, tree, channel_array, nBins, savename
 
       nu = len(histo) - len(popt)
       chi2_red = chi2 / nu
-      print("SSE")
-      print(sse)
+      print(f"SSE: {sse}")
       arr_of_rchi2.append(chi2_red)
       rchi2 = chi2_red
 
@@ -219,7 +186,6 @@ def SNDisc_extract_signal(file, file_index, tree, channel_array, nBins, savename
       filtered_heights, filtered_edges = np.histogram(filtered_amplitudes, bins=bin_edges, density=True)
       filtered_centres = (filtered_edges[:-1] + filtered_edges[1:]) / 2
 
-      '''
       if np.isclose(prob_threshold / plot_every, np.round(prob_threshold / plot_every)) == True:
         signal_event_count = len(filtered_amplitudes)
         total_event_count = len(max_amplitudes)
@@ -248,13 +214,12 @@ def SNDisc_extract_signal(file, file_index, tree, channel_array, nBins, savename
         axes[1].legend()
         axes[1].annotate(str(format(prob_threshold, "."+str(dec_p)+"f")), xy=(0.6,0.5), xycoords='axes fraction', fontsize=25, fontweight='bold')
         plt.tight_layout()
-        plt.savefig("pmax_"+str(10000)+"_"+str(format(prob_threshold, "."+str(dec_p)+"f"))[2:]+".png",facecolor='w')
-      '''
+        plt.savefig("SNDisc_performance/pmax_Ch"+str(ch_ind)+"_"+str(num_epochs)+"_"+str(format(prob_threshold, "."+str(dec_p)+"f"))[2:]+".png",facecolor='w')
 
       modchi2 = rchi2*pow(len(filtered_amplitudes),-1.4)
-      data_list.append([ch_ind, prob_threshold, len(filtered_amplitudes), mu_lang.round(2), sse.round(6), norm_sse.round(10), chi2.round(4), rchi2.round(6), modchi2])
+      data_list.append([ch_ind, num_epochs, prob_threshold, len(filtered_amplitudes), mu_lang.round(2), sse.round(6), norm_sse.round(10), chi2.round(4), rchi2.round(6), modchi2])
 
-    column_headings = ["Channel","Probability threshold","Signal event count","MPV amplitude","SSE score","SSE / No. events","Chi2 value","Red. Chi2 value","Mod. Chi2 value"]
+    column_headings = ["Channel","Number of epochs","Probability threshold","Signal event count","MPV amplitude","SSE score","SSE / No. events","Chi2 value","Red. Chi2 value","Mod. Chi2 value"]
     df = pd.DataFrame(data_list, columns=column_headings)
     min_sse_prob = df.loc[df["SSE score"].idxmin(), "Probability threshold"]
     min_chi2_prob = df.loc[df["Red. Chi2 value"].idxmin(), "Probability threshold"]
@@ -263,7 +228,7 @@ def SNDisc_extract_signal(file, file_index, tree, channel_array, nBins, savename
     arr_signal_events.append(optimal_selected_events)
     #filtered_amplitudes = max_amplitudes[optimal_selected_events].numpy()
     #df.to_csv("disc_analysis.csv", index=False)
-    '''
+
     colours = ["r","orange","yellow","lime","green","blue","purple","magenta"]
     markers = ["o","v","s","^","D","p","d","h"]
 
@@ -282,6 +247,10 @@ def SNDisc_extract_signal(file, file_index, tree, channel_array, nBins, savename
       ax.legend()
 
     plt.tight_layout()
-    plt.savefig("SNDisc_performance/"+savename+"_pdperformanceplots.png",facecolor='w')
-    '''
-  return arr_signal_events
+    plt.savefig(savename+"_Ch"+str(ch_ind)+"_pdperformanceplots.png",facecolor='w')
+
+    df.to_csv(savename + "diagnostics_SNDisc_Ch"+str(ch_ind)+".csv", index=False)
+    
+    # NEED TO DO AMPLITUDE FIT AND RETURN VALUES AS BEFORE
+
+  return arr_signal_events, df

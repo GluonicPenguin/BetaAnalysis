@@ -148,16 +148,16 @@ class SignalProbabilityModel(nn.Module):
     amp_prob = torch.sigmoid((amplitudes - self.amp_mu) / self.amp_sigma)
     time_prob = torch.exp(-0.5 * ((times - self.time_mu) / self.time_sigma) ** 2)
     pow_prob = torch.sigmoid((pow - self.pow_mu) / self.pow_sigma)
-    return amp_prob * pow_prob  # Combined probability
+    return amp_prob * time_prob * pow_prob  # Combined probability
 
 #arr_num_epochs = [450,500,550,600,650,700,750,800]
 #arr_prob_threshold = np.round(np.arange(0.35,0.81,0.01), 2) #[0.35,0.4,0.45,0.5,0.55,0.6,0.65,0.7,0.75,0.8]
 
-precision = 0.0005
+precision = 0.01
 plot_every = precision*1
 dec_p = len(str(precision)) - 2
 arr_num_epochs = [10000]
-arr_prob_threshold = np.round(np.arange(0.046,0.052,precision), dec_p)
+arr_prob_threshold = np.round(np.arange(0.01,0.15,precision), dec_p)
 
 data_list = []
 for num_epochs in arr_num_epochs:
@@ -244,6 +244,17 @@ for num_epochs in arr_num_epochs:
 
     modchi2 = rchi2*pow(len(filtered_amplitudes),-1.4)
     data_list.append([num_epochs, prob_threshold, len(filtered_amplitudes), mu_lang.round(2), sse.round(6), norm_sse.round(10), chi2.round(4), rchi2.round(6), modchi2])
+
+
+    filtered_times = max_times[selected_events].numpy()
+    fig_new = plt.figure(figsize=(8,6))
+    weights_full = np.ones_like(max_times) / len(max_times)
+    weights_filtered = np.ones_like(filtered_times) / len(max_times)
+    plt.hist(max_times, bins=100, range=(-5,5), label="Signal+Noise", color='lightgray', weights=weights_full)
+    plt.hist(filtered_times, bins=100, range=(-5,5), label="Signal only", color='orange', alpha=0.5, weights=weights_filtered)
+    plt.legend()
+    plt.show()
+
 
 column_headings = ["Number of epochs","Probability threshold","Signal event count","MPV amplitude","SSE score","SSE / No. events","Chi2 value","Red. Chi2 value","Mod. Chi2 value"]
 df = pd.DataFrame(data_list, columns=column_headings)
