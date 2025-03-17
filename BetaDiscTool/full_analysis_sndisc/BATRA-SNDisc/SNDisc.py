@@ -62,9 +62,6 @@ def SNDisc_extract_signal(file, file_index, tree, channel_array, nBins, savename
     sensorType, AtQfactor, ansatz_pmax = ch_val
     if sensorType == 1:
       bias_of_channel = getBias(str(file), ch_ind)
-      print(bias_of_channel)
-      print(file)
-      print(ch_ind)
       for entry in tree:
         pmax_sig = entry.pmax[ch_ind]
         width_sig = entry.width[ch_ind][2]
@@ -105,10 +102,10 @@ def SNDisc_extract_signal(file, file_index, tree, channel_array, nBins, savename
         return amp_prob * pow_prob  # Combined probability
 
     num_epochs = 10000
-    precision = 0.005
+    precision = 0.002
     plot_every = precision*1
     dec_p = len(str(precision)) - 2
-    arr_prob_threshold = np.round(np.arange(0.04,0.07,precision), dec_p)
+    arr_prob_threshold = np.round(np.arange(0.04,0.05,precision), dec_p)
 
     data_list = []
     model = SignalProbabilityModel()
@@ -149,7 +146,7 @@ def SNDisc_extract_signal(file, file_index, tree, channel_array, nBins, savename
       filtered_amplitudes = max_amplitudes[selected_events].numpy()
       data_var = filtered_amplitudes
 
-      histo, bins, _ = plt.hist(data_var, bins=nBins, range=(0, max_pmax), color='blue', edgecolor='black', alpha=0.6, density=True)
+      histo, bins, _ = plt.hist(data_var, bins=max_pmax, range=(0, max_pmax), color='blue', edgecolor='black', alpha=0.6, density=True)
       print(f"Number of filtered events: {len(data_var)}")
 
       bin_centres = bins[:-1] + np.diff(bins) / 2
@@ -157,16 +154,6 @@ def SNDisc_extract_signal(file, file_index, tree, channel_array, nBins, savename
       arr_of_MPV.append(popt[0])
       arr_of_width.append(popt[1])
       arr_of_sigma.append(popt[2])
-
-      count_1p0mpv = sum(1 for value in data_var if value > popt[0])
-      count_1p5mpv = sum(1 for value in data_var if value > 1.5*popt[0])
-      arr_mpv_frac.append(count_1p5mpv/count_1p0mpv)
-
-      max_bin_index = np.argmax(histo)
-      max_bin_centre = bin_centres[max_bin_index]
-      count_max_bin = sum(1 for value in data_var if value > max_bin_centre)
-      count_1p5max_bin = sum(1 for value in data_var if value > 1.5 * max_bin_centre)
-      arr_qmax_frac.append(count_1p5max_bin / count_max_bin if count_max_bin > 0 else 0)
 
       mpv, xi, sigma = popt
       mu_lang, sigma_lang, k_lang = popt
@@ -182,13 +169,12 @@ def SNDisc_extract_signal(file, file_index, tree, channel_array, nBins, savename
 
       nu = len(histo) - len(popt)
       chi2_red = chi2 / nu
-      print(f"SSE: {sse}")
       arr_of_rchi2.append(chi2_red)
       rchi2 = chi2_red
 
       bin_heights, bin_edges = np.histogram(max_amplitudes.numpy(), bins=max_pmax, range=(0, max_pmax), density=True)
       bin_centres = (bin_edges[:-1] + bin_edges[1:]) / 2
-      popt_gaussian, _ = curve_fit(gaussian, bin_centres, bin_heights, p0=[1-(sig_events / num_events), 0.5*ansatz_pmax[file_index], 3.0])
+      popt_gaussian, _ = curve_fit(gaussian, bin_centres, bin_heights, p0=[1-(sig_events / num_events), 0.5*ansatz_pmax[file_index], 0.5*ansatz_pmax[file_index]])
       A_gauss, mu_gauss, sigma_gauss = popt_gaussian
       filtered_heights, filtered_edges = np.histogram(filtered_amplitudes, bins=bin_edges, density=True)
       filtered_centres = (filtered_edges[:-1] + filtered_edges[1:]) / 2

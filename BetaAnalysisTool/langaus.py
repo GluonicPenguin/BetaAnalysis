@@ -30,7 +30,7 @@ from proc_tools import getBias
 def binned_fit_langauss(samples, bins, min_x_val, max_x_val, channel, nan='remove'):
   if nan == 'remove':
     samples = samples[~np.isnan(samples)]
-  print(np.array(samples))
+  #print(np.array(samples))
 
   hist, bin_edges = np.histogram(samples, bins, range=(min_x_val,max_x_val), density=True)
   bin_centres = bin_edges[:-1] + np.diff(bin_edges) / 2
@@ -113,10 +113,10 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
     else:
       pmax = np.array(pmax_list)
       data_var = pmax[(pmax>=xLower) & (pmax<=xUpper)]
-    print(xUpper)
+    #print(xUpper)
 
     histo, bins, _ = plt.hist(data_var, bins=nBins, range=(xLower, xUpper), color='blue', edgecolor='black', alpha=0.6, density=True)
-    print(len(data_var))
+    #print(len(data_var))
 
     bin_centres = bins[:-1] + np.diff(bins) / 2
 
@@ -152,10 +152,6 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
     p = len(popt)
     nu = N - p
     chi2_red = chi2 / nu
-    print("SSE")
-    print(SSE)
-    print("chi2")
-    print(chi2)
     arr_of_rchi2.append(chi2_red)
 
     fig = go.Figure()
@@ -202,4 +198,6 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
     "SSE score": arr_of_sse,
     "Red. Chi2": arr_of_rchi2,
   })
+  if var != "charge":
+    df_of_results = df_of_results.drop(columns=['Frac above 1p5 Qmax'])
   return df_of_results
