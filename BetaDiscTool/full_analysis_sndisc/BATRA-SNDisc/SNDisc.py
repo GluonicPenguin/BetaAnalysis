@@ -51,8 +51,8 @@ def gaussian(x, A, mu, sigma):
 def SNDisc_extract_signal(file, file_index, tree, channel_array, nBins, savename):
 
   png_files = glob.glob("SNDisc_performance/*.png")
-  for file in png_files:
-    os.remove(file)
+  for png_file in png_files:
+    os.remove(png_file)
   max_pmax = nBins
   arr_signal_events = []
 
@@ -62,6 +62,9 @@ def SNDisc_extract_signal(file, file_index, tree, channel_array, nBins, savename
     sensorType, AtQfactor, ansatz_pmax = ch_val
     if sensorType == 1:
       bias_of_channel = getBias(str(file), ch_ind)
+      print(bias_of_channel)
+      print(file)
+      print(ch_ind)
       for entry in tree:
         pmax_sig = entry.pmax[ch_ind]
         width_sig = entry.width[ch_ind][2]
@@ -139,6 +142,10 @@ def SNDisc_extract_signal(file, file_index, tree, channel_array, nBins, savename
 
     for prob_threshold in arr_prob_threshold:
       selected_events = scores > prob_threshold
+      
+      # Stopping condition for probability threshold that there are fewer selected events by the NN than from the linear cut in PMAX
+      if len(selected_events) < sig_events:
+        continue
       filtered_amplitudes = max_amplitudes[selected_events].numpy()
       data_var = filtered_amplitudes
 
@@ -196,7 +203,7 @@ def SNDisc_extract_signal(file, file_index, tree, channel_array, nBins, savename
         axes[0].hist(max_amplitudes.numpy(), bins=max_pmax, range=(0, max_pmax), alpha=0.7, label="Signal + Noise", color='lightgray', density=True)
         gaus_label = f"Gauss (Noise) Fit\nμ = {A_gauss:.2f}, σ = {mu_gauss:.2f}, k = {sigma_gauss:.2f}"
         axes[0].plot(bin_centres, gaussian(bin_centres, *popt_gaussian), color='orange', linestyle='-', label=gaus_label, linewidth=2)
-        langaus_label1 = f"Rescaled Langaus (Signal) Fit\nμ = {mu_lang:.2f}, σ = {sigma_lang:.2f}, k = {k_lang:.2f}"
+        langaus_label1 = f"Rescaled Langaus (Signal) Fit\nμ = {mu_lang:.2f}, k = {k_lang:.2f}, σ = {sigma_lang:.2f}"
         axes[0].plot(bin_centres, langaus_scaled, 'g-', label=langaus_label1, linewidth=2)
         axes[0].set_xlabel("Max Amplitude")
         axes[0].set_ylabel("Normalised Counts")
@@ -217,24 +224,30 @@ def SNDisc_extract_signal(file, file_index, tree, channel_array, nBins, savename
         plt.savefig("SNDisc_performance/pmax_Ch"+str(ch_ind)+"_"+str(num_epochs)+"_"+str(format(prob_threshold, "."+str(dec_p)+"f"))[2:]+".png",facecolor='w')
 
       modchi2 = rchi2*pow(len(filtered_amplitudes),-1.4)
-      data_list.append([ch_ind, num_epochs, prob_threshold, len(filtered_amplitudes), mu_lang.round(2), sse.round(6), norm_sse.round(10), chi2.round(4), rchi2.round(6), modchi2])
+      num_ev_above_1p0 = len(filtered_amplitudes[filtered_amplitudes > mu_lang])
+      num_ev_above_1p5 = len(filtered_amplitudes[filtered_amplitudes > 1.5*mu_lang])
+      frac_ev_above_1p5 = num_ev_above_1p5 / num_ev_above_1p0
+      data_list.append([ch_ind, bias_of_channel, num_epochs, prob_threshold, len(filtered_amplitudes), mu_lang.round(2), k_lang.round(3), sigma_lang.round(3), round(frac_ev_above_1p5,3), sse.round(6), norm_sse.round(10), chi2.round(4), rchi2.round(6), modchi2])
 
-    column_headings = ["Channel","Number of epochs","Probability threshold","Signal event count","MPV amplitude","SSE score","SSE / No. events","Chi2 value","Red. Chi2 value","Mod. Chi2 value"]
+    column_headings = ["Channel","Bias","Number of epochs","Probability threshold","Signal event count","Amplitude MPV","Landau width","Gaussian sigma","Frac above 1p5 MPV","SSE score","SSE / No. events","Chi2","Red. Chi2","Mod. Chi2"]
     df = pd.DataFrame(data_list, columns=column_headings)
     min_sse_prob = df.loc[df["SSE score"].idxmin(), "Probability threshold"]
-    min_chi2_prob = df.loc[df["Red. Chi2 value"].idxmin(), "Probability threshold"]
+    min_chi2_prob = df.loc[df["Red. Chi2"].idxmin(), "Probability threshold"]
     smallest_prob = min(min_sse_prob, min_chi2_prob)
     optimal_selected_events = scores > smallest_prob
     arr_signal_events.append(optimal_selected_events)
+    
     #filtered_amplitudes = max_amplitudes[optimal_selected_events].numpy()
     #df.to_csv("disc_analysis.csv", index=False)
+    amplitude_df = df.loc[df["Probability threshold"] == smallest_prob]
+    amplitude_df = amplitude_df[["Channel","Bias","Amplitude MPV","Landau width","Gaussian sigma","Frac above 1p5 MPV","SSE score","Red. Chi2"]]
 
     colours = ["r","orange","yellow","lime","green","blue","purple","magenta"]
     markers = ["o","v","s","^","D","p","d","h"]
 
     fig, axes = plt.subplots(1, 5, figsize=(25, 5))
 
-    for i, y_column in enumerate(['Signal event count', 'MPV amplitude', 'SSE score', 'Red. Chi2 value', 'Mod. Chi2 value']):
+    for i, y_column in enumerate(['Signal event count', 'Amplitude MPV', 'SSE score', 'Red. Chi2', 'Mod. Chi2']):
       ax = axes[i]
       for j, label in enumerate(df['Number of epochs'].unique()):
         subset = df[df['Number of epochs'] == label]
@@ -250,7 +263,7 @@ def SNDisc_extract_signal(file, file_index, tree, channel_array, nBins, savename
     plt.savefig(savename+"_Ch"+str(ch_ind)+"_pdperformanceplots.png",facecolor='w')
 
     df.to_csv(savename + "diagnostics_SNDisc_Ch"+str(ch_ind)+".csv", index=False)
-    
+
     # NEED TO DO AMPLITUDE FIT AND RETURN VALUES AS BEFORE
 
-  return arr_signal_events, df
+  return arr_signal_events, amplitude_df
