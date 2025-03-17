@@ -31,9 +31,6 @@ def main():
 
   print(f"[BETA ANALYSIS] : [CARD READER] Reading text card {args.config}.")
   config, thicknesses, mcp_specs = read_text_card(args.config)
-  print(config)
-  print(thicknesses)
-  print(mcp_specs)
   thicknesses = [thickness for thickness in thicknesses if thickness != "nDUT"]
   output_name = os.path.splitext(os.path.basename(args.config))[0]
 
@@ -111,13 +108,12 @@ def main():
     print(f"[BETA ANALYSIS] : [SIGNAL-NOISE DISCRIMINATOR] Running SNDisc NN to extract signal events from the ROOT file")
     signal_event_array = []
     amplitude_dfs = []
-    if not os.path.exists("SNDisc_performance"):
-      os.makedirs("SNDisc_performance")
+    if not os.path.exists("NN_performance"):
+      os.makedirs("NN_performance")
     for file_ind, file_real in enumerate(file_array):
-      signal_events, df_data = SNDisc_extract_signal(file_real, file_ind, tree_array[file_ind], config['channels'], config['pass_criteria'][1], "SNDisc_performance/"+output_name_array[file_ind])
+      signal_events, df_data = SNDisc_extract_signal(file_real, file_ind, tree_array[file_ind], config['channels'], config['pass_criteria'][1], "NN_performance/"+output_name_array[file_ind])
       signal_event_array.append(signal_events)
       amplitude_dfs.append(df_data)
-    print(amplitude_dfs)
     amplitude_data = pd.concat(amplitude_dfs, ignore_index=True)
     print(amplitude_data.sort_values(by=['Channel','Bias']))
     data_out.append(('amplitude', amplitude_data.sort_values(by=['Channel','Bias'])))

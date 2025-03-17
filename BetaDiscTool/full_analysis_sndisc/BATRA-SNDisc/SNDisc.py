@@ -3,14 +3,11 @@ import torch.nn as nn
 import torch.optim as optim
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.stats import norm, poisson, median_abs_deviation
-from scipy.optimize import curve_fit, minimize
-from scipy.special import erf
+from scipy.optimize import curve_fit
 import pandas as pd
 from landaupy import langauss
 
 import ROOT as root
-from ROOT import TF1
 import argparse
 import glob
 import re
@@ -19,42 +16,17 @@ import csv
 import sys
 
 from firstPass_ProcTools import getBias
-
-def binned_fit_langauss(samples, bins, min_x_val, max_x_val, channel, nan='remove'):
-  if nan == 'remove':
-    samples = samples[~np.isnan(samples)]
-
-  hist, bin_edges = np.histogram(samples, bins, range=(min_x_val,max_x_val), density=True)
-  bin_centres = bin_edges[:-1] + np.diff(bin_edges) / 2
-  hist = np.insert(hist, 0, sum(samples < bin_edges[0]))
-  bin_centres = np.insert(bin_centres, 0, bin_centres[0] - np.diff(bin_edges)[0])
-  hist = np.append(hist, sum(samples > bin_edges[-1]))
-  bin_centres = np.append(bin_centres, bin_centres[-1] + np.diff(bin_edges)[0])
-
-  hist = hist[1:-1]
-  bin_centres = bin_centres[1:-1]
-  landau_x_mpv_guess = bin_centres[np.argmax(hist)]
-  landau_xi_guess = median_abs_deviation(samples) / 5
-  gauss_sigma_guess = landau_xi_guess / 10
-
-  popt, pcov = curve_fit(
-    lambda x, mpv, xi, sigma: langauss.pdf(x, mpv, xi, sigma),
-    xdata=bin_centres,
-    ydata=hist,
-    p0=[landau_x_mpv_guess, landau_xi_guess, gauss_sigma_guess],
-  )
-  return popt, pcov, hist, bin_centres
-
-def gaussian(x, A, mu, sigma):
-  return A * np.exp(-0.5 * ((x - mu) / sigma) ** 2)
+from secondPass_ProcTools import binned_fit_langauss, gaussian
+from diagnostics_ProcTools import perform_diagnostics
 
 def SNDisc_extract_signal(file, file_index, tree, channel_array, nBins, savename):
 
-  png_files = glob.glob("SNDisc_performance/*.png")
+  png_files = glob.glob("NN_performance/*.png")
   for png_file in png_files:
     os.remove(png_file)
   max_pmax = nBins
   arr_signal_events = []
+  amplitude_dfs = []
 
   for ch_ind, ch_val in enumerate(channel_array):
     pmax_list = []
@@ -105,7 +77,7 @@ def SNDisc_extract_signal(file, file_index, tree, channel_array, nBins, savename
     precision = 0.002
     plot_every = precision*1
     dec_p = len(str(precision)) - 2
-    arr_prob_threshold = np.round(np.arange(0.04,0.05,precision), dec_p)
+    arr_prob_threshold = np.round(np.arange(0.03,0.09,precision), dec_p)
 
     data_list = []
     model = SignalProbabilityModel()
@@ -136,12 +108,14 @@ def SNDisc_extract_signal(file, file_index, tree, channel_array, nBins, savename
     plt.figure(figsize=(10, 6))
 
     scores[max_amplitudes.numpy() > max_pmax] = 0
+    stopping_index_cond = len(arr_prob_threshold)
 
     for prob_threshold in arr_prob_threshold:
       selected_events = scores > prob_threshold
       
       # Stopping condition for probability threshold that there are fewer selected events by the NN than from the linear cut in PMAX
       if len(selected_events) < sig_events:
+        stopping_index_cond = np.where(arr_prob_threshold == prob_threshold)[0]
         continue
       filtered_amplitudes = max_amplitudes[selected_events].numpy()
       data_var = filtered_amplitudes
@@ -207,7 +181,7 @@ def SNDisc_extract_signal(file, file_index, tree, channel_array, nBins, savename
         axes[1].legend()
         axes[1].annotate(str(format(prob_threshold, "."+str(dec_p)+"f")), xy=(0.6,0.5), xycoords='axes fraction', fontsize=25, fontweight='bold')
         plt.tight_layout()
-        plt.savefig("SNDisc_performance/pmax_Ch"+str(ch_ind)+"_"+str(num_epochs)+"_"+str(format(prob_threshold, "."+str(dec_p)+"f"))[2:]+".png",facecolor='w')
+        plt.savefig("NN_performance/pmax_Ch"+str(ch_ind)+"_"+str(num_epochs)+"_"+str(format(prob_threshold, "."+str(dec_p)+"f"))[2:]+".png",facecolor='w')
 
       modchi2 = rchi2*pow(len(filtered_amplitudes),-1.4)
       num_ev_above_1p0 = len(filtered_amplitudes[filtered_amplitudes > mu_lang])
@@ -217,6 +191,12 @@ def SNDisc_extract_signal(file, file_index, tree, channel_array, nBins, savename
 
     column_headings = ["Channel","Bias","Number of epochs","Probability threshold","Signal event count","Amplitude MPV","Landau width","Gaussian sigma","Frac above 1p5 MPV","SSE score","SSE / No. events","Chi2","Red. Chi2","Mod. Chi2"]
     df = pd.DataFrame(data_list, columns=column_headings)
+    change_in_number_events = df['Signal event count'].diff().dropna().to_numpy()
+    #print("DIAGNOSTICS")
+    #print(change_in_number_events)
+    #print(arr_prob_threshold[1:stopping_index_cond+2])
+
+
     min_sse_prob = df.loc[df["SSE score"].idxmin(), "Probability threshold"]
     min_chi2_prob = df.loc[df["Red. Chi2"].idxmin(), "Probability threshold"]
     smallest_prob = min(min_sse_prob, min_chi2_prob)
@@ -225,31 +205,14 @@ def SNDisc_extract_signal(file, file_index, tree, channel_array, nBins, savename
     
     #filtered_amplitudes = max_amplitudes[optimal_selected_events].numpy()
     #df.to_csv("disc_analysis.csv", index=False)
-    amplitude_df = df.loc[df["Probability threshold"] == smallest_prob]
-    amplitude_df = amplitude_df[["Channel","Bias","Amplitude MPV","Landau width","Gaussian sigma","Frac above 1p5 MPV","SSE score","Red. Chi2"]]
+    amplitude_df_one_channel = df.loc[df["Probability threshold"] == smallest_prob]
+    amplitude_df_one_channel = amplitude_df_one_channel[["Channel","Bias","Amplitude MPV","Landau width","Gaussian sigma","Frac above 1p5 MPV","SSE score","Red. Chi2"]]
 
-    colours = ["r","orange","yellow","lime","green","blue","purple","magenta"]
-    markers = ["o","v","s","^","D","p","d","h"]
+    #colours = ["r","orange","yellow","lime","green","blue","purple","magenta"]
+    #markers = ["o","v","s","^","D","p","d","h"]
 
-    fig, axes = plt.subplots(1, 5, figsize=(25, 5))
+    perform_diagnostics(df, ch_ind, savename)
+    amplitude_dfs.append(amplitude_df_one_channel)
 
-    for i, y_column in enumerate(['Signal event count', 'Amplitude MPV', 'SSE score', 'Red. Chi2', 'Mod. Chi2']):
-      ax = axes[i]
-      for j, label in enumerate(df['Number of epochs'].unique()):
-        subset = df[df['Number of epochs'] == label]
-        ax.plot(subset['Probability threshold'], subset[y_column], label=f'{label} ({y_column})', color=colours[j], marker=markers[j], markersize=8, markeredgecolor='black', markeredgewidth=1)
-
-      ax.set_xlabel('Probability threshold')
-      ax.set_ylabel(y_column)
-      if i >= 2:
-        ax.set_yscale("log")
-      ax.legend()
-
-    plt.tight_layout()
-    plt.savefig(savename+"_Ch"+str(ch_ind)+"_pdperformanceplots.png",facecolor='w')
-
-    df.to_csv(savename + "diagnostics_SNDisc_Ch"+str(ch_ind)+".csv", index=False)
-
-    # NEED TO DO AMPLITUDE FIT AND RETURN VALUES AS BEFORE
-
-  return arr_signal_events, amplitude_df
+  amplitude_data = pd.concat(amplitude_dfs, ignore_index=True)
+  return arr_signal_events, amplitude_data
