@@ -1,6 +1,3 @@
-import torch
-import torch.nn as nn
-import torch.optim as optim
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
@@ -18,6 +15,7 @@ import sys
 from firstPass_ProcTools import getBias
 from secondPass_ProcTools import binned_fit_langauss, gaussian
 from diagnostics_ProcTools import perform_diagnostics
+from class_SNDisc import SignalProbabilityModel, differential_programming_SigProbModel
 
 def SNDisc_extract_signal(file, file_index, tree, channel_array, nBins, savename):
 
@@ -45,66 +43,18 @@ def SNDisc_extract_signal(file, file_index, tree, channel_array, nBins, savename
     pmax = np.array(pmax_list)
     width = np.array(width_list)
 
-    true_pmax_sig = pmax[pmax >= ansatz_pmax[file_index]]
-    true_pmax_noise = pmax[pmax < ansatz_pmax[file_index]]
-    true_width_sig = width[np.where(pmax >= ansatz_pmax[file_index])[0]]
-    true_width_noise = width[np.where(pmax < ansatz_pmax[file_index])[0]]
-
-    num_events = len(pmax)
-    sig_events = np.count_nonzero(pmax >= ansatz_pmax[file_index])
-    labels = np.concatenate([np.ones(sig_events), np.zeros(num_events - sig_events)])  # 1 = signal, 0 = noise
-
-    # Convert to PyTorch tensors
-    max_amplitudes = torch.tensor(pmax, dtype=torch.float32)
-    max_pow = torch.tensor(pmax / width, dtype=torch.float32)
-    labels = torch.tensor(labels, dtype=torch.float32)
-
-    # Define a differentiable signal probability model
-    class SignalProbabilityModel(nn.Module):
-      def __init__(self):
-        super().__init__()
-        self.amp_mu = nn.Parameter(torch.tensor(2.0*ansatz_pmax[file_index]))   # Langaus centre
-        self.amp_sigma = nn.Parameter(torch.tensor(3.0)) # Langaus width
-        self.pow_mu = nn.Parameter(torch.tensor(2.0*ansatz_pmax[file_index]))  # Langaus centre
-        self.pow_sigma = nn.Parameter(torch.tensor(3.0)) # Langaus width
-
-      def forward(self, amplitudes, pow):
-        amp_prob = torch.sigmoid((amplitudes - self.amp_mu) / self.amp_sigma)
-        pow_prob = torch.sigmoid((pow - self.pow_mu) / self.pow_sigma)
-        return amp_prob * pow_prob  # Combined probability
-
     num_epochs = 10000
     precision = 0.002
+    learning_rate = 0.01
     plot_every = precision*1
     dec_p = len(str(precision)) - 2
     arr_prob_threshold = np.round(np.arange(0.03,0.09,precision), dec_p)
 
-    data_list = []
-    model = SignalProbabilityModel()
-    optimizer = optim.Adam(model.parameters(), lr=0.01)
-
-    for epoch in range(num_epochs):
-      optimizer.zero_grad()
-      scores = model(max_amplitudes, max_pow)
-      loss = -torch.mean(labels * torch.log(scores + 1e-6) + (1 - labels) * torch.log(1 - scores + 1e-6))  
-      loss.backward()
-      optimizer.step()
-      if epoch % 2000 == 0:
-        print(f"Epoch {epoch}, Loss: {loss.item()}")
-        #for name, param in model.named_parameters():
-        #  print(name, param.grad)
-
-    scores = model(max_amplitudes, max_pow).detach().numpy()
+    scores, max_amplitudes = differential_programming_SigProbModel(num_epochs, pmax, width, ansatz_pmax[file_index], learning_rate)
     df = pd.DataFrame(scores)
     df.to_csv(savename + "SNDisc_Ch"+str(ch_ind)+".csv", index=False, header=False)
 
-    arr_of_MPV = []
-    arr_of_width = []
-    arr_of_sigma = []
-    arr_mpv_frac = []
-    arr_qmax_frac = []
-    arr_of_sse = []
-    arr_of_rchi2 = []
+    data_list = []
     plt.figure(figsize=(10, 6))
 
     scores[max_amplitudes.numpy() > max_pmax] = 0
@@ -112,22 +62,22 @@ def SNDisc_extract_signal(file, file_index, tree, channel_array, nBins, savename
 
     for prob_threshold in arr_prob_threshold:
       selected_events = scores > prob_threshold
-      
+      filtered_amplitudes = max_amplitudes[selected_events].numpy()
+
+      # Starting condition for probability threshold that doesn't cut away any signal events i.e. number of selected events is equal to the total
+      if len(filtered_amplitudes) == len(pmax):
+        continue
+
       # Stopping condition for probability threshold that there are fewer selected events by the NN than from the linear cut in PMAX
-      if len(selected_events) < sig_events:
+      if len(filtered_amplitudes) < np.count_nonzero(pmax >= ansatz_pmax[file_index]):
         stopping_index_cond = np.where(arr_prob_threshold == prob_threshold)[0]
         continue
-      filtered_amplitudes = max_amplitudes[selected_events].numpy()
-      data_var = filtered_amplitudes
 
-      histo, bins, _ = plt.hist(data_var, bins=max_pmax, range=(0, max_pmax), color='blue', edgecolor='black', alpha=0.6, density=True)
-      print(f"Number of filtered events: {len(data_var)}")
+      histo, bins, _ = plt.hist(filtered_amplitudes, bins=max_pmax, range=(0, max_pmax), color='blue', edgecolor='black', alpha=0.6, density=True)
+      print(f"Number of filtered events: {len(filtered_amplitudes)}")
 
       bin_centres = bins[:-1] + np.diff(bins) / 2
-      popt, pcov, fitted_hist, bin_centres = binned_fit_langauss(data_var, nBins, 0, max_pmax, ch_ind)
-      arr_of_MPV.append(popt[0])
-      arr_of_width.append(popt[1])
-      arr_of_sigma.append(popt[2])
+      popt, pcov, fitted_hist, bin_centres = binned_fit_langauss(filtered_amplitudes, nBins, 0, max_pmax, ch_ind)
 
       mpv, xi, sigma = popt
       mu_lang, sigma_lang, k_lang = popt
@@ -135,20 +85,18 @@ def SNDisc_extract_signal(file, file_index, tree, channel_array, nBins, savename
 
       residuals = histo - y_fit
       sse = np.sum(residuals**2)
-      norm_sse = sse / len(data_var)
-      arr_of_sse.append(sse)
+      norm_sse = sse / len(filtered_amplitudes)
       sigma = np.sqrt(histo)
       sigma[sigma == 0] = 1
       chi2 = np.sum((residuals / sigma) ** 2)
 
       nu = len(histo) - len(popt)
       chi2_red = chi2 / nu
-      arr_of_rchi2.append(chi2_red)
       rchi2 = chi2_red
 
       bin_heights, bin_edges = np.histogram(max_amplitudes.numpy(), bins=max_pmax, range=(0, max_pmax), density=True)
       bin_centres = (bin_edges[:-1] + bin_edges[1:]) / 2
-      popt_gaussian, _ = curve_fit(gaussian, bin_centres, bin_heights, p0=[1-(sig_events / num_events), 0.5*ansatz_pmax[file_index], 0.5*ansatz_pmax[file_index]])
+      popt_gaussian, _ = curve_fit(gaussian, bin_centres, bin_heights, p0=[1-(np.count_nonzero(pmax >= ansatz_pmax[file_index]) / len(pmax)), 0.5*ansatz_pmax[file_index], 0.5*ansatz_pmax[file_index]])
       A_gauss, mu_gauss, sigma_gauss = popt_gaussian
       filtered_heights, filtered_edges = np.histogram(filtered_amplitudes, bins=bin_edges, density=True)
       filtered_centres = (filtered_edges[:-1] + filtered_edges[1:]) / 2
@@ -169,7 +117,7 @@ def SNDisc_extract_signal(file, file_index, tree, channel_array, nBins, savename
         axes[0].set_ylabel("Normalised Counts")
         axes[0].set_title("Raw Signal + Noise Distribution")
         axes[0].set_yscale('log')
-        axes[0].set_ylim(1/num_events, 1)
+        axes[0].set_ylim(1/len(pmax), 1)
         axes[0].legend()
 
         axes[1].hist(filtered_amplitudes, bins=max_pmax, range=(0, max_pmax), alpha=0.4, label="Filtered Signal", color='g', density=True)
@@ -203,13 +151,8 @@ def SNDisc_extract_signal(file, file_index, tree, channel_array, nBins, savename
     optimal_selected_events = scores > smallest_prob
     arr_signal_events.append(optimal_selected_events)
     
-    #filtered_amplitudes = max_amplitudes[optimal_selected_events].numpy()
-    #df.to_csv("disc_analysis.csv", index=False)
     amplitude_df_one_channel = df.loc[df["Probability threshold"] == smallest_prob]
     amplitude_df_one_channel = amplitude_df_one_channel[["Channel","Bias","Amplitude MPV","Landau width","Gaussian sigma","Frac above 1p5 MPV","SSE score","Red. Chi2"]]
-
-    #colours = ["r","orange","yellow","lime","green","blue","purple","magenta"]
-    #markers = ["o","v","s","^","D","p","d","h"]
 
     perform_diagnostics(df, ch_ind, savename)
     amplitude_dfs.append(amplitude_df_one_channel)
