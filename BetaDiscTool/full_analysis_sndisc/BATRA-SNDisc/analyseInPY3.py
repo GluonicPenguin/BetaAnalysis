@@ -19,7 +19,7 @@ import sys
 from firstPass_ClassPlotter import plotVar
 from classTRPlotter import plotTRVar
 from cardReader import read_text_card
-from langaus import plot_langaus
+from secondPass_Langaus import plot_langaus
 from export_data import direct_to_table
 
 from SNDisc import SNDisc_extract_signal
