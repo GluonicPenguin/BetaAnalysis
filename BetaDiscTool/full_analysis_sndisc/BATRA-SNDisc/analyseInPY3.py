@@ -118,7 +118,11 @@ def main():
     print(amplitude_data.sort_values(by=['Channel','Bias']))
     data_out.append(('amplitude', amplitude_data.sort_values(by=['Channel','Bias'])))
 
-
+    # SIGNAL_EVENTS IS INFORMATION CONTAINING TRUE FALSE VALUES FOR THE INDICES OF THE EVENTS TO KEEP, SO NEED TO DO A BOOLEAN MATCH WITH ROOT DATA
+    #risetime_events = get_root_data(file_real, file_ind, tree_array[file_ind], signal_event_array, risetime)
+    #charge_events = get_root_data(file_real, file_ind, tree_array[file_ind], signal_event_array, charge)
+    #rms_events = get_root_data(file_real, file_ind, tree_array[file_ind], signal_event_array, rms)
+    #timeres_events = get_root_data(file_real, file_ind, tree_array[file_ind], signal_event_array, timeres)
 
 
     #print(f"[BETA ANALYSIS]: [PLOTTER] Performing Gaussian fit to RISETIME distribution")

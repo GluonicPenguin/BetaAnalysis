@@ -40,29 +40,11 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
   tmax_high_mcp = []
 
   mcp_channel = False
-  for i, (T, _, (A, B, C, D, E)) in enumerate(channel_configs):
-    if T == 1 or T == 2:
-      if (A == 0.0) or (A == []):
-        pmax_low_col_ch_i = np.full(number_of_bias_pts, 0.0, dtype=float)
-      else:
-        pmax_low_col_ch_i = A
-      pmax_high_col_ch_i = np.full(number_of_bias_pts, B, dtype=float)
-      nmax_low_col_ch_i = np.full(number_of_bias_pts, C, dtype=float)
-      tmax_low_col_ch_i = np.full(number_of_bias_pts, D, dtype=float)
-      tmax_high_col_ch_i = np.full(number_of_bias_pts, E, dtype=float)
-      if T == 1:
-        pmax_low.append(pmax_low_col_ch_i)
-        pmax_high.append(pmax_high_col_ch_i)
-        nmax_low.append(nmax_low_col_ch_i)
-        tmax_low.append(tmax_low_col_ch_i)
-        tmax_high.append(tmax_high_col_ch_i)
-      if T == 2:
-        mcp_channel = True
-        pmax_low_mcp = pmax_low_col_ch_i
-        pmax_high_mcp = pmax_high_col_ch_i
-        nmax_low_mcp = nmax_low_col_ch_i
-        tmax_low_mcp = tmax_low_col_ch_i
-        tmax_high_mcp = tmax_high_col_ch_i
+  for T, _, S in channel_configs:
+    if T == 2:
+      mcp_channel = True
+      pmax_low_mcp = S[0]
+      pmax_high_mcp = S[1]
 
   dfs_to_concat = []
   first_df_found = False
@@ -146,18 +128,9 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
   columns[2:2] = ['Thickness / um','E field / V/cm']
   dfs_comb = dfs_comb[columns]
 
-  dfs_comb['PMAX low / mV'] = np.ravel(pmax_low)
-  dfs_comb['PMAX high / mV'] = np.ravel(pmax_high)
-  dfs_comb['NMAX low / mV'] = np.ravel(nmax_low)
-  dfs_comb['TMAX low / ns'] = np.ravel(tmax_low)
-  dfs_comb['TMAX high / ns'] = np.ravel(tmax_high)
-
   if mcp_channel == True:
     dfs_comb['MCP PMAX low / mV'] = np.tile(pmax_low_mcp, number_of_duts)
     dfs_comb['MCP PMAX high / mV'] = np.tile(pmax_high_mcp, number_of_duts)
-    dfs_comb['MCP NMAX low / mV'] = np.tile(nmax_low_mcp, number_of_duts)
-    dfs_comb['MCP TMAX low / ns'] = np.tile(tmax_low_mcp, number_of_duts)
-    dfs_comb['MCP TMAX high / ns'] = np.tile(tmax_high_mcp, number_of_duts)
 
   dfs_comb['Bias'] = pd.to_numeric(dfs_comb['Bias'], errors='coerce')
   dfs_comb = dfs_comb.sort_values(by=['Channel','Bias'])

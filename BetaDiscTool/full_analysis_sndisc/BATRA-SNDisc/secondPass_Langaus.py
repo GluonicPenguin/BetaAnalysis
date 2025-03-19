@@ -3,8 +3,6 @@ import matplotlib.pyplot as plt
 import scipy
 from scipy.optimize import minimize
 from scipy.stats import poisson, median_abs_deviation
-import ROOT as root
-from ROOT import TF1
 from scipy.special import gammaln
 import math
 from math import exp, sqrt, pi
@@ -26,33 +24,7 @@ from landaupy import langauss
 from scipy.optimize import curve_fit
 
 from firstPass_ProcTools import getBias
-
-def binned_fit_langauss(samples, bins, min_x_val, max_x_val, channel, nan='remove'):
-  if nan == 'remove':
-    samples = samples[~np.isnan(samples)]
-  print(np.array(samples))
-
-  hist, bin_edges = np.histogram(samples, bins, range=(min_x_val,max_x_val), density=True)
-  bin_centres = bin_edges[:-1] + np.diff(bin_edges) / 2
-
-  hist = np.insert(hist, 0, sum(samples < bin_edges[0]))
-  bin_centres = np.insert(bin_centres, 0, bin_centres[0] - np.diff(bin_edges)[0])
-  hist = np.append(hist, sum(samples > bin_edges[-1]))
-  bin_centres = np.append(bin_centres, bin_centres[-1] + np.diff(bin_edges)[0])
-
-  hist = hist[1:-1]
-  bin_centres = bin_centres[1:-1]
-  landau_x_mpv_guess = bin_centres[np.argmax(hist)]
-  landau_xi_guess = median_abs_deviation(samples) / 5
-  gauss_sigma_guess = landau_xi_guess / 10
-
-  popt, pcov = curve_fit(
-    lambda x, mpv, xi, sigma: langauss.pdf(x, mpv, xi, sigma),
-    xdata=bin_centres,
-    ydata=hist,
-    p0=[landau_x_mpv_guess, landau_xi_guess, gauss_sigma_guess],
-  )
-  return popt, pcov, hist, bin_centres
+from secondPass_ProcTools import binned_fit_langauss
 
 def round_to_sig_figs(x, sig):
   if x == 0:
@@ -60,7 +32,7 @@ def round_to_sig_figs(x, sig):
   else:
     return round(x, sig - int(math.floor(math.log10(abs(x)))) - 1)
 
-def plot_langaus(var, file, file_index, tree, channel_array, nBins, xUpper, SNDisc_signal_events, savename):
+def plot_langaus(var, file, file_index, tree, channel_array, nBins, xUpper, SNDisc_signal_events_bool, savename):
 
   arr_of_ch = []
   arr_of_biases = []
@@ -72,22 +44,19 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xUpper, SNDi
   arr_of_sse = []
   arr_of_rchi2 = []
 
-  max_pmax = xUpper
   SNDisc_Index = 0
   dict_of_vars = {"charge": "Charge / fC"}
   for ch_ind, ch_val in enumerate(channel_array):
-    area_list = []
+    area_filtered_signal = []
     sensorType, AtQfactor, mcp_selection = ch_val
 
     if sensorType == 1:
-      Signal_Channel = SNDisc_signal_events[SNDisc_Index]
+      Signal_Channel = SNDisc_signal_events_bool[SNDisc_Index]
       bias_of_channel = getBias(str(file), ch_ind)
-      for entry in tree:
-        pmax_sig = entry.pmax[ch_ind]
-        area_sig = entry.area[ch_ind]
-        pmax_list.append(pmax_sig)
-        area_list.append(area_sig)
-      area_filtered_low_signal = area_list[Signal_Channel].numpy()
+      for i, entry in enumerate(tree):
+        if SNDisc_signal_events_bool[SNDisc_Index][i]:
+          sig_event = entry.area[ch_ind]
+          area_filtered_signal.append(sig_event)
       SNDisc_Index += 1
     else:
       continue
@@ -134,10 +103,6 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xUpper, SNDi
     p = len(popt)
     nu = N - p
     chi2_red = chi2 / nu
-    print("SSE")
-    print(SSE)
-    print("chi2")
-    print(chi2)
     arr_of_rchi2.append(chi2_red)
 
     fig = go.Figure()

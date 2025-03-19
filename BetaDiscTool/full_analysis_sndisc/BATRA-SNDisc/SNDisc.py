@@ -65,7 +65,7 @@ def SNDisc_extract_signal(file, file_index, tree, channel_array, nBins, savename
       filtered_amplitudes = max_amplitudes[selected_events].numpy()
 
       # Starting condition for probability threshold that doesn't cut away any signal events i.e. number of selected events is equal to the total
-      if len(filtered_amplitudes) == len(pmax):
+      if len(filtered_amplitudes) > 2*len(pmax[pmax > ansatz_pmax[file_index]]):
         continue
 
       # Stopping condition for probability threshold that there are fewer selected events by the NN than from the linear cut in PMAX
