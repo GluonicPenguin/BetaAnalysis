@@ -51,7 +51,6 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xUpper, SNDi
     sensorType, AtQfactor, mcp_selection = ch_val
 
     if sensorType == 1:
-      Signal_Channel = SNDisc_signal_events_bool[SNDisc_Index]
       bias_of_channel = getBias(str(file), ch_ind)
       for i, entry in enumerate(tree):
         if SNDisc_signal_events_bool[SNDisc_Index][i]:
@@ -71,7 +70,7 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xUpper, SNDi
 
     bin_centres = bins[:-1] + np.diff(bins) / 2
 
-    popt, pcov, fitted_hist, bin_centres = binned_fit_langauss(data_var, nBins, 0, xUpper, ch_ind)
+    popt, pcov, fitted_hist, bin_centres = binned_fit_langauss(data_var, nBins, 0, xUpper)
     arr_of_ch.append("Ch"+str(ch_ind))
     arr_of_biases.append(bias_of_channel)
     arr_of_MPV.append(popt[0])
