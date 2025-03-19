@@ -6,6 +6,8 @@ from landaupy import langauss
 from scipy.stats import median_abs_deviation
 from scipy.optimize import curve_fit
 
+import ROOT as root
+
 def binned_fit_langauss(samples, bins, min_x_val, max_x_val, channel, nan='remove'):
   if nan == 'remove':
     samples = samples[~np.isnan(samples)]
@@ -33,3 +35,4 @@ def binned_fit_langauss(samples, bins, min_x_val, max_x_val, channel, nan='remov
 
 def gaussian(x, A, mu, sigma):
   return A * np.exp(-0.5 * ((x - mu) / sigma) ** 2)
+
