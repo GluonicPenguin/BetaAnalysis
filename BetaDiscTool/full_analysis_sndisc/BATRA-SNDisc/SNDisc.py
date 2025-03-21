@@ -44,7 +44,7 @@ def SNDisc_extract_signal(file, file_index, tree, channel_array, nBins, savename
     width = np.array(width_list)
 
     num_epochs = 10000
-    precision = 0.002
+    precision = 0.0005
     learning_rate = 0.01
     plot_every = precision*1
     dec_p = len(str(precision)) - 2
@@ -69,7 +69,7 @@ def SNDisc_extract_signal(file, file_index, tree, channel_array, nBins, savename
         continue
 
       # Stopping condition for probability threshold that there are fewer selected events by the NN than from the linear cut in PMAX
-      if len(filtered_amplitudes) < np.count_nonzero(pmax >= ansatz_pmax[file_index]):
+      if len(filtered_amplitudes) < 0.95*len(pmax[pmax > ansatz_pmax[file_index]]):
         stopping_index_cond = np.where(arr_prob_threshold == prob_threshold)[0]
         continue
 

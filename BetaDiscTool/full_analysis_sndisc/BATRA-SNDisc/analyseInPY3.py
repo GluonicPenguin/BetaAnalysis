@@ -132,7 +132,7 @@ def main():
     data_out.append(('risetime', risetime_data.sort_values(by=['Channel','Bias'])))
     charge_dfs = []
     for file_ind, file_real in enumerate(file_array):
-      df_data = plot_langaus('charge', file_real, file_ind, tree_array[file_ind], config['channels'], int(0.5*config['pass_criteria'][1]), 0.5*config['pass_criteria'][1], signal_event_array[file_ind], output_name_array[file_ind]+"_charge")
+      df_data = plot_langaus('charge', file_real, file_ind, tree_array[file_ind], config['channels'], int(0.5*config['pass_criteria'][1]), 0.2*config['pass_criteria'][1], signal_event_array[file_ind], output_name_array[file_ind]+"_charge")
       charge_dfs.append(df_data)
     charge_data = pd.concat(charge_dfs, ignore_index=True)
     print(charge_data.sort_values(by=['Channel','Bias']))

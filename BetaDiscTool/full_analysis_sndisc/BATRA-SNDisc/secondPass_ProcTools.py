@@ -49,10 +49,10 @@ def binned_fit_gaussian(samples, nBins, nan='remove'):
   print(mu_ansatz)
   print(sigma_ansatz)
 
-  popt, pcov = curve_fit(gaussian, bin_centres, hist, p0=[mu_ansatz, sigma_ansatz, A_ansatz])
-  mu, sigma, A = popt
+  popt, pcov = curve_fit(gaussian, bin_centres, hist, p0=[A_ansatz, mu_ansatz, sigma_ansatz])
+  A, mu, sigma = popt
 
-  y_fit = gaussian(bin_centres, mu, sigma, A)
+  y_fit = gaussian(bin_centres, A, mu, sigma)
   residuals = hist - y_fit
 
   sse = np.sum(residuals**2)

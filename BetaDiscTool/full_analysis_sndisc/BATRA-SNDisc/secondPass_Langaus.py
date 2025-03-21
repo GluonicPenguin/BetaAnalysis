@@ -118,7 +118,7 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xUpper, SNDi
         histnorm='probability density',
         nbinsx=nBins,
         opacity=0.6,
-        marker=dict(color='blue', line=dict(color='black', width=1)),
+        marker=dict(color='green', line=dict(color='black', width=1)),
       )
     )
 
@@ -129,6 +129,7 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xUpper, SNDi
         y=langauss.pdf(x_axis, *popt),
         name=f'Langauss Fit<br>MPV={popt[0]:.2e}<br>ξ={popt[1]:.2e}<br>σ={popt[2]:.2e}',
         mode='lines',
+        line=dict(width=3,dash='dash',color='black'),
       )
     )
 
