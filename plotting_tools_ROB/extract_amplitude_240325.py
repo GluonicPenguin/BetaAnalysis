@@ -40,6 +40,15 @@ def round_to_sig_figs(x, sig):
 def gaussian(x, A, mu, sigma):
   return A * np.exp(-((x - mu) ** 2) / (2 * sigma ** 2))
 
+def extract_CFD_time(t_vals, a_vals, a_peak, frac):
+  A_CFD = frac * a_peak / 1000
+  for i in range(len(a_vals) - 1):
+    if a_vals[i] < A_CFD and a_vals[i + 1] >= A_CFD:
+      t_CFD = t_vals[i] + (A_CFD - a_vals[i]) * (t_vals[i + 1] - t_vals[i]) / (a_vals[i + 1] - a_vals[i])
+      return t_CFD
+
+  return None 
+
 def main():
   parser = argparse.ArgumentParser(description='Read .root files into an array.')
   parser.add_argument('files', metavar='F', type=str, nargs='+',
@@ -59,8 +68,12 @@ def main():
 
   t_data = [[] for _ in range(len(trees))]
   w_data = [[] for _ in range(len(trees))]
-  num_curves = 1000
-  ch_sig = 2
+  cfd10_data = []
+  cfd20_data = []
+  cfd30_data = []
+  num_curves = 1200
+  # w5 1000 ch2 30  w1 1200 ch2 28  w16 1200 ch1 20
+  ch_sig = 1
   ch_mcp = 3
 
   for j in range(len(trees)):
@@ -75,13 +88,17 @@ def main():
       pmax_sig = entry.pmax[ch_sig]
       negpmax_sig = entry.negpmax[ch_sig]
       pmax_mcp = entry.pmax[ch_mcp]
-      peakfind = entry.cfd[ch_sig][1]
-      
-      if (pmax_sig > 30) and (pmax_mcp < 540):
+      cfd10_sig = entry.cfd[ch_sig][0] # 10%
+      cfd20_sig = entry.cfd[ch_sig][1] # 20%
+      cfd30_sig = entry.cfd[ch_sig][2] # 30%
+      if (pmax_sig > 20) and (pmax_mcp < 540):
         # W12 15e14/25e14 (pmax_sig > 10) and (pmax_sig < 30) and (negpmax_sig > -30) and (pmax_mcp < 120) and (peakfind > 9) and (peakfind < 14)
         # W13 35e14 (pmax_sig > 55) and (pmax_sig < 80) and (negpmax_sig > -30) and (pmax_mcp < 120) and (peakfind > 9) and (peakfind < 14)
         w_sig = entry.w[ch_sig]
         t_sig = entry.t[ch_sig]
+        cfd10_data.append(cfd10_sig)
+        cfd20_data.append(cfd20_sig)
+        cfd30_data.append(cfd30_sig)
         w_data[j].extend(w_sig)
         t_data[j].extend(t_sig)
         ev_true_count += 1
@@ -108,7 +125,10 @@ def main():
   gaus_rmse = []
 
   make_plots = False
-  make_populated_plots = True
+  make_populated_plots = False
+  cfd_studies = False
+  cfd_gaus_studies = False
+  cfd_para_studies = True
 
   if make_plots:
     plt.figure(figsize=(10, 6))
@@ -121,6 +141,8 @@ def main():
 
     reshaped_time_data = time_data.reshape(num_curves,502)
     reshaped_ampl_data = w_data[i].reshape(num_curves,502)
+    reshaped_perfect_time = []
+    reshaped_perfect_ampl = []
 
     for j in range(num_curves):
 
@@ -132,7 +154,8 @@ def main():
       x_peak = reshaped_time_data[j][peak_region]
       y_peak = reshaped_ampl_data[j][peak_region]
 
-      if len(x_peak) == 0: continue
+      if len(x_peak) == 0:
+        continue
 
       # parabola
       parabola_coeffs = np.polyfit(x_peak, y_peak, 2)
@@ -167,6 +190,9 @@ def main():
       para_rmse.append(parabolic_rmse)
       gaus_mae.append(gaussian_mae)
       gaus_rmse.append(gaussian_rmse)
+
+      reshaped_perfect_time.append(reshaped_time_data[j])
+      reshaped_perfect_ampl.append(reshaped_ampl_data[j])
 
       if make_plots:
         x_linspace = np.linspace(x_peak.min(), x_peak.max(), 400)
@@ -235,6 +261,135 @@ def main():
     plt.savefig("./amplitude_big_data_analysis.png",dpi=300,facecolor='w')
     plt.show()
     plt.clf()
+
+  if cfd_studies:
+    fig, axes = plt.subplots(1, 2, figsize=(18, 6))
+    axes[0].hist(cfd10_data, bins=180,range=(-6,3),color='gray',edgecolor='black',label="CFD@10%")
+    axes[0].hist(cfd30_data, bins=180,range=(-6,3),color='blue',edgecolor='black',alpha=0.4,label="CFD@30%")
+    axes[0].set_xlabel(r"CFD(A$_{max}$) / ns",fontsize=14)
+    axes[0].set_ylabel(r"Events",fontsize=14)
+    axes[0].set_xlim(-3, 1)
+    axes[0].legend(fontsize=14)
+    axes[0].grid(True, axis='both', linestyle='--', alpha=0.5)
+
+    cfd20_interp = 0.5*(np.array(cfd10_data) + np.array(cfd30_data))
+    axes[1].hist(cfd20_data, bins=180,range=(-6,3),color='gray',edgecolor='black',label="CFD@20%")
+    axes[1].hist(cfd20_interp, bins=180,range=(-6,3),color='r',edgecolor='black',alpha=0.4,label="Interpolation 20%\n<CFD@10%,CFD@30%>")
+    axes[1].set_xlabel(r"CFD(A$_{max}$) / ns",fontsize=14)
+    axes[1].set_ylabel(r"Events",fontsize=14)
+    axes[1].set_xlim(-3, 1)
+    axes[1].legend(fontsize=14)
+    axes[1].grid(True, axis='both', linestyle='--', alpha=0.5)
+
+
+    fig.suptitle(f"Total {len(a_max)} signal events", fontsize=16, fontweight='bold')
+    plt.tight_layout(rect=[0, 0, 1, 0.96])
+    plt.savefig("./cfd_big_data_analysis.png",dpi=300,facecolor='w')
+    plt.show()
+    plt.clf()
+
+  if cfd_para_studies:
+    t_cfd10_data = []
+    t_cfd30_data = []
+    for event in range(len(a_para)):
+      t_cfd10 = extract_CFD_time(reshaped_perfect_time[event], reshaped_perfect_ampl[event], a_para[event], 0.1)
+      t_cfd30 = extract_CFD_time(reshaped_perfect_time[event], reshaped_perfect_ampl[event], a_para[event], 0.3)
+      t_cfd10_data.append(t_cfd10)
+      t_cfd30_data.append(t_cfd30)
+
+    t_cfd10_data = np.array(t_cfd10_data)
+    t_cfd30_data = np.array(t_cfd30_data)
+    t_cfd10_data = np.where(t_cfd10_data == None, -100000, t_cfd10_data).astype(float)
+    t_cfd30_data = np.where(t_cfd30_data == None, -100000, t_cfd30_data).astype(float)
+    cfd20_interp = 0.5*(np.array(cfd10_data) + np.array(cfd30_data))
+    t_cfd20_interp = 0.5*(t_cfd10_data + t_cfd30_data)
+
+    fig, axes = plt.subplots(1, 3, figsize=(18, 6))
+    axes[0].hist(cfd10_data, bins=180,range=(-6,3),color='gray',edgecolor='black',label=r"A$_{max}$ CFD@10%")
+    axes[0].hist(t_cfd10_data, bins=180,range=(-6,3),color='blue',edgecolor='black',alpha=0.4,label=r"A$_{para}$ CFD@10%")
+    axes[0].set_xlabel(r"CFD(A) / ns",fontsize=14)
+    axes[0].set_ylabel(r"Events",fontsize=14)
+    axes[0].set_xlim(-3, 1)
+    axes[0].legend(fontsize=14)
+    axes[0].grid(True, axis='both', linestyle='--', alpha=0.5)
+
+    axes[1].hist(cfd30_data, bins=180,range=(-6,3),color='gray',edgecolor='black',label=r"A$_{max}$ CFD@30%")
+    axes[1].hist(t_cfd30_data, bins=180,range=(-6,3),color='red',edgecolor='black',alpha=0.4,label=r"A$_{para}$ CFD@30%")
+    axes[1].set_xlabel(r"CFD(A) / ns",fontsize=14)
+    axes[1].set_ylabel(r"Events",fontsize=14)
+    axes[1].set_xlim(-3, 1)
+    axes[1].legend(fontsize=14)
+    axes[1].grid(True, axis='both', linestyle='--', alpha=0.5)
+
+    axes[2].hist(cfd20_interp, bins=180,range=(-6,3),color='gray',edgecolor='black',label=r"A$_{max}$-interpolated CFD@20%")
+    axes[2].hist(t_cfd20_interp, bins=180,range=(-6,3),color='g',edgecolor='black',alpha=0.4,label=r"A$_{para}$-interpolated CFD20%")
+    axes[2].set_xlabel(r"CFD(A) / ns",fontsize=14)
+    axes[2].set_ylabel(r"Events",fontsize=14)
+    axes[2].set_xlim(-3, 1)
+    axes[2].legend(fontsize=14)
+    axes[2].grid(True, axis='both', linestyle='--', alpha=0.5)
+
+    fig.suptitle(f"Parabolic fit : Total {len(a_max)} signal events", fontsize=16, fontweight='bold')
+    plt.tight_layout(rect=[0, 0, 1, 0.96])
+    plt.savefig("./cfd_para_analysis.png",dpi=300,facecolor='w')
+    plt.show()
+    plt.clf()
+
+
+  if cfd_gaus_studies:
+    t_cfd10_data = []
+    t_cfd30_data = []
+    for event in range(len(a_gaus)):
+      t_cfd10 = extract_CFD_time(reshaped_perfect_time[event], reshaped_perfect_ampl[event], a_gaus[event], 0.1)
+      t_cfd30 = extract_CFD_time(reshaped_perfect_time[event], reshaped_perfect_ampl[event], a_gaus[event], 0.3)
+      t_cfd10_data.append(t_cfd10)
+      t_cfd30_data.append(t_cfd30)
+
+    t_cfd10_data = np.array(t_cfd10_data)
+    t_cfd30_data = np.array(t_cfd30_data)
+    t_cfd10_data = np.where(t_cfd10_data == None, -100000, t_cfd10_data).astype(float)
+    t_cfd30_data = np.where(t_cfd30_data == None, -100000, t_cfd30_data).astype(float)
+    cfd20_interp = 0.5*(np.array(cfd10_data) + np.array(cfd30_data))
+    t_cfd20_interp = 0.5*(t_cfd10_data + t_cfd30_data)
+
+    fig, axes = plt.subplots(1, 3, figsize=(18, 6))
+    axes[0].hist(cfd10_data, bins=180,range=(-6,3),color='gray',edgecolor='black',label=r"A$_{max}$ CFD@10%")
+    axes[0].hist(t_cfd10_data, bins=180,range=(-6,3),color='blue',edgecolor='black',alpha=0.4,label=r"A$_{Gaus}$ CFD@10%")
+    axes[0].set_xlabel(r"CFD(A) / ns",fontsize=14)
+    axes[0].set_ylabel(r"Events",fontsize=14)
+    axes[0].set_xlim(-3, 1)
+    axes[0].legend(fontsize=14)
+    axes[0].grid(True, axis='both', linestyle='--', alpha=0.5)
+
+    axes[1].hist(cfd30_data, bins=180,range=(-6,3),color='gray',edgecolor='black',label=r"A$_{max}$ CFD@30%")
+    axes[1].hist(t_cfd30_data, bins=180,range=(-6,3),color='red',edgecolor='black',alpha=0.4,label=r"A$_{Gaus}$ CFD@30%")
+    axes[1].set_xlabel(r"CFD(A) / ns",fontsize=14)
+    axes[1].set_ylabel(r"Events",fontsize=14)
+    axes[1].set_xlim(-3, 1)
+    axes[1].legend(fontsize=14)
+    axes[1].grid(True, axis='both', linestyle='--', alpha=0.5)
+
+    axes[2].hist(cfd20_interp, bins=180,range=(-6,3),color='gray',edgecolor='black',label=r"A$_{max}$-interpolated CFD@20%")
+    axes[2].hist(t_cfd20_interp, bins=180,range=(-6,3),color='g',edgecolor='black',alpha=0.4,label=r"A$_{Gaus}$-interpolated CFD20%")
+    axes[2].set_xlabel(r"CFD(A) / ns",fontsize=14)
+    axes[2].set_ylabel(r"Events",fontsize=14)
+    axes[2].set_xlim(-3, 1)
+    axes[2].legend(fontsize=14)
+    axes[2].grid(True, axis='both', linestyle='--', alpha=0.5)
+
+    fig.suptitle(f"Gaussian fit : Total {len(a_max)} signal events", fontsize=16, fontweight='bold')
+    plt.tight_layout(rect=[0, 0, 1, 0.96])
+    plt.savefig("./cfd_gaus_analysis.png",dpi=300,facecolor='w')
+    plt.show()
+    plt.clf()
+
+
+
+
+
+
+
+
 
 if __name__ == "__main__":
   main()
