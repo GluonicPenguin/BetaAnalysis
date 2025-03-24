@@ -2,7 +2,7 @@
 
 from proc_tools import get_fit_results, hist_tree_file_basics, plot_fit_curves, getBias
 
-def plot_waveform(files,trees,ch,total_number_channels):
+def extract_waveform(files,trees,ch,total_number_channels):
   print("Waveform analysis")
   t_data = [[] for _ in range(total_number_channels)]
   w_data = [[] for _ in range(total_number_channels)]
@@ -41,6 +41,7 @@ def plot_waveform(files,trees,ch,total_number_channels):
   t_data = [np.array(channel) for channel in t_data]
   w_data = [np.array(channel) for channel in w_data]
 
+  '''
   fig, ax = plt.subplots(figsize=(10, 6))
 
   colors = plt.cm.viridis(np.linspace(0, 1, total_number_channels))
@@ -57,3 +58,5 @@ def plot_waveform(files,trees,ch,total_number_channels):
   ax.grid(True)
   plt.tight_layout()
   plt.savefig("waveform_comparison.png",facecolor='w')
+  '''
+

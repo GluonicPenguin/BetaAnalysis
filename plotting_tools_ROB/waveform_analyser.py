@@ -66,7 +66,7 @@ def main():
       negpmax_sig = entry.negpmax[0]
       pmax_mcp = entry.pmax[1]
       peakfind = entry.cfd[0][1]
-      if (pmax_sig > 55) and (pmax_sig < 80) and (negpmax_sig > -30) and (pmax_mcp < 120) and (peakfind > 9) and (peakfind < 14):
+      if (pmax_sig > 20) and (pmax_sig < 80) and (negpmax_sig > -30) and (pmax_mcp < 540):
         # W12 15e14/25e14 (pmax_sig > 10) and (pmax_sig < 30) and (negpmax_sig > -30) and (pmax_mcp < 120) and (peakfind > 9) and (peakfind < 14)
         # W13 35e14 (pmax_sig > 55) and (pmax_sig < 80) and (negpmax_sig > -30) and (pmax_mcp < 120) and (peakfind > 9) and (peakfind < 14)
         w_sig = entry.w[0]
@@ -106,11 +106,11 @@ def main():
   plt.ylabel('Amplitude [mV]',fontsize=14)
   plt.xticks(fontsize=14)
   plt.yticks(fontsize=14)
-  plt.xlim(9,14)
+  plt.xlim(-3,4)
   #plt.legend(fontsize=14)
   #plt.yscale('log')
   plt.grid(True, linestyle='--', alpha=0.5)
-  plt.savefig("./W13_35e14.png",dpi=300,facecolor='w')
+  plt.savefig("./amplitude_analysis.png",dpi=300,facecolor='w')
   plt.show()
 
 
