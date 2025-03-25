@@ -68,14 +68,15 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
   arr_of_width = []
   arr_of_sigma = []
   arr_mpv_frac = []
-  arr_qmax_frac = []
+  arr_maxbin_frac = []
   arr_of_sse = []
   arr_of_rchi2 = []
 
-  dict_of_vars = {"amplitude": "Amplitude / mV", "charge": "Charge / fC"}
+  dict_of_vars = {"amplitude": "Amplitude / mV", "charge": "Charge / fC", "dvdt": "dV/dt / mV/ps"}
   for ch_ind, ch_val in enumerate(channel_array):
     pmax_list = []
     area_list = []
+    dvdt_list = []
     sensorType, AtQfactor, (A, B, C, D, E) = ch_val
     if AtQfactor == 0:
       AtQfactor = 1
@@ -100,8 +101,10 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
           #if (pmax_sig > A) and (pmax_sig < B) and (negpmax_sig > C) and (tmax_sig > D) and (tmax_sig < E):
           #area_sig = entry.area_new[ch_ind]
           area_sig = entry.area[ch_ind]
+          dvdt_sig = entry.dvdt[ch_ind]
           pmax_list.append(pmax_sig)
           area_list.append(area_sig)
+          dvdt_list.append(dvdt_sig)
     else:
       continue
 
@@ -110,6 +113,9 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
       area = np.array(area_list)
       area = area/AtQfactor
       data_var = area[(area>=xLower) & (area<=xUpper)]
+    elif var == "dvdt":
+      dvdt = np.array(dvdt_list)
+      data_var = dvdt[(dvdt>=xLower) & (dvdt<=xUpper)]
     else:
       pmax = np.array(pmax_list)
       data_var = pmax[(pmax>=xLower) & (pmax<=xUpper)]
@@ -135,7 +141,7 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
     max_bin_centre = bin_centres[max_bin_index]
     count_max_bin = sum(1 for value in data_var if value > max_bin_centre)
     count_1p5max_bin = sum(1 for value in data_var if value > 1.5 * max_bin_centre)
-    arr_qmax_frac.append(count_1p5max_bin / count_max_bin if count_max_bin > 0 else 0)
+    arr_maxbin_frac.append(count_1p5max_bin / count_max_bin if count_max_bin > 0 else 0)
 
     mpv, xi, sigma = popt
     y_fit = langauss.pdf(bin_centres, mpv, xi, sigma)
@@ -187,17 +193,19 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
     fig.write_image(var+"/"+savename+"_Ch"+str(ch_ind)+".png")
     print("[BETA ANALYSIS]: [LANGAUS PLOTTER] Saved file "+var+"/"+savename+"_Ch"+str(ch_ind)+".png")
 
+  if var != "dvdt": var = var.capitalize()
+
   df_of_results = pd.DataFrame({
     "Channel": arr_of_ch,
     "Bias": arr_of_biases,
-    var.capitalize() + " MPV": arr_of_MPV,
+    var + " MPV": arr_of_MPV,
     "Landau width": arr_of_width,
     "Gaussian sigma": arr_of_sigma,
     "Frac above 1p5 MPV": arr_mpv_frac,
-    "Frac above 1p5 Qmax": arr_qmax_frac,
+    "Frac above 1p5 Max Bin": arr_maxbin_frac,
     "SSE score": arr_of_sse,
     "Red. Chi2": arr_of_rchi2,
   })
-  if var != "charge":
-    df_of_results = df_of_results.drop(columns=['Frac above 1p5 Qmax'])
+  if var != "Charge":
+    df_of_results = df_of_results.drop(columns=['Frac above 1p5 Max Bin'])
   return df_of_results

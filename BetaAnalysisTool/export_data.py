@@ -86,15 +86,15 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
     elif var == "charge":
       if first_df_found == False:
         first_df_found = True
-        df_charge = df[['Channel','Bias','Charge MPV','Landau width','Gaussian sigma','Frac above 1p5 MPV', 'Frac above 1p5 Qmax']]
+        df_charge = df[['Channel','Bias','Charge MPV','Landau width','Gaussian sigma','Frac above 1p5 MPV', 'Frac above 1p5 Max Bin']]
       else:
-        df_charge = df[['Charge MPV','Landau width','Gaussian sigma','Frac above 1p5 MPV', 'Frac above 1p5 Qmax']]
+        df_charge = df[['Charge MPV','Landau width','Gaussian sigma','Frac above 1p5 MPV', 'Frac above 1p5 Max Bin']]
       df_charge.loc[:, 'Charge MPV'] = df_charge['Charge MPV'].round(1)
       df_charge.loc[:, 'Landau width'] = df_charge['Landau width'].round(3)
       df_charge.loc[:, 'Gaussian sigma'] = df_charge['Gaussian sigma'].round(3)
       df_charge.loc[:, 'Frac above 1p5 MPV'] = df_charge['Frac above 1p5 MPV'].round(3)
-      df_charge.loc[:, 'Frac above 1p5 Qmax'] = df_charge['Frac above 1p5 Qmax'].round(3)
-      df_charge = df_charge.rename(columns={'Charge MPV':'Charge / fC','Landau width':'Landau Cpt Charge','Gaussian sigma':'Gaussian Cpt Charge','Frac above 1p5 MPV':'Frac Charge >1.5xMPV','Frac above 1p5 Qmax':'Frac Charge >1.5xQmax'})
+      df_charge.loc[:, 'Frac above 1p5 Max Bin'] = df_charge['Frac above 1p5 Max Bin'].round(3)
+      df_charge = df_charge.rename(columns={'Charge MPV':'Charge / fC','Landau width':'Landau Cpt Charge','Gaussian sigma':'Gaussian Cpt Charge','Frac above 1p5 MPV':'Frac Charge >1.5xMPV','Frac above 1p5 Max Bin':'Frac Charge >1.5xQmax'})
       df_charge['Gain'] = 100*(df_charge['Charge / fC'] / thickness_col).round(2)
       dfs_to_concat.append(df_charge)
     elif var == "rms":
@@ -106,6 +106,14 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
       df_rms.loc[:, 'Sigma'] = df_rms['Sigma'].round(2)
       df_rms = df_rms.rename(columns={'Mean':'RMS Noise / mV', 'Sigma':'RMS Unc / mV'})
       dfs_to_concat.append(df_rms)
+    elif var == "dvdt":
+      if first_df_found == False:
+        first_df_found = True
+        df_dvdt = df[['Channel','Bias','dvdt MPV']]
+      else:
+        df_dvdt = df[['dvdt MPV']]
+      df_dvdt = df_dvdt.rename(columns={'dvdt MPV':'dV/dt / mV/ps'})
+      dfs_to_concat.append(df_dvdt)
     elif var == "timeres":
       if first_df_found == False:
         first_df_found = True
@@ -121,13 +129,23 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
   dfs_comb['E field / V/cm'] = 10000*(dfs_comb['Bias'] / dfs_comb['Thickness / um'])
   dfs_comb.loc[:, 'E field / V/cm'] = dfs_comb['E field / V/cm'] // 1
   if ('Rise time / ps' in dfs_comb.columns) and ('Amplitude / mV' in dfs_comb.columns) and ('RMS Noise / mV' in dfs_comb.columns):
-    dfs_comb['Jitter / ps'] = dfs_comb['Rise time / ps'] / dfs_comb['Amplitude / mV']
-    dfs_comb.loc[:, 'Jitter / ps'] = dfs_comb['Jitter / ps'].round(1)
-    unc_cpt_rms = dfs_comb['RMS Unc / mV'] / dfs_comb['RMS Noise / mV']
-    unc_cpt_risetime = dfs_comb['Rise time Unc / ps'] / dfs_comb['Rise time / ps']
-    unc_cpt_ampl = 0 # idk the unc for a Langaus fit
-    dfs_comb['Jitter Unc / ps'] = dfs_comb['Jitter / ps'] * np.sqrt(unc_cpt_rms**2 + unc_cpt_risetime**2 + unc_cpt_ampl**2)
-    dfs_comb.loc[:, 'Jitter Unc / ps'] = dfs_comb['Jitter Unc / ps'].round(1)
+    approximation = False
+    if approximation:
+      dfs_comb['Jitter / ps'] = dfs_comb['RMS Noise / mV'] / (dfs_comb['Amplitude / mV'] / dfs_comb['Rise time / ps'])
+      dfs_comb.loc[:, 'Jitter / ps'] = dfs_comb['Jitter / ps'].round(1)
+      unc_cpt_rms = dfs_comb['RMS Unc / mV'] / dfs_comb['RMS Noise / mV']
+      unc_cpt_risetime = dfs_comb['Rise time Unc / ps'] / dfs_comb['Rise time / ps']
+      unc_cpt_ampl = 0 # idk the unc for a Langaus fit
+      dfs_comb['Jitter Unc / ps'] = dfs_comb['Jitter / ps'] * np.sqrt(unc_cpt_rms**2 + unc_cpt_risetime**2 + unc_cpt_ampl**2)
+      dfs_comb.loc[:, 'Jitter Unc / ps'] = dfs_comb['Jitter Unc / ps'].round(1)
+    else:
+      dfs_comb['Jitter / ps'] = dfs_comb['RMS Noise / mV'] / dfs_comb['dV/dt / mV/ps']
+      unc_cpt_rms = dfs_comb['RMS Unc / mV'] / dfs_comb['RMS Noise / mV']
+      unc_cpt_dvdt = 0 # idk the unc for a Langaus fit
+      dfs_comb['Jitter Unc / ps'] = dfs_comb['Jitter / ps'] * np.sqrt(unc_cpt_rms**2 + unc_cpt_dvdt**2)
+      dfs_comb.loc[:, 'Jitter Unc / ps'] = (1000*dfs_comb['Jitter Unc / ps']).round(1)
+      dfs_comb.loc[:, 'Jitter / ps'] = (1000*dfs_comb['Jitter / ps']).round(1)
+      dfs_comb = dfs_comb.drop(columns=['dV/dt / mV/ps'])
     if 'TR @ 30% / ps' in dfs_comb.columns:
       dfs_comb['Landau TR Cpt / ps'] = np.sqrt(dfs_comb['TR @ 30% / ps']**2 - dfs_comb['Jitter / ps']**2)
       unc_cpt_jit = dfs_comb['Jitter / ps']*dfs_comb['Jitter Unc / ps']

@@ -178,6 +178,17 @@ def main():
     rms_data = pd.concat(rms_dfs, ignore_index=True)
     print(rms_data.sort_values(by=['Channel','Bias']))
     data_out.append(('rms', rms_data.sort_values(by=['Channel','Bias'])))
+
+    # ADD IN JITTER CPT MEASUREMENTS, NEED TO GET dvdt BRANCH AND FIT A GAUSSIAN TO MEASURE N_RMS / dV/dt
+    print(f"[BETA ANALYSIS]: [PLOTTER] Additionally performing Langaus fit to dV/dt")
+    dvdt_dfs = []
+    for file_ind, file_real in enumerate(file_array):
+      df_data = plot_langaus('dvdt', file_real, file_ind, tree_array[file_ind], config['channels'], 150, 0, 150, output_name_array[file_ind]+"_dvdt")
+      dvdt_dfs.append(df_data)
+    dvdt_data = pd.concat(dvdt_dfs, ignore_index=True)
+    print(dvdt_data.sort_values(by=['Channel','Bias']))
+    data_out.append(('dvdt', dvdt_data.sort_values(by=['Channel','Bias'])))
+
   if config.get('timeres', False) == True:
     print(f"[BETA ANALYSIS]: [TIME RESOLUTION] Performing Gaussian fit to DUT-MCP channels")
     time_res_dfs = []
