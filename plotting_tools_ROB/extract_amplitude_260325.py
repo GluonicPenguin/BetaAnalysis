@@ -2,8 +2,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy
 import scipy.optimize as opt
+import mpmath
+import scipy.special as sp
 from scipy.optimize import minimize
 from scipy.stats import poisson, median_abs_deviation
+import scipy.interpolate as interp
+from lmfit.models import VoigtModel
 import ROOT as root
 from ROOT import TF1
 from scipy.special import gammaln
@@ -18,7 +22,7 @@ import csv
 import math
 import plotly.graph_objects as go
 from sklearn.metrics import mean_absolute_error, mean_squared_error
-
+import matplotlib.gridspec as gridspec
 
 import sys
 from datetime import datetime
@@ -39,6 +43,54 @@ def round_to_sig_figs(x, sig):
 
 def gaussian(x, A, mu, sigma):
   return A * np.exp(-((x - mu) ** 2) / (2 * sigma ** 2))
+
+def lorentzian(x, A, x0, gamma):
+  return A * gamma**2 / ((x - x0)**2 + gamma**2)
+
+def fit_lorentzian(x, y):
+  p0 = [max(y), x[np.argmax(y)], (max(x) - min(x)) / 10]  # Initial guesses
+  popt, _ = opt.curve_fit(lorentzian, x, y, p0=p0)
+  A, x0, gamma = popt
+  y_fit = lorentzian(x, *popt)
+  return A, y_fit, lambda x_new: lorentzian(x_new, *popt), compute_errors(y, y_fit)
+
+def fit_voigt(x, y):
+  model = VoigtModel()
+  params = model.guess(y, x=x)
+  result = model.fit(y, params, x=x)
+  y_fit = result.best_fit
+
+  def voigt_func(x_new):
+    return model.eval(result.params, x=x_new)
+    
+  return max(y_fit), y_fit, voigt_func, compute_errors(y, y_fit)
+
+def fit_cubic_spline(x, y):
+  spline = interp.CubicSpline(x, y)
+  x_fine = np.linspace(min(x), max(x), 1000)
+  y_fine = spline(x_fine)
+  peak = max(y_fine)
+  return peak, spline(x), spline, compute_errors(y, spline(x))
+
+def landau_pdf(x, A, x0, sigma):
+  v = (x - x0) / sigma
+  return A * np.exp(-0.5 * (v + np.exp(-v)))
+
+def fit_landau(x, y):
+  p0 = [max(y), x[np.argmax(y)], (max(x) - min(x)) / 10]
+  try:
+    popt, _ = opt.curve_fit(landau_pdf, x, y, p0=p0)
+    A, x0, sigma = popt
+    y_fit = landau_pdf(x, *popt)
+    return max(y_fit), y_fit, lambda x_new: landau_pdf(x_new, *popt), compute_errors(y, y_fit)
+  except RuntimeError:
+    print("Landau fit failed—perhaps your data isn't 'Landau-y' enough? Try better initial guesses.")
+    return None, None, None, None
+
+def compute_errors(y_true, y_fit):
+  mae = np.mean(np.abs(y_true - y_fit))
+  rmse = np.sqrt(np.mean((y_true - y_fit) ** 2))
+  return mae, rmse
 
 def extract_CFD_time(t_vals, a_vals, a_peak, frac):
   A_CFD = frac * a_peak / 1000
@@ -90,7 +142,7 @@ def main():
       cfd10_sig = entry.cfd[ch_sig][0] # 10%
       cfd20_sig = entry.cfd[ch_sig][1] # 20%
       cfd30_sig = entry.cfd[ch_sig][2] # 30%
-      if (pmax_sig > 40) and (pmax_mcp < 540):
+      if (pmax_sig > 25) and (pmax_mcp < 540):
         # W12 15e14/25e14 (pmax_sig > 10) and (pmax_sig < 30) and (negpmax_sig > -30) and (pmax_mcp < 120) and (peakfind > 9) and (peakfind < 14)
         # W13 35e14 (pmax_sig > 55) and (pmax_sig < 80) and (negpmax_sig > -30) and (pmax_mcp < 120) and (peakfind > 9) and (peakfind < 14)
         w_sig = entry.w[ch_sig]
@@ -112,21 +164,35 @@ def main():
   #colours = ['black','blue']
   alphas = [1.0,0.8]
   edges = ['black','none']
-  labels = ["W5 new (140 V)","W13 35e14 (420 V) G = 35"]
+  #labels = ["W5 new (140 V)","W13 35e14 (420 V) G = 35"]
   #labels = ["W16 new (210 V)","W12 15e14 (210 V) G = 4"]
-  #labels = ["W17 new (160 V)","W12 15e14 (210 V) G = 4"]
+  labels = ["W17 new (160 V)","W12 15e14 (210 V) G = 4"]
 
   a_max = []
   a_para = []
   a_gaus = []
+  a_lorentz = []
+  a_voigt = []
+  a_spline = []
+  a_landau = []
   para_mae = []
   para_rmse = []
   gaus_mae = []
   gaus_rmse = []
+  lorentz_mae = []
+  lorentz_rmse = []
+  voigt_mae = []
+  voigt_rmse = []
+  spline_mae = []
+  spline_rmse = []
+  landau_mae = []
+  landau_rmse = []
 
   make_plots = False
   make_populated_plots = False
   cfd_studies = True
+  add_noise = True
+  numptseitherside = 3
 
   if make_plots:
     plt.figure(figsize=(10, 6))
@@ -134,20 +200,26 @@ def main():
   for i in range(1):
     #if i == 0: continue
     time_data = t_data[i]*(10**9)
-    print(len(time_data))
-    
 
     reshaped_time_data = time_data.reshape(num_curves,502)
     reshaped_ampl_data = w_data[i].reshape(num_curves,502)
     reshaped_perfect_time = []
     reshaped_perfect_ampl = []
 
+    if add_noise:
+      mean = 0.0
+      std_dev = 1.0
+      noise = np.random.normal(mean, std_dev, size=502)
+      #noise = np.clip(noise, -1, 1)
+      for j in range(num_curves):
+        reshaped_ampl_data[j] = reshaped_ampl_data[j] + 0.001*noise
+
     for j in range(num_curves):
 
       pmax = reshaped_ampl_data[j].max()
       peak_idx = np.argmax(reshaped_ampl_data[j])
-      start_idx = max(0, peak_idx - 3)
-      end_idx = min(len(reshaped_ampl_data[j]), peak_idx + 4)
+      start_idx = max(0, peak_idx - numptseitherside)
+      end_idx = min(len(reshaped_ampl_data[j]), peak_idx + numptseitherside + 1)
 
       x_peak = reshaped_time_data[j][start_idx:end_idx]
       y_peak = reshaped_ampl_data[j][start_idx:end_idx]
@@ -181,13 +253,47 @@ def main():
       except RuntimeError:
         continue
 
+      # Lorentzian
+      try:
+        lorentz_peak, lorentz_fit, lorentz_func, lorentz_errors = fit_lorentzian(x_peak, y_peak)
+      except RuntimeError:
+        continue
+
+      # Voigt
+      try:
+        voigt_peak, voigt_fit, voigt_func, voigt_errors = fit_voigt(x_peak, y_peak)
+      except RuntimeError:
+        continue
+
+      # interp_spline
+      try:
+        spline_peak, spline_fit, spline_func, spline_errors = fit_cubic_spline(x_peak, y_peak)
+      except RuntimeError:
+        continue
+
+      # landau
+      landau_peak, landau_fit, landau_func, landau_errors = fit_landau(x_peak, y_peak)
+
       a_max.append(1000*pmax)
       a_para.append(1000*y_parabola_max)
       a_gaus.append(1000*gaussian(mu, *params))
+      a_lorentz.append(1000*lorentz_peak)
+      a_voigt.append(1000*voigt_peak)
+      a_spline.append(1000*spline_peak)
+      a_landau.append(1000*landau_peak)
+
       para_mae.append(parabolic_mae)
       para_rmse.append(parabolic_rmse)
       gaus_mae.append(gaussian_mae)
       gaus_rmse.append(gaussian_rmse)
+      lorentz_mae.append(lorentz_errors[0])
+      lorentz_rmse.append(lorentz_errors[1])
+      voigt_mae.append(voigt_errors[0])
+      voigt_rmse.append(voigt_errors[1])
+      spline_mae.append(spline_errors[0])
+      spline_rmse.append(spline_errors[1])
+      landau_mae.append(landau_errors[0])
+      landau_rmse.append(landau_errors[1])
 
       reshaped_perfect_time.append(reshaped_time_data[j])
       reshaped_perfect_ampl.append(reshaped_ampl_data[j])
@@ -195,34 +301,62 @@ def main():
       if make_plots:
         x_linspace = np.linspace(x_peak.min(), x_peak.max(), 400)
 
-        scatter = plt.scatter(reshaped_time_data[j],reshaped_ampl_data[j],s=10,c=colours[i],marker='o',edgecolor=edges[i],linewidth=0.5,alpha=alphas[i],label=labels[i]+" "+str(round(1000*pmax, 2))+" mV")
-        plt.plot(x_linspace, np.polyval(parabola_coeffs, x_linspace), 'r--', label="Parabolic Fit", linewidth = 2)
-        plt.plot(x_linspace, gaussian(x_linspace, *params), 'g-', label="Gaussian Fit", linewidth = 2)
-        plt.axhline(y_parabola_max, color='r', linestyle=':', label=r"A$_{para}$: "+str(round(1000*y_parabola_max, 2))+" mV", linewidth = 2)
-        plt.axhline(gaussian(mu, *params), color='g', linestyle=':', label=r"A$_{Gaus}$: "+str(round(1000*gaussian(mu, *params), 2))+" mV", linewidth = 2)
+        plt.scatter(reshaped_time_data[j],reshaped_ampl_data[j],s=20,c=colours[i],marker='o',edgecolor=edges[i],linewidth=0.5,alpha=alphas[i],label=labels[i]+" "+str(round(1000*pmax, 2))+" mV", zorder=1)
+        plt.plot(x_linspace, np.polyval(parabola_coeffs, x_linspace), 'r', label="Parabolic Fit", linewidth = 2, zorder=2)
+        plt.plot(x_linspace, gaussian(x_linspace, *params), 'g', label="Gaussian Fit", linewidth = 2, zorder=2)
+        plt.plot(x_linspace, lorentz_func(x_linspace), 'blue', label="Lorentz Fit", linewidth = 2, zorder=2)
+        plt.plot(x_linspace, voigt_func(x_linspace), 'purple', label="Voigt Fit", linewidth = 2, zorder=2)
+        plt.plot(x_linspace, spline_func(x_linspace), 'orange', label="Interpolated Spline", linewidth = 2, zorder=2)
+        plt.plot(x_linspace, landau_func(x_linspace), 'cyan', label="Landau Fit", linewidth = 2, zorder=2)
+        plt.axhline(y_parabola_max, color='r', linestyle=':', label=r"A$_{para}$: "+str(round(1000*y_parabola_max, 2))+" mV", linewidth = 2, zorder=3)
+        plt.axhline(gaussian(mu, *params), color='g', linestyle=':', label=r"A$_{Gaus}$: "+str(round(1000*gaussian(mu, *params), 2))+" mV", linewidth = 2, zorder=3)
+        plt.axhline(lorentz_peak, color='blue', linestyle=':', label=r"A$_{Lorentz}$: "+str(round(1000*lorentz_peak, 2))+" mV", linewidth = 2, zorder=3)
+        plt.axhline(voigt_peak, color='purple', linestyle=':', label=r"A$_{Voigt}$: "+str(round(1000*voigt_peak, 2))+" mV", linewidth = 2, zorder=3)
+        plt.axhline(spline_peak, color='orange', linestyle=':', label=r"A$_{spline}$: "+str(round(1000*spline_peak, 2))+" mV", linewidth = 2, zorder=3)
+        plt.axhline(landau_peak, color='cyan', linestyle=':', label=r"A$_{Landau}$: "+str(round(1000*landau_peak, 2))+" mV", linewidth = 2, zorder=3)
+        plt.scatter(reshaped_time_data[j],reshaped_ampl_data[j],s=30,c=colours[i],marker='o',edgecolor=edges[i],linewidth=0.5,alpha=alphas[i], zorder=4)
         #plt.plot(reshaped_time_data[0],reshaped_ampl_data[0],linestyle='-',color=colours[i],linewidth=1.5,alpha=alphas[i],label=labels[i])
         #for j in range(len(reshaped_time_data)-1):
         #  plt.plot(reshaped_time_data[j+1],reshaped_ampl_data[j+1],linestyle='-',color=colours[i],linewidth=1.5,alpha=alphas[i])
-        print(f"A_max = {(1000*pmax):.2f} mV")
-        print(f"A_para = {(1000*y_parabola_max):.2f} mV")
-        print(f"A_Gaus = {(1000*gaussian(mu, *params)):.2f} mV")
+        if num_curves == 1:
+          print(f"A_max = {(1000*pmax):.2f} mV")
+          print(f"A_para = {(1000*y_parabola_max):.2f} mV")
+          print(f"A_Gaus = {(1000*gaussian(mu, *params)):.2f} mV")
+          print(f"A_Lorentz = {(1000*lorentz_peak):.2f} mV")
+          print(f"A_Voigt = {(1000*voigt_peak):.2f} mV")
+          print(f"A_spline = {(1000*spline_peak):.2f} mV")
+          print(f"A_Landau = {(1000*landau_peak):.2f} mV")
 
-        print("\nParabolic Fit Errors:")
-        print(f"  MAE  = {parabolic_mae:.4f}")
-        print(f"  RMSE = {parabolic_rmse:.4f}")
-        print(f"  Max Error = {parabolic_max_error:.4f}")
+          print("\nParabolic Fit Errors:")
+          print(f"  MAE  = {parabolic_mae:.4f}")
+          print(f"  RMSE = {parabolic_rmse:.4f}")
 
-        print("\nGaussian Fit Errors:")
-        print(f"  MAE  = {gaussian_mae:.4f}")
-        print(f"  RMSE = {gaussian_rmse:.4f}")
-        print(f"  Max Error = {gaussian_max_error:.4f}")
+          print("\nGaussian Fit Errors:")
+          print(f"  MAE  = {gaussian_mae:.4f}")
+          print(f"  RMSE = {gaussian_rmse:.4f}")
+
+          print("\nLorentz Fit Errors:")
+          print(f"  MAE  = {lorentz_errors[0]:.4f}")
+          print(f"  RMSE = {lorentz_errors[1]:.4f}")
+
+          print("\nVoigt Fit Errors:")
+          print(f"  MAE  = {voigt_errors[0]:.4f}")
+          print(f"  RMSE = {voigt_errors[1]:.4f}")
+
+          print("\nInterpolated Spline Errors:")
+          print(f"  MAE  = {spline_errors[0]:.4f}")
+          print(f"  RMSE = {spline_errors[1]:.4f}")
+
+          print("\nLandau Fit Errors:")
+          print(f"  MAE  = {landau_errors[0]:.4f}")
+          print(f"  RMSE = {landau_errors[1]:.4f}")
 
     if make_plots:
       plt.xlabel('Time [ns]',fontsize=14)
       plt.ylabel('Amplitude [mV]',fontsize=14)
       plt.xticks(fontsize=14)
       plt.yticks(fontsize=14)
-      plt.xlim(-2,2)
+      plt.xlim(-2,1)
       plt.legend(fontsize=12)
       #plt.yscale('log')
       plt.grid(True, linestyle='--', alpha=0.5)
@@ -232,51 +366,176 @@ def main():
       plt.clf()
 
   if make_populated_plots:
-    fig, axes = plt.subplots(2, 3, figsize=(18, 9), gridspec_kw={'height_ratios': [3, 1]})
-    axes[0, 0].scatter(a_max, a_para, c='r', label='Parabola', marker='o', s=20, edgecolors='black')
-    axes[0, 0].scatter(a_max, a_gaus, c='g', label='Gaussian', marker='D', s=20, edgecolors='black')
-    m_para, b_para = np.polyfit(a_max, a_para, 1)
-    m_gaus, b_gaus = np.polyfit(a_max, a_gaus, 1)
-    axes[0, 0].legend([f'Parabola (Gradient = {m_para:.3f})', f'Gaussian (Gradient = {m_gaus:.3f})'], fontsize=14)
-    axes[0, 0].set_xlabel(r"A$_{max}$ / mV", fontsize=14)
-    axes[0, 0].set_ylabel(r"A$_{fit}$ / mV", fontsize=14)
-    axes[0, 0].set_xlim(0, None)
-    axes[0, 0].set_ylim(0, None)
+    fig = plt.figure(figsize=(24, 18))
+    gs = gridspec.GridSpec(6, 3, height_ratios=[1, 1, 1, 1, 1, 1], width_ratios=[1, 1, 1])
+
+    ax1 = fig.add_subplot(gs[0, 0])
+    ax2 = fig.add_subplot(gs[1, 0])
+    ax3 = fig.add_subplot(gs[2, 0])
+    ax4 = fig.add_subplot(gs[3, 0])
+    ax5 = fig.add_subplot(gs[4, 0])
+    ax6 = fig.add_subplot(gs[5, 0])
+
+    ax7 = fig.add_subplot(gs[0, 1])
+    ax8 = fig.add_subplot(gs[1, 1])
+    ax9 = fig.add_subplot(gs[2, 1])
+    ax10 = fig.add_subplot(gs[3, 1])
+    ax11 = fig.add_subplot(gs[4, 1])
+    ax12 = fig.add_subplot(gs[5, 1])
+
+    ax13 = fig.add_subplot(gs[0, 2])
+    ax14 = fig.add_subplot(gs[1, 2])
+    ax15 = fig.add_subplot(gs[2, 2])
+    ax16 = fig.add_subplot(gs[3, 2])
+    ax17 = fig.add_subplot(gs[4, 2])
+    ax18 = fig.add_subplot(gs[5, 2])
 
     ratio_gaus = np.array(a_gaus) / np.array(a_max)
     ratio_para = np.array(a_para) / np.array(a_max)
-    axes[1, 0].scatter(a_max, ratio_para, c='r', marker='o', s=20, edgecolors='black', label=r'Parabola / A$_{max}$')
-    axes[1, 0].scatter(a_max, ratio_gaus, c='g', marker='D', s=20, edgecolors='black', label=r'Gaussian / A$_{max}$')
-    axes[1, 0].axhline(1, color='black', linestyle='dashed', linewidth=1)
-    axes[1, 0].set_xlabel(r"A$_{max}$ / mV", fontsize=14)
-    axes[1, 0].set_ylabel("Fit / A$_{max}$", fontsize=14)
-    axes[1, 0].set_ylim(0.9, 1.1)
-    axes[1, 0].legend(fontsize=10)
+    ratio_lorentz = np.array(a_lorentz) / np.array(a_max)
+    ratio_voigt = np.array(a_voigt) / np.array(a_max)
+    ratio_spline = np.array(a_spline) / np.array(a_max)
+    ratio_landau = np.array(a_landau) / np.array(a_max)
 
-    axes[0, 1].scatter(para_mae,gaus_mae,c='blue',label=r'Mean absolute error',marker='o',s=20,edgecolors='black')
-    axes[0, 1].set_xlabel(r"MAE$_{para}$",fontsize=14)
-    axes[0, 1].set_ylabel(r"MAE$_{Gaus}$",fontsize=14)
-    axes[0, 1].set_xscale("log")
-    axes[0, 1].set_yscale("log")
-    axes[0, 1].legend(fontsize=14)
+    mae_tot_para = np.mean(para_mae)
+    mae_tot_gaus = np.mean(gaus_mae)
+    mae_tot_lorentz = np.mean(lorentz_mae)
+    mae_tot_voigt = np.mean(voigt_mae)
+    mae_tot_spline = np.mean(spline_mae)
+    mae_tot_landau = np.mean(landau_mae)
 
-    axes[0, 2].scatter(para_rmse,gaus_rmse,c='blue',label=r'Root mean square error',marker='o',s=20,edgecolors='black')
-    axes[0, 2].set_xlabel(r"RMSE$_{para}$",fontsize=14)
-    axes[0, 2].set_ylabel(r"RMSE$_{Gaus}$",fontsize=14)
-    axes[0, 2].set_xscale("log")
-    axes[0, 2].set_yscale("log")
-    axes[0, 2].legend(fontsize=14)
+    rmse_tot_para = np.mean(para_rmse)
+    rmse_tot_gaus = np.mean(gaus_rmse)
+    rmse_tot_lorentz = np.mean(lorentz_rmse)
+    rmse_tot_voigt = np.mean(voigt_rmse)
+    rmse_tot_spline = np.mean(spline_rmse)
+    rmse_tot_landau = np.mean(landau_rmse)
 
-    x_min = min(np.array(para_mae).min(), np.array(para_rmse).min())
-    x_max = max(np.array(para_mae).max(), np.array(para_rmse).max())
-    y_min = min(np.array(gaus_mae).min(), np.array(gaus_rmse).min())
-    y_max = max(np.array(gaus_mae).max(), np.array(gaus_rmse).max())
-    axes[0, 1].set_xlim(x_min, x_max)
-    axes[0, 2].set_xlim(x_min, x_max)
-    axes[0, 1].set_ylim(y_min, y_max)
-    axes[0, 2].set_ylim(y_min, y_max)
-    axes[1, 1].axis("off")
-    axes[1, 2].axis("off")
+    ax1.scatter(a_max, ratio_para, c='r', marker='d', s=20, edgecolors='black', label=r'Parabola / A$_{max}$' + '\nMAE = ' + str(round(mae_tot_para,4)) + " RMSE = " + str(round(rmse_tot_para,4)))
+    ax1.axhline(1, color='black', linestyle='dashed', linewidth=1)
+    ax1.set_xlabel(r"A$_{max}$ / mV", fontsize=14)
+    ax1.set_ylabel(r"A$_{para}$ / A$_{max}$", fontsize=14)
+    ax1.set_ylim(0.9, 1.1)
+    ax1.legend(fontsize=14)
+
+    ax2.scatter(a_max, ratio_gaus, c='g', marker='d', s=20, edgecolors='black', label=r'Gaussian / A$_{max}$' + '\nMAE = ' + str(round(mae_tot_para,4)) + " RMSE = " + str(round(rmse_tot_para,4)))
+    ax2.axhline(1, color='black', linestyle='dashed', linewidth=1)
+    ax2.set_xlabel(r"A$_{max}$ / mV", fontsize=14)
+    ax2.set_ylabel(r"A$_{gaus}$ / A$_{max}$", fontsize=14)
+    ax2.set_ylim(0.9, 1.1)
+    ax2.legend(fontsize=14)
+
+    ax3.scatter(a_max, ratio_lorentz, c='blue', marker='d', s=20, edgecolors='black', label=r'Lorentz / A$_{max}$' + '\nMAE = ' + str(round(mae_tot_lorentz,4)) + " RMSE = " + str(round(rmse_tot_lorentz,4)))
+    ax3.axhline(1, color='black', linestyle='dashed', linewidth=1)
+    ax3.set_xlabel(r"A$_{max}$ / mV", fontsize=14)
+    ax3.set_ylabel(r"A$_{lorentz}$ / A$_{max}$", fontsize=14)
+    ax3.set_ylim(0.9, 1.1)
+    ax3.legend(fontsize=14)
+
+    ax4.scatter(a_max, ratio_voigt, c='orange', marker='d', s=20, edgecolors='black', label=r'Voigt / A$_{max}$' + '\nMAE = ' + str(round(mae_tot_voigt,4)) + " RMSE = " + str(round(rmse_tot_voigt,4)))
+    ax4.axhline(1, color='black', linestyle='dashed', linewidth=1)
+    ax4.set_xlabel(r"A$_{max}$ / mV", fontsize=14)
+    ax4.set_ylabel(r"A$_{voigt}$ / A$_{max}$", fontsize=14)
+    ax4.set_ylim(0.9, 1.1)
+    ax4.legend(fontsize=14)
+
+    ax5.scatter(a_max, ratio_spline, c='purple', marker='d', s=20, edgecolors='black', label=r'Spline / A$_{max}$' + '\nMAE = ' + str(round(mae_tot_spline,4)) + " RMSE = " + str(round(rmse_tot_spline,4)))
+    ax5.axhline(1, color='black', linestyle='dashed', linewidth=1)
+    ax5.set_xlabel(r"A$_{max}$ / mV", fontsize=14)
+    ax5.set_ylabel(r"A$_{spline}$ / A$_{max}$", fontsize=14)
+    ax5.set_ylim(0.9, 1.1)
+    ax5.legend(fontsize=14)
+
+    ax6.scatter(a_max, ratio_landau, c='brown', marker='D', s=20, edgecolors='black', label=r'Landau / A$_{max}$' + '\nMAE = ' + str(round(mae_tot_landau,4)) + " RMSE = " + str(round(rmse_tot_landau,4)))
+    ax6.axhline(1, color='black', linestyle='dashed', linewidth=1)
+    ax6.set_xlabel(r"A$_{max}$ / mV", fontsize=14)
+    ax6.set_ylabel(r"A$_{landau}$ / A$_{max}$", fontsize=14)
+    ax6.set_ylim(0.9, 1.1)
+    ax6.legend(fontsize=14)
+
+    ax7.hist(para_mae, bins=50, density=True, alpha=0.9, color='r', edgecolor='black', label='Parabolic', histtype='stepfilled', linewidth=1.5)
+    ax7.set_xlabel(r"Mean Absolute Error",fontsize=14)
+    ax7.set_ylabel(r"Counts",fontsize=14)
+    ax7.set_xlim(0,0.02)
+    ax7.set_yscale("log")
+    ax7.legend(fontsize=14)
+
+    ax8.hist(gaus_mae, bins=50, density=True, alpha=0.9, color='g', edgecolor='black', label='Gaussian', histtype='stepfilled', linewidth=1.5)
+    ax8.set_xlabel(r"Mean Absolute Error",fontsize=14)
+    ax8.set_ylabel(r"Counts",fontsize=14)
+    ax8.set_xlim(0,0.02)
+    ax8.set_yscale("log")
+    ax8.legend(fontsize=14)
+
+    ax9.hist(lorentz_mae, bins=50, density=True, alpha=0.9, color='blue', edgecolor='black', label='Lorentz', histtype='stepfilled', linewidth=1.5)
+    ax9.set_xlabel(r"Mean Absolute Error",fontsize=14)
+    ax9.set_ylabel(r"Counts",fontsize=14)
+    ax9.set_xlim(0,0.02)
+    ax9.set_yscale("log")
+    ax9.legend(fontsize=14)
+
+    ax10.hist(voigt_mae, bins=50, density=True, alpha=0.9, color='orange', edgecolor='black', label='Voigt', histtype='stepfilled', linewidth=1.5)
+    ax10.set_xlabel(r"Mean Absolute Error",fontsize=14)
+    ax10.set_ylabel(r"Counts",fontsize=14)
+    ax10.set_xlim(0,0.02)
+    ax10.set_yscale("log")
+    ax10.legend(fontsize=14)
+
+    ax11.hist(spline_mae, bins=50, density=True, alpha=0.9, color='purple', edgecolor='black', label='Spline', histtype='stepfilled', linewidth=1.5)
+    ax11.set_xlabel(r"Mean Absolute Error",fontsize=14)
+    ax11.set_ylabel(r"Counts",fontsize=14)
+    ax11.set_xlim(0,0.02)
+    ax11.set_yscale("log")
+    ax11.legend(fontsize=14)
+
+    ax12.hist(landau_mae, bins=50, density=True, alpha=0.9, color='brown', edgecolor='black', label='Landau', histtype='stepfilled', linewidth=1.5)
+    ax12.set_xlabel(r"Mean Absolute Error",fontsize=14)
+    ax12.set_ylabel(r"Counts",fontsize=14)
+    ax12.set_xlim(0,0.02)
+    ax12.set_yscale("log")
+    ax12.legend(fontsize=14)
+    
+    ax13.hist(para_rmse, bins=50, density=True, alpha=0.9, color='r', edgecolor='black', label='Parabolic', histtype='stepfilled', linewidth=1.5)
+    ax13.set_xlabel(r"RMS Error",fontsize=14)
+    ax13.set_ylabel(r"Counts",fontsize=14)
+    ax13.set_xlim(0,0.02)
+    ax13.set_yscale("log")
+    ax13.legend(fontsize=14)
+
+    ax14.hist(gaus_rmse, bins=50, density=True, alpha=0.9, color='g', edgecolor='black', label='Gaussian', histtype='stepfilled', linewidth=1.5)
+    ax14.set_xlabel(r"RMS Error",fontsize=14)
+    ax14.set_ylabel(r"Counts",fontsize=14)
+    ax14.set_xlim(0,0.02)
+    ax14.set_yscale("log")
+    ax14.legend(fontsize=14)
+
+    ax15.hist(lorentz_rmse, bins=50, density=True, alpha=0.9, color='blue', edgecolor='black', label='Lorentz', histtype='stepfilled', linewidth=1.5)
+    ax15.set_xlabel(r"RMS Error",fontsize=14)
+    ax15.set_ylabel(r"Counts",fontsize=14)
+    ax15.set_xlim(0,0.02)
+    ax15.set_yscale("log")
+    ax15.legend(fontsize=14)
+
+    ax16.hist(voigt_rmse, bins=50, density=True, alpha=0.9, color='orange', edgecolor='black', label='Voigt', histtype='stepfilled', linewidth=1.5)
+    ax16.set_xlabel(r"RMS Error",fontsize=14)
+    ax16.set_ylabel(r"Counts",fontsize=14)
+    ax16.set_xlim(0,0.02)
+    ax16.set_yscale("log")
+    ax16.legend(fontsize=14)
+
+    ax17.hist(spline_rmse, bins=50, density=True, alpha=0.9, color='purple', edgecolor='black', label='Spline', histtype='stepfilled', linewidth=1.5)
+    ax17.set_xlabel(r"RMS Error",fontsize=14)
+    ax17.set_ylabel(r"Counts",fontsize=14)
+    ax17.set_xlim(0,0.02)
+    ax17.set_yscale("log")
+    ax17.legend(fontsize=14)
+
+    ax18.hist(landau_rmse, bins=50, density=True, alpha=0.9, color='brown', edgecolor='black', label='Landau', histtype='stepfilled', linewidth=1.5)
+    ax18.set_xlabel(r"RMS Error",fontsize=14)
+    ax18.set_ylabel(r"Counts",fontsize=14)
+    ax18.set_xlim(0,0.02)
+    ax18.set_yscale("log")
+    ax18.legend(fontsize=14)
 
     fig.suptitle(f"Total {len(a_max)} signal events", fontsize=16, fontweight='bold')
     plt.tight_layout(rect=[0, 0, 1, 0.96])
@@ -287,37 +546,87 @@ def main():
 
     cfd20_para = []
     cfd20_gaus = []
+    cfd20_lorentz = []
+    cfd20_voigt = []
+    cfd20_spline = []
+    cfd20_landau = []
 
     for j in range(num_curves):
 
       idx_para = np.where(np.array(reshaped_ampl_data[j]) > 0.0002*a_para[j])[0][0]
       idx_gaus = np.where(np.array(reshaped_ampl_data[j]) > 0.0002*a_gaus[j])[0][0]
+      idx_lorentz = np.where(np.array(reshaped_ampl_data[j]) > 0.0002*a_lorentz[j])[0][0]
+      idx_voigt = np.where(np.array(reshaped_ampl_data[j]) > 0.0002*a_voigt[j])[0][0]
+      idx_spline = np.where(np.array(reshaped_ampl_data[j]) > 0.0002*a_spline[j])[0][0]
+      idx_landau = np.where(np.array(reshaped_ampl_data[j]) > 0.0002*a_landau[j])[0][0]
       time_array_event = np.array(reshaped_time_data[j])
       mean_time_para = np.mean(time_array_event[[idx_para-1, idx_para]])
       mean_time_gaus = np.mean(time_array_event[[idx_gaus-1, idx_gaus]])
+      mean_time_lorentz = np.mean(time_array_event[[idx_lorentz-1, idx_lorentz]])
+      mean_time_voigt = np.mean(time_array_event[[idx_voigt-1, idx_voigt]])
+      mean_time_spline = np.mean(time_array_event[[idx_spline-1, idx_spline]])
+      mean_time_landau = np.mean(time_array_event[[idx_landau-1, idx_landau]])
       cfd20_para.append(mean_time_para)
       cfd20_gaus.append(mean_time_gaus)
+      cfd20_lorentz.append(mean_time_lorentz)
+      cfd20_voigt.append(mean_time_voigt)
+      cfd20_spline.append(mean_time_spline)
+      cfd20_landau.append(mean_time_landau)
 
-    fig, axes = plt.subplots(1, 2, figsize=(18, 6))
+    fig, axes = plt.subplots(2, 3, figsize=(18, 12))
     rms_diff_para = np.sqrt(np.mean((np.array(cfd20_data) - np.array(cfd20_para)) ** 2)).round(3)
-    print(rms_diff_para)
-    axes[0].hist(cfd20_data, bins=180,range=(-6,3),color='gray',edgecolor='black',label=r"CFD@20% (A$_{max}$)")
-    axes[0].hist(cfd20_para, bins=180,range=(-6,3),color='g',edgecolor='black',alpha=0.4,label=r"CFD@20% (A$_{para}$)")
-    axes[0].set_xlabel(r"CFD@20% / ns",fontsize=14)
-    axes[0].set_ylabel(r"Events",fontsize=14)
-    axes[0].set_xlim(-3, 1)
-    axes[0].legend(fontsize=14)
-    axes[0].grid(True, axis='both', linestyle='--', alpha=0.5)
+    axes[0,0].hist(cfd20_data, bins=180,range=(-6,3),color='gray',edgecolor='black',label=r"CFD@20% (A$_{max}$)")
+    axes[0,0].hist(cfd20_para, bins=180,range=(-6,3),color='r',edgecolor='black',alpha=0.4,label=r"CFD@20% (A$_{para}$)" + "\n" + r"$\Delta_{RMS}$ = " + str(rms_diff_para))
+    axes[0,0].set_xlabel(r"CFD@20% / ns",fontsize=14)
+    axes[0,0].set_ylabel(r"Events",fontsize=14)
+    axes[0,0].set_xlim(-2.5, 0.5)
+    axes[0,0].legend(fontsize=14)
+    axes[0,0].grid(True, axis='both', linestyle='--', alpha=0.5)
 
     rms_diff_gaus = np.sqrt(np.mean((np.array(cfd20_data) - np.array(cfd20_gaus)) ** 2)).round(3)
-    print(rms_diff_gaus)
-    axes[1].hist(cfd20_data, bins=180,range=(-6,3),color='gray',edgecolor='black',label=r"CFD@20% (A$_{max}$)")
-    axes[1].hist(cfd20_gaus, bins=180,range=(-6,3),color='r',edgecolor='black',alpha=0.4,label=r"CFD@20% (A$_{Gaus}$)")
-    axes[1].set_xlabel(r"CFD@20% / ns",fontsize=14)
-    axes[1].set_ylabel(r"Events",fontsize=14)
-    axes[1].set_xlim(-3, 1)
-    axes[1].legend(fontsize=14)
-    axes[1].grid(True, axis='both', linestyle='--', alpha=0.5)
+    axes[0,1].hist(cfd20_data, bins=180,range=(-6,3),color='gray',edgecolor='black',label=r"CFD@20% (A$_{max}$)")
+    axes[0,1].hist(cfd20_gaus, bins=180,range=(-6,3),color='g',edgecolor='black',alpha=0.4,label=r"CFD@20% (A$_{Gaus}$)" + "\n" + r"$\Delta_{RMS}$ = " + str(rms_diff_gaus))
+    axes[0,1].set_xlabel(r"CFD@20% / ns",fontsize=14)
+    axes[0,1].set_ylabel(r"Events",fontsize=14)
+    axes[0,1].set_xlim(-2.5, 0.5)
+    axes[0,1].legend(fontsize=14)
+    axes[0,1].grid(True, axis='both', linestyle='--', alpha=0.5)
+
+    rms_diff_lorentz = np.sqrt(np.mean((np.array(cfd20_data) - np.array(cfd20_lorentz)) ** 2)).round(3)
+    axes[1,0].hist(cfd20_data, bins=180,range=(-6,3),color='gray',edgecolor='black',label=r"CFD@20% (A$_{max}$)")
+    axes[1,0].hist(cfd20_lorentz, bins=180,range=(-6,3),color='blue',edgecolor='black',alpha=0.4,label=r"CFD@20% (A$_{Lorentz}$)" + "\n" + r"$\Delta_{RMS}$ = " + str(rms_diff_lorentz))
+    axes[1,0].set_xlabel(r"CFD@20% / ns",fontsize=14)
+    axes[1,0].set_ylabel(r"Events",fontsize=14)
+    axes[1,0].set_xlim(-2.5, 0.5)
+    axes[1,0].legend(fontsize=14)
+    axes[1,0].grid(True, axis='both', linestyle='--', alpha=0.5)
+
+    rms_diff_voigt = np.sqrt(np.mean((np.array(cfd20_data) - np.array(cfd20_voigt)) ** 2)).round(3)
+    axes[1,1].hist(cfd20_data, bins=180,range=(-6,3),color='gray',edgecolor='black',label=r"CFD@20% (A$_{max}$)")
+    axes[1,1].hist(cfd20_voigt, bins=180,range=(-6,3),color='orange',edgecolor='black',alpha=0.4,label=r"CFD@20% (A$_{Voigt}$)" + "\n" + r"$\Delta_{RMS}$ = " + str(rms_diff_voigt))
+    axes[1,1].set_xlabel(r"CFD@20% / ns",fontsize=14)
+    axes[1,1].set_ylabel(r"Events",fontsize=14)
+    axes[1,1].set_xlim(-2.5, 0.5)
+    axes[1,1].legend(fontsize=14)
+    axes[1,1].grid(True, axis='both', linestyle='--', alpha=0.5)
+
+    rms_diff_spline = np.sqrt(np.mean((np.array(cfd20_data) - np.array(cfd20_spline)) ** 2)).round(3)
+    axes[0,2].hist(cfd20_data, bins=180,range=(-6,3),color='gray',edgecolor='black',label=r"CFD@20% (A$_{max}$)")
+    axes[0,2].hist(cfd20_spline, bins=180,range=(-6,3),color='purple',edgecolor='black',alpha=0.4,label=r"CFD@20% (A$_{spline}$)" + "\n" + r"$\Delta_{RMS}$ = " + str(rms_diff_spline))
+    axes[0,2].set_xlabel(r"CFD@20% / ns",fontsize=14)
+    axes[0,2].set_ylabel(r"Events",fontsize=14)
+    axes[0,2].set_xlim(-2.5, 0.5)
+    axes[0,2].legend(fontsize=14)
+    axes[0,2].grid(True, axis='both', linestyle='--', alpha=0.5)
+
+    rms_diff_landau = np.sqrt(np.mean((np.array(cfd20_data) - np.array(cfd20_landau)) ** 2)).round(3)
+    axes[1,2].hist(cfd20_data, bins=180,range=(-6,3),color='gray',edgecolor='black',label=r"CFD@20% (A$_{max}$)")
+    axes[1,2].hist(cfd20_landau, bins=180,range=(-6,3),color='brown',edgecolor='black',alpha=0.4,label=r"CFD@20% (A$_{Landau}$)" + "\n" + r"$\Delta_{RMS}$ = " + str(rms_diff_landau))
+    axes[1,2].set_xlabel(r"CFD@20% / ns",fontsize=14)
+    axes[1,2].set_ylabel(r"Events",fontsize=14)
+    axes[1,2].set_xlim(-2.5, 0.5)
+    axes[1,2].legend(fontsize=14)
+    axes[1,2].grid(True, axis='both', linestyle='--', alpha=0.5)
 
     fig.suptitle(f"Total {len(a_max)} signal events", fontsize=16, fontweight='bold')
     plt.tight_layout(rect=[0, 0, 1, 0.96])
