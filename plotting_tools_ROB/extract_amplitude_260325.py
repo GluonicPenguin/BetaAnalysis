@@ -44,6 +44,13 @@ def round_to_sig_figs(x, sig):
 def gaussian(x, A, mu, sigma):
   return A * np.exp(-((x - mu) ** 2) / (2 * sigma ** 2))
 
+def gaussian_fit_binned_data(data_to_bin):
+  counts, bin_edges = np.histogram(data_to_bin, bins=180, range=(-6, 3))
+  bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+  p0 = [max(counts), np.mean(data_to_bin), np.std(data_to_bin)]
+  params, _ = curve_fit(gaussian, bin_centers, counts, p0=p0)
+  return params
+
 def lorentzian(x, A, x0, gamma):
   return A * gamma**2 / ((x - x0)**2 + gamma**2)
 
@@ -120,9 +127,13 @@ def main():
 
   t_data = [[] for _ in range(len(trees))]
   w_data = [[] for _ in range(len(trees))]
+  t_data_mcp = [[] for _ in range(len(trees))]
+  w_data_mcp = [[] for _ in range(len(trees))]
+
   cfd10_data = []
   cfd20_data = []
   cfd30_data = []
+  cfd20_mcp_data = []
   num_curves = 1000
   ch_sig = 2
   ch_mcp = 3
@@ -141,6 +152,7 @@ def main():
       pmax_mcp = entry.pmax[ch_mcp]
       cfd10_sig = entry.cfd[ch_sig][0] # 10%
       cfd20_sig = entry.cfd[ch_sig][1] # 20%
+      cfd20_mcp = entry.cfd[ch_mcp][1]
       cfd30_sig = entry.cfd[ch_sig][2] # 30%
       if (pmax_sig > 25) and (pmax_mcp < 540):
         # W12 15e14/25e14 (pmax_sig > 10) and (pmax_sig < 30) and (negpmax_sig > -30) and (pmax_mcp < 120) and (peakfind > 9) and (peakfind < 14)
@@ -150,8 +162,13 @@ def main():
         cfd10_data.append(cfd10_sig)
         cfd20_data.append(cfd20_sig)
         cfd30_data.append(cfd30_sig)
+        cfd20_mcp_data.append(cfd20_mcp)
+        w_mcp = entry.w[ch_mcp]
+        t_mcp = entry.t[ch_mcp]
         w_data[j].extend(w_sig)
         t_data[j].extend(t_sig)
+        w_data_mcp[j].extend(w_mcp)
+        t_data_mcp[j].extend(t_mcp)
         ev_true_count += 1
         if ev_true_count >= num_curves: 
           print(f"{num_curves} values/curves")
@@ -159,6 +176,8 @@ def main():
 
   t_data = [np.array(bias) for bias in t_data]
   w_data = [np.array(bias) for bias in w_data]
+  t_data_mcp = [np.array(bias) for bias in t_data_mcp]
+  w_data_mcp = [np.array(bias) for bias in w_data_mcp]
 
   colours = ['black','dodgerblue']
   #colours = ['black','blue']
@@ -188,10 +207,19 @@ def main():
   landau_mae = []
   landau_rmse = []
 
+  a_max_mcp = []
+  a_para_mcp = []
+  a_gaus_mcp = []
+  a_lorentz_mcp = []
+  a_voigt_mcp = []
+  a_spline_mcp = []
+  a_landau_mcp = []
+
   make_plots = False
   make_populated_plots = False
   cfd_studies = True
-  add_noise = True
+  add_noise = False
+  time_res_calc = True
   numptseitherside = 3
 
   if make_plots:
@@ -200,11 +228,16 @@ def main():
   for i in range(1):
     #if i == 0: continue
     time_data = t_data[i]*(10**9)
+    time_data_mcp = t_data_mcp[i]*(10**9)
 
     reshaped_time_data = time_data.reshape(num_curves,502)
     reshaped_ampl_data = w_data[i].reshape(num_curves,502)
+    rtd_mcp = time_data_mcp.reshape(num_curves,502)
+    rad_mcp = w_data_mcp[i].reshape(num_curves,502)
     reshaped_perfect_time = []
     reshaped_perfect_ampl = []
+    reshaped_perfect_time_mcp = []
+    reshaped_perfect_ampl_mcp = []
 
     if add_noise:
       mean = 0.0
@@ -213,6 +246,7 @@ def main():
       #noise = np.clip(noise, -1, 1)
       for j in range(num_curves):
         reshaped_ampl_data[j] = reshaped_ampl_data[j] + 0.001*noise
+        rad_mcp[j] = rad_mcp[j] + 0.001*noise
 
     for j in range(num_curves):
 
@@ -221,10 +255,18 @@ def main():
       start_idx = max(0, peak_idx - numptseitherside)
       end_idx = min(len(reshaped_ampl_data[j]), peak_idx + numptseitherside + 1)
 
+      pmax_mcp = rad_mcp[j].max()
+      peak_idx_mcp = np.argmax(rad_mcp[j])
+      start_idx_mcp = max(0, peak_idx_mcp - numptseitherside)
+      end_idx_mcp = min(len(rad_mcp[j]), peak_idx_mcp + numptseitherside + 1)
+
       x_peak = reshaped_time_data[j][start_idx:end_idx]
       y_peak = reshaped_ampl_data[j][start_idx:end_idx]
 
-      if len(x_peak) == 0:
+      x_peak_mcp = rtd_mcp[j][start_idx_mcp:end_idx_mcp]
+      y_peak_mcp = rad_mcp[j][start_idx_mcp:end_idx_mcp]
+
+      if len(x_peak) == 0 or len(x_peak_mcp) == 0:
         continue
 
       # parabola
@@ -239,8 +281,14 @@ def main():
       parabolic_rmse = np.sqrt(mean_squared_error(y_peak, y_parabolic_fit))
       parabolic_max_error = np.max(np.abs(parabolic_residuals))
 
+      parabola_coeffs_mcp = np.polyfit(x_peak_mcp, y_peak_mcp, 2)
+      a_mcp, b_mcp, _ = parabola_coeffs_mcp
+      x_parabola_max_mcp = -b_mcp / (2 * a_mcp)
+      y_parabola_max_mcp = np.polyval(parabola_coeffs_mcp, x_parabola_max_mcp)
+
       # gaussian
       p0 = [np.max(y_peak), x_peak[np.argmax(y_peak)], 1]
+      p0_mcp = [np.max(y_peak_mcp), x_peak_mcp[np.argmax(y_peak_mcp)], 1]
       try:
         params, _ = opt.curve_fit(gaussian, x_peak, y_peak, p0=p0)
         A, mu, sigma = params
@@ -250,29 +298,36 @@ def main():
         gaussian_mae = mean_absolute_error(y_peak, y_gaussian_fit)
         gaussian_rmse = np.sqrt(mean_squared_error(y_peak, y_gaussian_fit))
         gaussian_max_error = np.max(np.abs(gaussian_residuals))
+
+        params_mcp, _ = opt.curve_fit(gaussian, x_peak_mcp, y_peak_mcp, p0=p0_mcp)
+        _, mu_mcp, _ = params_mcp
       except RuntimeError:
         continue
 
       # Lorentzian
       try:
         lorentz_peak, lorentz_fit, lorentz_func, lorentz_errors = fit_lorentzian(x_peak, y_peak)
+        lorentz_peak_mcp, lorentz_fit_mcp, lorentz_func_mcp, lorentz_errors_mcp = fit_lorentzian(x_peak_mcp, y_peak_mcp)
       except RuntimeError:
         continue
 
       # Voigt
       try:
         voigt_peak, voigt_fit, voigt_func, voigt_errors = fit_voigt(x_peak, y_peak)
+        voigt_peak_mcp, voigt_fit_mcp, voigt_func_mcp, voigt_errors_mcp = fit_voigt(x_peak_mcp, y_peak_mcp)
       except RuntimeError:
         continue
 
       # interp_spline
       try:
         spline_peak, spline_fit, spline_func, spline_errors = fit_cubic_spline(x_peak, y_peak)
+        spline_peak_mcp, spline_fit_mcp, spline_func_mcp, spline_errors_mcp = fit_cubic_spline(x_peak_mcp, y_peak_mcp)
       except RuntimeError:
         continue
 
       # landau
       landau_peak, landau_fit, landau_func, landau_errors = fit_landau(x_peak, y_peak)
+      landau_peak_mcp, landau_fit_mcp, landau_func_mcp, landau_errors_mcp = fit_landau(x_peak_mcp, y_peak_mcp)
 
       a_max.append(1000*pmax)
       a_para.append(1000*y_parabola_max)
@@ -295,8 +350,19 @@ def main():
       landau_mae.append(landau_errors[0])
       landau_rmse.append(landau_errors[1])
 
+      a_max_mcp.append(1000*pmax_mcp)
+      a_para_mcp.append(1000*y_parabola_max_mcp)
+      a_gaus_mcp.append(1000*gaussian(mu_mcp, *params_mcp))
+      a_lorentz_mcp.append(1000*lorentz_peak_mcp)
+      a_voigt_mcp.append(1000*voigt_peak_mcp)
+      a_spline_mcp.append(1000*spline_peak_mcp)
+      a_landau_mcp.append(1000*landau_peak_mcp)
+
       reshaped_perfect_time.append(reshaped_time_data[j])
       reshaped_perfect_ampl.append(reshaped_ampl_data[j])
+
+      reshaped_perfect_time_mcp.append(rtd_mcp[j])
+      reshaped_perfect_ampl_mcp.append(rad_mcp[j])
 
       if make_plots:
         x_linspace = np.linspace(x_peak.min(), x_peak.max(), 400)
@@ -551,8 +617,19 @@ def main():
     cfd20_spline = []
     cfd20_landau = []
 
-    for j in range(num_curves):
+    cfd20_para_mcp = []
+    cfd20_gaus_mcp = []
+    cfd20_lorentz_mcp = []
+    cfd20_voigt_mcp = []
+    cfd20_spline_mcp = []
+    cfd20_landau_mcp = []
 
+    print(len(a_para))
+    print(len(reshaped_ampl_data))
+    print(len(a_para_mcp))
+    print(len(rad_mcp))
+
+    for j in range(num_curves):
       idx_para = np.where(np.array(reshaped_ampl_data[j]) > 0.0002*a_para[j])[0][0]
       idx_gaus = np.where(np.array(reshaped_ampl_data[j]) > 0.0002*a_gaus[j])[0][0]
       idx_lorentz = np.where(np.array(reshaped_ampl_data[j]) > 0.0002*a_lorentz[j])[0][0]
@@ -573,64 +650,117 @@ def main():
       cfd20_spline.append(mean_time_spline)
       cfd20_landau.append(mean_time_landau)
 
+      if time_res_calc:
+        idx_para_mcp = np.where(np.array(rad_mcp[j]) > 0.0002*a_para_mcp[j])[0][0]
+        idx_gaus_mcp = np.where(np.array(rad_mcp[j]) > 0.0002*a_gaus_mcp[j])[0][0]
+        idx_lorentz_mcp = np.where(np.array(rad_mcp[j]) > 0.0002*a_lorentz_mcp[j])[0][0]
+        idx_voigt_mcp = np.where(np.array(rad_mcp[j]) > 0.0002*a_voigt_mcp[j])[0][0]
+        idx_spline_mcp = np.where(np.array(rad_mcp[j]) > 0.0002*a_spline_mcp[j])[0][0]
+        idx_landau_mcp = np.where(np.array(rad_mcp[j]) > 0.0002*a_landau_mcp[j])[0][0]
+        time_array_event_mcp = np.array(rtd_mcp[j])
+        mean_time_para_mcp = np.mean(time_array_event_mcp[[idx_para_mcp-1, idx_para_mcp]])
+        mean_time_gaus_mcp = np.mean(time_array_event_mcp[[idx_gaus_mcp-1, idx_gaus_mcp]])
+        mean_time_lorentz_mcp = np.mean(time_array_event_mcp[[idx_lorentz_mcp-1, idx_lorentz_mcp]])
+        mean_time_voigt_mcp = np.mean(time_array_event_mcp[[idx_voigt_mcp-1, idx_voigt_mcp]])
+        mean_time_spline_mcp = np.mean(time_array_event_mcp[[idx_spline_mcp-1, idx_spline_mcp]])
+        mean_time_landau_mcp = np.mean(time_array_event_mcp[[idx_landau_mcp-1, idx_landau_mcp]])
+        cfd20_para_mcp.append(mean_time_para_mcp)
+        cfd20_gaus_mcp.append(mean_time_gaus_mcp)
+        cfd20_lorentz_mcp.append(mean_time_lorentz_mcp)
+        cfd20_voigt_mcp.append(mean_time_voigt_mcp)
+        cfd20_spline_mcp.append(mean_time_spline_mcp)
+        cfd20_landau_mcp.append(mean_time_landau_mcp)
+
+    label_cfd = "CFD@20%"
+
+    if time_res_calc:
+      cfd20_data = cfd20_data - cfd20_mcp_data
+      cfd20_para = cfd20_para - cfd20_para_mcp
+      cfd20_gaus = cfd20_gaus - cfd20_gaus_mcp
+      cfd20_lorentz = cfd20_lorentz - cfd20_lorentz_mcp
+      cfd20_voigt = cfd20_voigt - cfd20_voigt_mcp
+      cfd20_spline = cfd20_spline - cfd20_spline_mcp
+      cfd20_landau = cfd20_landau - cfd20_landau_mcp
+
+      label_cfd = r"$\sigma_{t}^{20%}$"
+
+      data_tr_params = gaussian_fit_binned_data(cfd20_data)
+      para_tr_params = gaussian_fit_binned_data(cfd20_para)
+      gaus_tr_params = gaussian_fit_binned_data(cfd20_gaus)
+      lorentz_tr_params = gaussian_fit_binned_data(cfd20_lorentz)
+      voigt_tr_params = gaussian_fit_binned_data(cfd20_voigt)
+      spline_tr_params = gaussian_fit_binned_data(cfd20_spline)
+      landau_tr_params = gaussian_fit_binned_data(cfd20_landau)
+
     fig, axes = plt.subplots(2, 3, figsize=(18, 12))
     rms_diff_para = np.sqrt(np.mean((np.array(cfd20_data) - np.array(cfd20_para)) ** 2)).round(3)
-    axes[0,0].hist(cfd20_data, bins=180,range=(-6,3),color='gray',edgecolor='black',label=r"CFD@20% (A$_{max}$)")
-    axes[0,0].hist(cfd20_para, bins=180,range=(-6,3),color='r',edgecolor='black',alpha=0.4,label=r"CFD@20% (A$_{para}$)" + "\n" + r"$\Delta_{RMS}$ = " + str(rms_diff_para))
-    axes[0,0].set_xlabel(r"CFD@20% / ns",fontsize=14)
-    axes[0,0].set_ylabel(r"Events",fontsize=14)
-    axes[0,0].set_xlim(-2.5, 0.5)
-    axes[0,0].legend(fontsize=14)
-    axes[0,0].grid(True, axis='both', linestyle='--', alpha=0.5)
+    axes[0,0].hist(cfd20_data, bins=180,range=(-6,3),color='gray',edgecolor='black',label=label_cfd + r"(A$_{max}$)")
+    axes[0,0].hist(cfd20_para, bins=180,range=(-6,3),color='r',edgecolor='black',alpha=0.4,label=label_cfd + r"(A$_{para}$)" + "\n" + r"$\Delta_{RMS}$ = " + str(rms_diff_para))
 
     rms_diff_gaus = np.sqrt(np.mean((np.array(cfd20_data) - np.array(cfd20_gaus)) ** 2)).round(3)
-    axes[0,1].hist(cfd20_data, bins=180,range=(-6,3),color='gray',edgecolor='black',label=r"CFD@20% (A$_{max}$)")
-    axes[0,1].hist(cfd20_gaus, bins=180,range=(-6,3),color='g',edgecolor='black',alpha=0.4,label=r"CFD@20% (A$_{Gaus}$)" + "\n" + r"$\Delta_{RMS}$ = " + str(rms_diff_gaus))
-    axes[0,1].set_xlabel(r"CFD@20% / ns",fontsize=14)
-    axes[0,1].set_ylabel(r"Events",fontsize=14)
-    axes[0,1].set_xlim(-2.5, 0.5)
-    axes[0,1].legend(fontsize=14)
-    axes[0,1].grid(True, axis='both', linestyle='--', alpha=0.5)
+    axes[0,1].hist(cfd20_data, bins=180,range=(-6,3),color='gray',edgecolor='black',label=label_cfd + r"(A$_{max}$)")
+    axes[0,1].hist(cfd20_gaus, bins=180,range=(-6,3),color='g',edgecolor='black',alpha=0.4,label=label_cfd + r"(A$_{Gaus}$)" + "\n" + r"$\Delta_{RMS}$ = " + str(rms_diff_gaus))
 
     rms_diff_lorentz = np.sqrt(np.mean((np.array(cfd20_data) - np.array(cfd20_lorentz)) ** 2)).round(3)
-    axes[1,0].hist(cfd20_data, bins=180,range=(-6,3),color='gray',edgecolor='black',label=r"CFD@20% (A$_{max}$)")
-    axes[1,0].hist(cfd20_lorentz, bins=180,range=(-6,3),color='blue',edgecolor='black',alpha=0.4,label=r"CFD@20% (A$_{Lorentz}$)" + "\n" + r"$\Delta_{RMS}$ = " + str(rms_diff_lorentz))
-    axes[1,0].set_xlabel(r"CFD@20% / ns",fontsize=14)
-    axes[1,0].set_ylabel(r"Events",fontsize=14)
-    axes[1,0].set_xlim(-2.5, 0.5)
-    axes[1,0].legend(fontsize=14)
-    axes[1,0].grid(True, axis='both', linestyle='--', alpha=0.5)
+    axes[1,0].hist(cfd20_data, bins=180,range=(-6,3),color='gray',edgecolor='black',label=label_cfd + r"(A$_{max}$)")
+    axes[1,0].hist(cfd20_lorentz, bins=180,range=(-6,3),color='blue',edgecolor='black',alpha=0.4,label=label_cfd + r"(A$_{Lorentz}$)" + "\n" + r"$\Delta_{RMS}$ = " + str(rms_diff_lorentz))
 
     rms_diff_voigt = np.sqrt(np.mean((np.array(cfd20_data) - np.array(cfd20_voigt)) ** 2)).round(3)
-    axes[1,1].hist(cfd20_data, bins=180,range=(-6,3),color='gray',edgecolor='black',label=r"CFD@20% (A$_{max}$)")
-    axes[1,1].hist(cfd20_voigt, bins=180,range=(-6,3),color='orange',edgecolor='black',alpha=0.4,label=r"CFD@20% (A$_{Voigt}$)" + "\n" + r"$\Delta_{RMS}$ = " + str(rms_diff_voigt))
-    axes[1,1].set_xlabel(r"CFD@20% / ns",fontsize=14)
-    axes[1,1].set_ylabel(r"Events",fontsize=14)
-    axes[1,1].set_xlim(-2.5, 0.5)
-    axes[1,1].legend(fontsize=14)
-    axes[1,1].grid(True, axis='both', linestyle='--', alpha=0.5)
+    axes[1,1].hist(cfd20_data, bins=180,range=(-6,3),color='gray',edgecolor='black',label=label_cfd + r"(A$_{max}$)")
+    axes[1,1].hist(cfd20_voigt, bins=180,range=(-6,3),color='orange',edgecolor='black',alpha=0.4,label=label_cfd + r"(A$_{Voigt}$)" + "\n" + r"$\Delta_{RMS}$ = " + str(rms_diff_voigt))
 
     rms_diff_spline = np.sqrt(np.mean((np.array(cfd20_data) - np.array(cfd20_spline)) ** 2)).round(3)
-    axes[0,2].hist(cfd20_data, bins=180,range=(-6,3),color='gray',edgecolor='black',label=r"CFD@20% (A$_{max}$)")
-    axes[0,2].hist(cfd20_spline, bins=180,range=(-6,3),color='purple',edgecolor='black',alpha=0.4,label=r"CFD@20% (A$_{spline}$)" + "\n" + r"$\Delta_{RMS}$ = " + str(rms_diff_spline))
-    axes[0,2].set_xlabel(r"CFD@20% / ns",fontsize=14)
-    axes[0,2].set_ylabel(r"Events",fontsize=14)
-    axes[0,2].set_xlim(-2.5, 0.5)
-    axes[0,2].legend(fontsize=14)
-    axes[0,2].grid(True, axis='both', linestyle='--', alpha=0.5)
+    axes[0,2].hist(cfd20_data, bins=180,range=(-6,3),color='gray',edgecolor='black',label=label_cfd + r"(A$_{max}$)")
+    axes[0,2].hist(cfd20_spline, bins=180,range=(-6,3),color='purple',edgecolor='black',alpha=0.4,label=label_cfd + r"(A$_{spline}$)" + "\n" + r"$\Delta_{RMS}$ = " + str(rms_diff_spline))
 
     rms_diff_landau = np.sqrt(np.mean((np.array(cfd20_data) - np.array(cfd20_landau)) ** 2)).round(3)
-    axes[1,2].hist(cfd20_data, bins=180,range=(-6,3),color='gray',edgecolor='black',label=r"CFD@20% (A$_{max}$)")
-    axes[1,2].hist(cfd20_landau, bins=180,range=(-6,3),color='brown',edgecolor='black',alpha=0.4,label=r"CFD@20% (A$_{Landau}$)" + "\n" + r"$\Delta_{RMS}$ = " + str(rms_diff_landau))
-    axes[1,2].set_xlabel(r"CFD@20% / ns",fontsize=14)
-    axes[1,2].set_ylabel(r"Events",fontsize=14)
-    axes[1,2].set_xlim(-2.5, 0.5)
-    axes[1,2].legend(fontsize=14)
-    axes[1,2].grid(True, axis='both', linestyle='--', alpha=0.5)
+    axes[1,2].hist(cfd20_data, bins=180,range=(-6,3),color='gray',edgecolor='black',label=label_cfd + r"(A$_{max}$)")
+    axes[1,2].hist(cfd20_landau, bins=180,range=(-6,3),color='brown',edgecolor='black',alpha=0.4,label=label_cfd + r"(A$_{Landau}$)" + "\n" + r"$\Delta_{RMS}$ = " + str(rms_diff_landau))
+
+    if time_res_calc:
+      x_tr_fit = np.linspace(-6, 3, 180)
+      data_tr_fit = gaussian(x_tr_fit, *data_tr_params)
+      para_tr_fit = gaussian(x_tr_fit, *para_tr_params)
+      gaus_tr_fit = gaussian(x_tr_fit, *gaus_tr_params)
+      lorentz_tr_fit = gaussian(x_tr_fit, *lorentz_tr_params)
+      voigt_tr_fit = gaussian(x_tr_fit, *voigt_tr_params)
+      spline_tr_fit = gaussian(x_tr_fit, *spline_tr_params)
+      landau_tr_fit = gaussian(x_tr_fit, *landau_tr_params)
+
+      mcp_tr_est = 5
+      data_tr_val = np.sqrt((1000*data_tr_params[2])**2 - mcp_tr_est**2)
+      para_tr_val = np.sqrt((1000*para_tr_params[2])**2 - mcp_tr_est**2)
+      gaus_tr_val = np.sqrt((1000*gaus_tr_params[2])**2 - mcp_tr_est**2)
+      lorentz_tr_val = np.sqrt((1000*lorentz_tr_params[2])**2 - mcp_tr_est**2)
+      voigt_tr_val = np.sqrt((1000*voigt_tr_params[2])**2 - mcp_tr_est**2)
+      spline_tr_val = np.sqrt((1000*spline_tr_params[2])**2 - mcp_tr_est**2)
+      landau_tr_val = np.sqrt((1000*landau_tr_params[2])**2 - mcp_tr_est**2)
+
+      for i in range(2):
+        for j in range(3):
+          axes[i,j].plot(x_fit, data_tr_fit, 'k--', linewidth=2, label=r"$\sigma_{tr}$ = " + str(round(data_tr_val, 1)) + " ps")
+
+      axes[0,0].plot(x_fit, para_tr_fit, 'r', linewidth=2, label=r"$\sigma_{tr}^{para}$ = " + str(round(data_tr_val, 1)) + " ps")
+      axes[0,1].plot(x_fit, gaus_tr_fit, 'g', linewidth=2, label=r"$\sigma_{tr}^{Gaus}$ = " + str(round(data_tr_val, 1)) + " ps")
+      axes[1,0].plot(x_fit, lorentz_tr_fit, 'blue', linewidth=2, label=r"$\sigma_{tr}^{Lorentz}$ = " + str(round(data_tr_val, 1)) + " ps")
+      axes[1,1].plot(x_fit, voigt_tr_fit, 'orange', linewidth=2, label=r"$\sigma_{tr}^{Voigt}$ = " + str(round(data_tr_val, 1)) + " ps")
+      axes[0,2].plot(x_fit, spline_tr_fit, 'purple', linewidth=2, label=r"$\sigma_{tr}^{spline}$ = " + str(round(data_tr_val, 1)) + " ps")
+      axes[1,2].plot(x_fit, landau_tr_fit, 'brown', linewidth=2, label=r"$\sigma_{tr}^{Landau}$ = " + str(round(data_tr_val, 1)) + " ps")
+
+    for i in range(2):
+      for j in range(3):
+        axes[i,j].set_xlabel(label_cfd + r"/ ns",fontsize=14)
+        axes[i,j].set_ylabel(r"Events",fontsize=14)
+        axes[i,j].set_xlim(-2.5, 0.5)
+        axes[i,j].legend(fontsize=14)
+        axes[i,j].grid(True, axis='both', linestyle='--', alpha=0.5)
 
     fig.suptitle(f"Total {len(a_max)} signal events", fontsize=16, fontweight='bold')
     plt.tight_layout(rect=[0, 0, 1, 0.96])
-    plt.savefig("./cfd_20_260325.png",dpi=300,facecolor='w')
+    if time_res_calc:
+      plt.savefig("./timeres_20_260325.png",dpi=300,facecolor='w')
+    else:
+      plt.savefig("./cfd_20_260325.png",dpi=300,facecolor='w')
     plt.clf()
 
 
