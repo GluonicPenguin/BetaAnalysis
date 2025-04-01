@@ -45,16 +45,11 @@ def gaussian(x, A, mu, sigma):
   return A * np.exp(-((x - mu) ** 2) / (2 * sigma ** 2))
 
 def gaussian_fit_binned_data(data_to_bin, fittype):
-  counts, bin_edges = np.histogram(data_to_bin, bins=150, range=(-2, 1))
+  counts, bin_edges = np.histogram(data_to_bin, bins=100, range=(-1, 0))
   bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
   p0 = [max(counts), np.mean(data_to_bin), np.std(data_to_bin)]
-  figoneoff, axoneoff = plt.subplots(figsize=(8, 6))
-  axoneoff.hist(data_to_bin, bins=150, range=(-2, 1), alpha=0.6, color='red', edgecolor='black', label=f'No fit {fittype}', histtype='stepfilled', linewidth=1.5)
-  axoneoff.legend()
-  figoneoff.savefig(f"{fittype}_nongaussian.png", dpi=300, bbox_inches='tight')
   try:
     params, _ = curve_fit(gaussian, bin_centers, counts, p0=p0)
-    print(params)
   except RuntimeError:
     print(f"{fittype} fit failed")
     return 0, 0, 0
@@ -108,14 +103,19 @@ def compute_errors(y_true, y_fit):
   rmse = np.sqrt(np.mean((y_true - y_fit) ** 2))
   return mae, rmse
 
-def extract_CFD_time(t_vals, a_vals, a_peak, frac):
-  A_CFD = frac * a_peak / 1000
-  for i in range(len(a_vals) - 1):
-    if a_vals[i] < A_CFD and a_vals[i + 1] >= A_CFD:
-      t_CFD = t_vals[i] + (A_CFD - a_vals[i]) * (t_vals[i + 1] - t_vals[i]) / (a_vals[i + 1] - a_vals[i])
-      return t_CFD
+def find_CFD_time_with_threshold(x, y, amplitude_value, fraction):
+  idx = np.where(y >= amplitude_value*fraction)[0][0]
+  x1, y1 = x[idx - 1], y[idx - 1]
+  x2, y2 = x[idx], y[idx]
+  x_CFD = x1 + ((fraction*amplitude_value - y1) / (y2 - y1)) * (x2 - x1)
+  return x_CFD
 
-  return None 
+
+def linear_interpolation(x1, y1, x2, y2, y_prime):
+  m = (y2 - y1) / (x2 - x1)
+  c = y1 - m * x1
+  x_prime = (y_prime - c) / m
+  return x_prime
 
 def main():
   parser = argparse.ArgumentParser(description='Read .root files into an array.')
@@ -144,7 +144,7 @@ def main():
   cfd30_data = []
   cfd20_mcp_data = []
   num_curves = 1000
-  ch_sig = 2
+  ch_sig = 1
   ch_mcp = 3
 
   for j in range(len(trees)):
@@ -163,7 +163,7 @@ def main():
       cfd20_sig = entry.cfd[ch_sig][1] # 20%
       cfd20_mcp = entry.cfd[ch_mcp][1]
       cfd30_sig = entry.cfd[ch_sig][2] # 30%
-      if (pmax_sig > 25) and (pmax_mcp < 540) and (pmax_mcp > 40):
+      if (pmax_sig > 35) and (pmax_mcp < 540) and (pmax_mcp > 40):
         # W12 15e14/25e14 (pmax_sig > 10) and (pmax_sig < 30) and (negpmax_sig > -30) and (pmax_mcp < 120) and (peakfind > 9) and (peakfind < 14)
         # W13 35e14 (pmax_sig > 55) and (pmax_sig < 80) and (negpmax_sig > -30) and (pmax_mcp < 120) and (peakfind > 9) and (peakfind < 14)
         w_sig = entry.w[ch_sig]
@@ -623,7 +623,24 @@ def main():
     cfd20_spline_mcp = []
     cfd20_landau_mcp = []
 
+    control_data = []
+    control_mcp = []
+
     for j in range(num_curves):
+      time_array_event = np.array(reshaped_time_data[j])
+      ampl_array_event = np.array(reshaped_ampl_data[j])
+
+      time_value_control = find_CFD_time_with_threshold(time_array_event, ampl_array_event, ampl_array_event.max(), 0.2)
+      time_value_para = find_CFD_time_with_threshold(time_array_event, ampl_array_event, a_para[j], 0.2/1000)
+      time_value_gaus = find_CFD_time_with_threshold(time_array_event, ampl_array_event, a_gaus[j], 0.2/1000)
+      time_value_lorentz = find_CFD_time_with_threshold(time_array_event, ampl_array_event, a_lorentz[j], 0.2/1000)
+      time_value_voigt = find_CFD_time_with_threshold(time_array_event, ampl_array_event, a_voigt[j], 0.2/1000)
+      time_value_spline = find_CFD_time_with_threshold(time_array_event, ampl_array_event, a_spline[j], 0.2/1000)
+      time_value_landau = find_CFD_time_with_threshold(time_array_event, ampl_array_event, a_landau[j], 0.2/1000)
+
+
+      '''
+      idx_control = np.where(np.array(reshaped_ampl_data[j]) > 0.2*reshaped_ampl_data[j].max())[0][0]
       idx_para = np.where(np.array(reshaped_ampl_data[j]) > 0.0002*a_para[j])[0][0]
       idx_gaus = np.where(np.array(reshaped_ampl_data[j]) > 0.0002*a_gaus[j])[0][0]
       idx_lorentz = np.where(np.array(reshaped_ampl_data[j]) > 0.0002*a_lorentz[j])[0][0]
@@ -631,20 +648,35 @@ def main():
       idx_spline = np.where(np.array(reshaped_ampl_data[j]) > 0.0002*a_spline[j])[0][0]
       idx_landau = np.where(np.array(reshaped_ampl_data[j]) > 0.0002*a_landau[j])[0][0]
       time_array_event = np.array(reshaped_time_data[j])
-      mean_time_para = np.mean(time_array_event[[idx_para-1, idx_para]])
-      mean_time_gaus = np.mean(time_array_event[[idx_gaus-1, idx_gaus]])
-      mean_time_lorentz = np.mean(time_array_event[[idx_lorentz-1, idx_lorentz]])
-      mean_time_voigt = np.mean(time_array_event[[idx_voigt-1, idx_voigt]])
-      mean_time_spline = np.mean(time_array_event[[idx_spline-1, idx_spline]])
-      mean_time_landau = np.mean(time_array_event[[idx_landau-1, idx_landau]])
-      cfd20_para.append(mean_time_para)
-      cfd20_gaus.append(mean_time_gaus)
-      cfd20_lorentz.append(mean_time_lorentz)
-      cfd20_voigt.append(mean_time_voigt)
-      cfd20_spline.append(mean_time_spline)
-      cfd20_landau.append(mean_time_landau)
+      time_value_control = linear_interpolation(time_array_event[idx_control-1], reshaped_ampl_data[j][idx_control-1], time_array_event[idx_control], reshaped_ampl_data[j][idx_control], 0.2*reshaped_ampl_data[j].max())
+      time_value_para = linear_interpolation(time_array_event[idx_para-1], reshaped_ampl_data[j][idx_para-1], time_array_event[idx_para], reshaped_ampl_data[j][idx_para], 0.0002*a_para[j])
+      time_value_gaus = linear_interpolation(time_array_event[idx_gaus-1], reshaped_ampl_data[j][idx_gaus-1], time_array_event[idx_gaus], reshaped_ampl_data[j][idx_gaus], 0.0002*a_gaus[j])
+      time_value_lorentz = linear_interpolation(time_array_event[idx_lorentz-1], reshaped_ampl_data[j][idx_lorentz-1], time_array_event[idx_lorentz], reshaped_ampl_data[j][idx_lorentz], 0.0002*a_lorentz[j])
+      time_value_voigt = linear_interpolation(time_array_event[idx_voigt-1], reshaped_ampl_data[j][idx_voigt-1], time_array_event[idx_voigt], reshaped_ampl_data[j][idx_voigt], 0.0002*a_voigt[j])
+      time_value_spline = linear_interpolation(time_array_event[idx_spline-1], reshaped_ampl_data[j][idx_spline-1], time_array_event[idx_spline], reshaped_ampl_data[j][idx_spline], 0.0002*a_spline[j])
+      time_value_landau = linear_interpolation(time_array_event[idx_landau-1], reshaped_ampl_data[j][idx_landau-1], time_array_event[idx_landau], reshaped_ampl_data[j][idx_landau], 0.0002*a_landau[j])
+      '''
+      control_data.append(time_value_control)
+      cfd20_para.append(time_value_para)
+      cfd20_gaus.append(time_value_gaus)
+      cfd20_lorentz.append(time_value_lorentz)
+      cfd20_voigt.append(time_value_voigt)
+      cfd20_spline.append(time_value_spline)
+      cfd20_landau.append(time_value_landau)
 
       if time_res_calc:
+        time_array_event_mcp = np.array(rtd_mcp[j])
+        ampl_array_event_mcp = np.array(rad_mcp[j])
+
+        time_value_control_mcp = find_CFD_time_with_threshold(time_array_event_mcp, ampl_array_event_mcp, ampl_array_event_mcp.max(), 0.2)
+        time_value_para_mcp = find_CFD_time_with_threshold(time_array_event_mcp, ampl_array_event_mcp, a_para_mcp[j], 0.2/1000)
+        time_value_gaus_mcp = find_CFD_time_with_threshold(time_array_event_mcp, ampl_array_event_mcp, a_gaus_mcp[j], 0.2/1000)
+        time_value_lorentz_mcp = find_CFD_time_with_threshold(time_array_event_mcp, ampl_array_event_mcp, a_lorentz_mcp[j], 0.2/1000)
+        time_value_voigt_mcp = find_CFD_time_with_threshold(time_array_event_mcp, ampl_array_event_mcp, a_voigt_mcp[j], 0.2/1000)
+        time_value_spline_mcp = find_CFD_time_with_threshold(time_array_event_mcp, ampl_array_event_mcp, a_spline_mcp[j], 0.2/1000)
+        time_value_landau_mcp = find_CFD_time_with_threshold(time_array_event_mcp, ampl_array_event_mcp, a_landau_mcp[j], 0.2/1000)
+        '''
+        idx_control_mcp = np.where(np.array(rad_mcp[j]) > 0.2*rad_mcp[j].max())[0][0]
         idx_para_mcp = np.where(np.array(rad_mcp[j]) > 0.0002*a_para_mcp[j])[0][0]
         idx_gaus_mcp = np.where(np.array(rad_mcp[j]) > 0.0002*a_gaus_mcp[j])[0][0]
         idx_lorentz_mcp = np.where(np.array(rad_mcp[j]) > 0.0002*a_lorentz_mcp[j])[0][0]
@@ -652,88 +684,72 @@ def main():
         idx_spline_mcp = np.where(np.array(rad_mcp[j]) > 0.0002*a_spline_mcp[j])[0][0]
         idx_landau_mcp = np.where(np.array(rad_mcp[j]) > 0.0002*a_landau_mcp[j])[0][0]
         time_array_event_mcp = np.array(rtd_mcp[j])
-        mean_time_para_mcp = 0.5*(time_array_event_mcp[idx_para_mcp-1] + time_array_event_mcp[idx_para_mcp]) #np.mean(time_array_event_mcp[[idx_para_mcp-1, idx_para_mcp]])
-        mean_time_gaus_mcp = np.mean(time_array_event_mcp[[idx_gaus_mcp-1, idx_gaus_mcp]])
-        mean_time_lorentz_mcp = np.mean(time_array_event_mcp[[idx_lorentz_mcp-1, idx_lorentz_mcp]])
-        mean_time_voigt_mcp = np.mean(time_array_event_mcp[[idx_voigt_mcp-1, idx_voigt_mcp]])
-        mean_time_spline_mcp = np.mean(time_array_event_mcp[[idx_spline_mcp-1, idx_spline_mcp]])
-        mean_time_landau_mcp = np.mean(time_array_event_mcp[[idx_landau_mcp-1, idx_landau_mcp]])
-        cfd20_para_mcp.append(mean_time_para_mcp)
-        cfd20_gaus_mcp.append(mean_time_gaus_mcp)
-        cfd20_lorentz_mcp.append(mean_time_lorentz_mcp)
-        cfd20_voigt_mcp.append(mean_time_voigt_mcp)
-        cfd20_spline_mcp.append(mean_time_spline_mcp)
-        cfd20_landau_mcp.append(mean_time_landau_mcp)
+        time_value_control_mcp = linear_interpolation(time_array_event[idx_control_mcp-1], reshaped_ampl_data[j][idx_control_mcp-1], time_array_event[idx_control_mcp], reshaped_ampl_data[j][idx_control_mcp], 0.2*rad_mcp[j].max())
+        time_value_para_mcp = linear_interpolation(time_array_event[idx_para_mcp-1], reshaped_ampl_data[j][idx_para_mcp-1], time_array_event[idx_para_mcp], reshaped_ampl_data[j][idx_para_mcp], 0.0002*a_para_mcp[j])
+        time_value_gaus_mcp = linear_interpolation(time_array_event[idx_gaus_mcp-1], reshaped_ampl_data[j][idx_gaus_mcp-1], time_array_event[idx_gaus_mcp], reshaped_ampl_data[j][idx_gaus_mcp], 0.0002*a_gaus_mcp[j])
+        time_value_lorentz_mcp = linear_interpolation(time_array_event[idx_lorentz_mcp-1], reshaped_ampl_data[j][idx_lorentz_mcp-1], time_array_event[idx_lorentz_mcp], reshaped_ampl_data[j][idx_lorentz_mcp], 0.0002*a_lorentz_mcp[j])
+        time_value_voigt_mcp = linear_interpolation(time_array_event[idx_voigt_mcp-1], reshaped_ampl_data[j][idx_voigt_mcp-1], time_array_event[idx_voigt_mcp], reshaped_ampl_data[j][idx_voigt_mcp], 0.0002*a_voigt_mcp[j])
+        time_value_spline_mcp = linear_interpolation(time_array_event[idx_spline_mcp-1], reshaped_ampl_data[j][idx_spline_mcp-1], time_array_event[idx_spline_mcp], reshaped_ampl_data[j][idx_spline_mcp], 0.0002*a_spline_mcp[j])
+        time_value_landau_mcp = linear_interpolation(time_array_event[idx_landau_mcp-1], reshaped_ampl_data[j][idx_landau_mcp-1], time_array_event[idx_landau_mcp], reshaped_ampl_data[j][idx_landau_mcp], 0.0002*a_landau_mcp[j])
+        '''
+        control_mcp.append(time_value_control_mcp)
+        cfd20_para_mcp.append(time_value_para_mcp)
+        cfd20_gaus_mcp.append(time_value_gaus_mcp)
+        cfd20_lorentz_mcp.append(time_value_lorentz_mcp)
+        cfd20_voigt_mcp.append(time_value_voigt_mcp)
+        cfd20_spline_mcp.append(time_value_spline_mcp)
+        cfd20_landau_mcp.append(time_value_landau_mcp)
 
     label_cfd = "CFD@20%"
 
     if time_res_calc:
       
-      fig2oneoff, ax2oneoff = plt.subplots(figsize=(8, 6))
-      ax2oneoff.hist([cfd20_para,cfd20_para_mcp], bins=150, range=(-2, 1), alpha=0.6, color=['blue','purple'], edgecolor='black', label=['cfd20_para','cfd20_para_mcp'], histtype='stepfilled', linewidth=1.5)
-      dut_fit_para = gaussian_fit_binned_data(cfd20_para, "PARA_DUT")
-      mcp_fit_para = gaussian_fit_binned_data(cfd20_para_mcp, "PARA_MCP")
-      #ax2oneoff.hist([cfd20_data,cfd20_mcp_data], bins=150, range=(-2, 1), color=['red','orange'], edgecolor='black', label=['cfd20_data','cfd20_mcp_data'], histtype='stepfilled', linewidth=1.5, alpha=0.2)
-      #ax2oneoff.legend()
-      #fig2oneoff.savefig(f"datavpara.png", dpi=300, bbox_inches='tight')
+      #cfd20_data = np.array(cfd20_data) - np.array(cfd20_mcp_data)
+      cfd20_data = np.array(control_data) - np.array(control_mcp) 
+      cfd20_para = np.array(cfd20_para) - np.array(cfd20_para_mcp)
+      cfd20_gaus = np.array(cfd20_gaus) - np.array(cfd20_gaus_mcp)
+      cfd20_lorentz = np.array(cfd20_lorentz) - np.array(cfd20_lorentz_mcp)
+      cfd20_voigt = np.array(cfd20_voigt) - np.array(cfd20_voigt_mcp)
+      cfd20_spline = np.array(cfd20_spline) - np.array(cfd20_spline_mcp)
+      cfd20_landau = np.array(cfd20_landau) - np.array(cfd20_landau_mcp)
 
-      tr_data = np.array(cfd20_data) - np.array(cfd20_mcp_data)
-      tr_para = np.array(cfd20_para) - np.array(cfd20_para_mcp)
-      my_proper_dist = np.subtract(cfd20_para, cfd20_para_mcp)
-      #ax2oneoff.hist(my_proper_dist, bins=150, range=(-2, 1), alpha=0.6, color='yellow', edgecolor='black', label='Time resolution', histtype='stepfilled', linewidth=1.5)
-      ax2oneoff.legend()
-      fig2oneoff.savefig(f"datavpara.png", dpi=300, bbox_inches='tight')
-      '''
-      for i in range(len(cfd20_para)):
-        print("\n")
-        print(str(cfd20_para[i]))
-        print(str(cfd20_para_mcp[i]) + " -")
-        print("---------------------")
-        print(str(cfd20_para[i] - cfd20_para_mcp[i]))
-      '''
-      tr_gaus = np.array(cfd20_gaus) - np.array(cfd20_gaus_mcp)
-      tr_lorentz = np.array(cfd20_lorentz) - np.array(cfd20_lorentz_mcp)
-      tr_voigt = np.array(cfd20_voigt) - np.array(cfd20_voigt_mcp)
-      tr_spline = np.array(cfd20_spline) - np.array(cfd20_spline_mcp)
-      tr_landau = np.array(cfd20_landau) - np.array(cfd20_landau_mcp)
+      label_cfd = r"$\sigma_{t}^{20\%}$"
 
-      label_cfd = r"$\sigma_{t}^{20%}$"
-
-      data_tr_params = gaussian_fit_binned_data(tr_data, "Data")
-      para_tr_params = gaussian_fit_binned_data(tr_para, "Parabolic")
-      gaus_tr_params = gaussian_fit_binned_data(tr_gaus, "Gaussian")
-      lorentz_tr_params = gaussian_fit_binned_data(tr_lorentz, "Lorentz")
-      voigt_tr_params = gaussian_fit_binned_data(tr_voigt, "Voigt")
-      spline_tr_params = gaussian_fit_binned_data(tr_spline, "Interpolated spline")
-      landau_tr_params = gaussian_fit_binned_data(tr_landau, "Landau")
+      data_tr_params = gaussian_fit_binned_data(cfd20_data, "Data")
+      para_tr_params = gaussian_fit_binned_data(cfd20_para, "Parabolic")
+      gaus_tr_params = gaussian_fit_binned_data(cfd20_gaus, "Gaussian")
+      lorentz_tr_params = gaussian_fit_binned_data(cfd20_lorentz, "Lorentz")
+      voigt_tr_params = gaussian_fit_binned_data(cfd20_voigt, "Voigt")
+      spline_tr_params = gaussian_fit_binned_data(cfd20_spline, "Interpolated spline")
+      landau_tr_params = gaussian_fit_binned_data(cfd20_landau, "Landau")
 
     fig, axes = plt.subplots(2, 3, figsize=(18, 12))
     rms_diff_para = np.sqrt(np.mean((np.array(cfd20_data) - np.array(cfd20_para)) ** 2)).round(3)
-    axes[0,0].hist(cfd20_data, bins=400,range=(-0.8,-0.4),color='gray',edgecolor='black',label=label_cfd + r"(A$_{max}$)")
-    axes[0,0].hist(cfd20_para, bins=400,range=(-0.8,-0.4),color='r',edgecolor='black',alpha=0.4,label=label_cfd + r"(A$_{para}$)" + "\n" + r"$\Delta_{RMS}$ = " + str(rms_diff_para))
+    axes[0,0].hist(cfd20_data, bins=100,range=(-1, 0),color='gray',edgecolor='black',label=label_cfd + r"(A$_{max}$)")
+    axes[0,0].hist(cfd20_para, bins=100,range=(-1, 0),color='r',edgecolor='black',alpha=0.4,label=label_cfd + r"(A$_{para}$)" + "\n" + r"$\Delta_{RMS}$ = " + str(rms_diff_para))
 
     rms_diff_gaus = np.sqrt(np.mean((np.array(cfd20_data) - np.array(cfd20_gaus)) ** 2)).round(3)
-    axes[0,1].hist(cfd20_data, bins=400,range=(-0.8,-0.4),color='gray',edgecolor='black',label=label_cfd + r"(A$_{max}$)")
-    axes[0,1].hist(cfd20_gaus, bins=400,range=(-0.8,-0.4),color='g',edgecolor='black',alpha=0.4,label=label_cfd + r"(A$_{Gaus}$)" + "\n" + r"$\Delta_{RMS}$ = " + str(rms_diff_gaus))
+    axes[0,1].hist(cfd20_data, bins=100,range=(-1, 0),color='gray',edgecolor='black',label=label_cfd + r"(A$_{max}$)")
+    axes[0,1].hist(cfd20_gaus, bins=100,range=(-1, 0),color='g',edgecolor='black',alpha=0.4,label=label_cfd + r"(A$_{Gaus}$)" + "\n" + r"$\Delta_{RMS}$ = " + str(rms_diff_gaus))
 
     rms_diff_lorentz = np.sqrt(np.mean((np.array(cfd20_data) - np.array(cfd20_lorentz)) ** 2)).round(3)
-    axes[1,0].hist(cfd20_data, bins=400,range=(-0.8,-0.4),color='gray',edgecolor='black',label=label_cfd + r"(A$_{max}$)")
-    axes[1,0].hist(cfd20_lorentz, bins=400,range=(-0.8,-0.4),color='blue',edgecolor='black',alpha=0.4,label=label_cfd + r"(A$_{Lorentz}$)" + "\n" + r"$\Delta_{RMS}$ = " + str(rms_diff_lorentz))
+    axes[1,0].hist(cfd20_data, bins=100,range=(-1, 0),color='gray',edgecolor='black',label=label_cfd + r"(A$_{max}$)")
+    axes[1,0].hist(cfd20_lorentz, bins=100,range=(-1, 0),color='blue',edgecolor='black',alpha=0.4,label=label_cfd + r"(A$_{Lorentz}$)" + "\n" + r"$\Delta_{RMS}$ = " + str(rms_diff_lorentz))
 
     rms_diff_voigt = np.sqrt(np.mean((np.array(cfd20_data) - np.array(cfd20_voigt)) ** 2)).round(3)
-    axes[1,1].hist(cfd20_data, bins=400,range=(-0.8,-0.4),color='gray',edgecolor='black',label=label_cfd + r"(A$_{max}$)")
-    axes[1,1].hist(cfd20_voigt, bins=400,range=(-0.8,-0.4),color='orange',edgecolor='black',alpha=0.4,label=label_cfd + r"(A$_{Voigt}$)" + "\n" + r"$\Delta_{RMS}$ = " + str(rms_diff_voigt))
+    axes[1,1].hist(cfd20_data, bins=100,range=(-1, 0),color='gray',edgecolor='black',label=label_cfd + r"(A$_{max}$)")
+    axes[1,1].hist(cfd20_voigt, bins=100,range=(-1, 0),color='orange',edgecolor='black',alpha=0.4,label=label_cfd + r"(A$_{Voigt}$)" + "\n" + r"$\Delta_{RMS}$ = " + str(rms_diff_voigt))
 
     rms_diff_spline = np.sqrt(np.mean((np.array(cfd20_data) - np.array(cfd20_spline)) ** 2)).round(3)
-    axes[0,2].hist(cfd20_data, bins=400,range=(-0.8,-0.4),color='gray',edgecolor='black',label=label_cfd + r"(A$_{max}$)")
-    axes[0,2].hist(cfd20_spline, bins=400,range=(-0.8,-0.4),color='purple',edgecolor='black',alpha=0.4,label=label_cfd + r"(A$_{spline}$)" + "\n" + r"$\Delta_{RMS}$ = " + str(rms_diff_spline))
+    axes[0,2].hist(cfd20_data, bins=100,range=(-1, 0),color='gray',edgecolor='black',label=label_cfd + r"(A$_{max}$)")
+    axes[0,2].hist(cfd20_spline, bins=100,range=(-1, 0),color='purple',edgecolor='black',alpha=0.4,label=label_cfd + r"(A$_{spline}$)" + "\n" + r"$\Delta_{RMS}$ = " + str(rms_diff_spline))
 
     rms_diff_landau = np.sqrt(np.mean((np.array(cfd20_data) - np.array(cfd20_landau)) ** 2)).round(3)
-    axes[1,2].hist(cfd20_data, bins=400,range=(-0.8,-0.4),color='gray',edgecolor='black',label=label_cfd + r"(A$_{max}$)")
-    axes[1,2].hist(cfd20_landau, bins=400,range=(-0.8,-0.4),color='brown',edgecolor='black',alpha=0.4,label=label_cfd + r"(A$_{Landau}$)" + "\n" + r"$\Delta_{RMS}$ = " + str(rms_diff_landau))
+    axes[1,2].hist(cfd20_data, bins=100,range=(-1, 0),color='gray',edgecolor='black',label=label_cfd + r"(A$_{max}$)")
+    axes[1,2].hist(cfd20_landau, bins=100,range=(-1, 0),color='brown',edgecolor='black',alpha=0.4,label=label_cfd + r"(A$_{Landau}$)" + "\n" + r"$\Delta_{RMS}$ = " + str(rms_diff_landau))
 
     if time_res_calc:
-      x_tr_fit = np.linspace(-0.8, -0.4, 400)
+      x_tr_fit = np.linspace(-1, 0, 1000)
       data_tr_fit = gaussian(x_tr_fit, *data_tr_params)
       para_tr_fit = gaussian(x_tr_fit, *para_tr_params)
       gaus_tr_fit = gaussian(x_tr_fit, *gaus_tr_params)
@@ -753,20 +769,20 @@ def main():
 
       for i in range(2):
         for j in range(3):
-          axes[i,j].plot(x_fit, data_tr_fit, 'k--', linewidth=2, label=r"$\sigma_{tr}$ = " + str(round(data_tr_val, 1)) + " ps")
+          axes[i,j].plot(x_tr_fit, data_tr_fit, 'k--', linewidth=2, label=r"$\sigma_{tr}$ = " + str(round(data_tr_val, 1)) + " ps")
 
-      axes[0,0].plot(x_fit, para_tr_fit, 'r', linewidth=2, label=r"$\sigma_{tr}^{para}$ = " + str(round(data_tr_val, 1)) + " ps")
-      axes[0,1].plot(x_fit, gaus_tr_fit, 'g', linewidth=2, label=r"$\sigma_{tr}^{Gaus}$ = " + str(round(data_tr_val, 1)) + " ps")
-      axes[1,0].plot(x_fit, lorentz_tr_fit, 'blue', linewidth=2, label=r"$\sigma_{tr}^{Lorentz}$ = " + str(round(data_tr_val, 1)) + " ps")
-      axes[1,1].plot(x_fit, voigt_tr_fit, 'orange', linewidth=2, label=r"$\sigma_{tr}^{Voigt}$ = " + str(round(data_tr_val, 1)) + " ps")
-      axes[0,2].plot(x_fit, spline_tr_fit, 'purple', linewidth=2, label=r"$\sigma_{tr}^{spline}$ = " + str(round(data_tr_val, 1)) + " ps")
-      axes[1,2].plot(x_fit, landau_tr_fit, 'brown', linewidth=2, label=r"$\sigma_{tr}^{Landau}$ = " + str(round(data_tr_val, 1)) + " ps")
+      axes[0,0].plot(x_tr_fit, para_tr_fit, 'r', linewidth=2, label=r"$\sigma_{tr}^{para}$ = " + str(round(para_tr_val, 1)) + " ps")
+      axes[0,1].plot(x_tr_fit, gaus_tr_fit, 'g', linewidth=2, label=r"$\sigma_{tr}^{Gaus}$ = " + str(round(gaus_tr_val, 1)) + " ps")
+      axes[1,0].plot(x_tr_fit, lorentz_tr_fit, 'blue', linewidth=2, label=r"$\sigma_{tr}^{Lorentz}$ = " + str(round(lorentz_tr_val, 1)) + " ps")
+      axes[1,1].plot(x_tr_fit, voigt_tr_fit, 'orange', linewidth=2, label=r"$\sigma_{tr}^{Voigt}$ = " + str(round(voigt_tr_val, 1)) + " ps")
+      axes[0,2].plot(x_tr_fit, spline_tr_fit, 'purple', linewidth=2, label=r"$\sigma_{tr}^{spline}$ = " + str(round(spline_tr_val, 1)) + " ps")
+      axes[1,2].plot(x_tr_fit, landau_tr_fit, 'brown', linewidth=2, label=r"$\sigma_{tr}^{Landau}$ = " + str(round(landau_tr_val, 1)) + " ps")
 
     for i in range(2):
       for j in range(3):
         axes[i,j].set_xlabel(label_cfd + r"/ ns",fontsize=14)
         axes[i,j].set_ylabel(r"Events",fontsize=14)
-        axes[i,j].set_xlim(-2.5, 0.5)
+        axes[i,j].set_xlim(-1.0,-0.6)
         axes[i,j].legend(fontsize=14)
         axes[i,j].grid(True, axis='both', linestyle='--', alpha=0.5)
 
