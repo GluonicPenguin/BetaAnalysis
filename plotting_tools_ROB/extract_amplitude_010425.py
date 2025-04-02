@@ -224,11 +224,26 @@ def main():
   a_spline_mcp = []
   a_landau_mcp = []
 
+  t_Amax_para = []
+  t_Amax_gaus = []
+  t_Amax_lorentz = []
+  t_Amax_voigt = []
+  t_Amax_spline = []
+  t_Amax_landau = []
+
+  t_w_below_Amax_para = []
+  t_w_below_Amax_gaus = []
+  t_w_below_Amax_lorentz = []
+  t_w_below_Amax_voigt = []
+  t_w_below_Amax_spline = []
+  t_w_below_Amax_landau = []
+
   make_plots = False
   make_populated_plots = False
-  cfd_studies = True
+  cfd_studies = False
   add_noise = False
   time_res_calc = True
+  make_timewalk_plots = True
   numptseitherside = 3
 
   if make_plots:
@@ -279,6 +294,7 @@ def main():
       a, b, _ = parabola_coeffs
       x_parabola_max = -b / (2 * a)
       y_parabola_max = np.polyval(parabola_coeffs, x_parabola_max)
+      t_Amax_para.append(x_parabola_max)
 
       y_parabolic_fit = np.polyval(parabola_coeffs, x_peak)
       parabolic_residuals = y_peak - y_parabolic_fit
@@ -290,6 +306,9 @@ def main():
       a_mcp, b_mcp, _ = parabola_coeffs_mcp
       x_parabola_max_mcp = -b_mcp / (2 * a_mcp)
       y_parabola_max_mcp = np.polyval(parabola_coeffs_mcp, x_parabola_max_mcp)
+
+      idx_below = np.where((y_peak < y_parabola_max) & (x_peak < x_parabola_max))[0][-1]
+      t_w_below_Amax_para.append(x_peak[idx_below])
 
       # gaussian
       p0 = [np.max(y_peak), x_peak[np.argmax(y_peak)], 1]
@@ -303,16 +322,26 @@ def main():
         gaussian_mae = mean_absolute_error(y_peak, y_gaussian_fit)
         gaussian_rmse = np.sqrt(mean_squared_error(y_peak, y_gaussian_fit))
         gaussian_max_error = np.max(np.abs(gaussian_residuals))
+        t_Amax_gaus.append(mu)
+
+        idx_below = np.where((y_peak < A) & (x_peak < mu))[0][-1]
+        t_w_below_Amax_gaus.append(x_peak[idx_below])
 
         params_mcp, _ = opt.curve_fit(gaussian, x_peak_mcp, y_peak_mcp, p0=p0_mcp)
         _, mu_mcp, _ = params_mcp
       except RuntimeError:
         continue
 
+      x_fine = np.linspace(min(x_peak), max(x_peak), 1000)
+
       # Lorentzian
       try:
         lorentz_peak, lorentz_fit, lorentz_func, lorentz_errors = fit_lorentzian(x_peak, y_peak)
         lorentz_peak_mcp, lorentz_fit_mcp, lorentz_func_mcp, lorentz_errors_mcp = fit_lorentzian(x_peak_mcp, y_peak_mcp)
+        y_fine = lorentz_func(x_fine)
+        t_Amax_lorentz.append(x_fine[np.argmin(np.abs(y_fine - lorentz_peak))])
+        idx_below = np.where((y_peak < lorentz_peak) & (x_peak < x_fine[np.argmin(np.abs(y_fine - lorentz_peak))]))[0][-1]
+        t_w_below_Amax_lorentz.append(x_peak[idx_below])
       except RuntimeError:
         continue
 
@@ -320,6 +349,10 @@ def main():
       try:
         voigt_peak, voigt_fit, voigt_func, voigt_errors = fit_voigt(x_peak, y_peak)
         voigt_peak_mcp, voigt_fit_mcp, voigt_func_mcp, voigt_errors_mcp = fit_voigt(x_peak_mcp, y_peak_mcp)
+        y_fine = voigt_func(x_fine)
+        t_Amax_voigt.append(x_fine[np.argmin(np.abs(y_fine - voigt_peak))])
+        idx_below = np.where((y_peak < voigt_peak) & (x_peak < x_fine[np.argmin(np.abs(y_fine - voigt_peak))]))[0][-1]
+        t_w_below_Amax_voigt.append(x_peak[idx_below])
       except RuntimeError:
         continue
 
@@ -327,12 +360,20 @@ def main():
       try:
         spline_peak, spline_fit, spline_func, spline_errors = fit_cubic_spline(x_peak, y_peak)
         spline_peak_mcp, spline_fit_mcp, spline_func_mcp, spline_errors_mcp = fit_cubic_spline(x_peak_mcp, y_peak_mcp)
+        y_fine = spline_func(x_fine)
+        t_Amax_spline.append(x_fine[np.argmin(np.abs(y_fine - spline_peak))])
+        idx_below = np.where((y_peak < spline_peak) & (x_peak < x_fine[np.argmin(np.abs(y_fine - spline_peak))]))[0][-1]
+        t_w_below_Amax_spline.append(x_peak[idx_below])
       except RuntimeError:
         continue
 
       # landau
       landau_peak, landau_fit, landau_func, landau_errors = fit_landau(x_peak, y_peak)
       landau_peak_mcp, landau_fit_mcp, landau_func_mcp, landau_errors_mcp = fit_landau(x_peak_mcp, y_peak_mcp)
+      y_fine = landau_func(x_fine)
+      t_Amax_landau.append(x_fine[np.argmin(np.abs(y_fine - landau_peak))])
+      idx_below = np.where((y_peak < landau_peak) & (x_peak < x_fine[np.argmin(np.abs(y_fine - landau_peak))]))[0][-1]
+      t_w_below_Amax_landau.append(x_peak[idx_below])
 
       a_max.append(1000*pmax)
       a_para.append(1000*y_parabola_max)
@@ -637,25 +678,6 @@ def main():
       time_value_voigt = find_CFD_time_with_threshold(time_array_event, ampl_array_event, a_voigt[j], 0.2/1000)
       time_value_spline = find_CFD_time_with_threshold(time_array_event, ampl_array_event, a_spline[j], 0.2/1000)
       time_value_landau = find_CFD_time_with_threshold(time_array_event, ampl_array_event, a_landau[j], 0.2/1000)
-
-
-      '''
-      idx_control = np.where(np.array(reshaped_ampl_data[j]) > 0.2*reshaped_ampl_data[j].max())[0][0]
-      idx_para = np.where(np.array(reshaped_ampl_data[j]) > 0.0002*a_para[j])[0][0]
-      idx_gaus = np.where(np.array(reshaped_ampl_data[j]) > 0.0002*a_gaus[j])[0][0]
-      idx_lorentz = np.where(np.array(reshaped_ampl_data[j]) > 0.0002*a_lorentz[j])[0][0]
-      idx_voigt = np.where(np.array(reshaped_ampl_data[j]) > 0.0002*a_voigt[j])[0][0]
-      idx_spline = np.where(np.array(reshaped_ampl_data[j]) > 0.0002*a_spline[j])[0][0]
-      idx_landau = np.where(np.array(reshaped_ampl_data[j]) > 0.0002*a_landau[j])[0][0]
-      time_array_event = np.array(reshaped_time_data[j])
-      time_value_control = linear_interpolation(time_array_event[idx_control-1], reshaped_ampl_data[j][idx_control-1], time_array_event[idx_control], reshaped_ampl_data[j][idx_control], 0.2*reshaped_ampl_data[j].max())
-      time_value_para = linear_interpolation(time_array_event[idx_para-1], reshaped_ampl_data[j][idx_para-1], time_array_event[idx_para], reshaped_ampl_data[j][idx_para], 0.0002*a_para[j])
-      time_value_gaus = linear_interpolation(time_array_event[idx_gaus-1], reshaped_ampl_data[j][idx_gaus-1], time_array_event[idx_gaus], reshaped_ampl_data[j][idx_gaus], 0.0002*a_gaus[j])
-      time_value_lorentz = linear_interpolation(time_array_event[idx_lorentz-1], reshaped_ampl_data[j][idx_lorentz-1], time_array_event[idx_lorentz], reshaped_ampl_data[j][idx_lorentz], 0.0002*a_lorentz[j])
-      time_value_voigt = linear_interpolation(time_array_event[idx_voigt-1], reshaped_ampl_data[j][idx_voigt-1], time_array_event[idx_voigt], reshaped_ampl_data[j][idx_voigt], 0.0002*a_voigt[j])
-      time_value_spline = linear_interpolation(time_array_event[idx_spline-1], reshaped_ampl_data[j][idx_spline-1], time_array_event[idx_spline], reshaped_ampl_data[j][idx_spline], 0.0002*a_spline[j])
-      time_value_landau = linear_interpolation(time_array_event[idx_landau-1], reshaped_ampl_data[j][idx_landau-1], time_array_event[idx_landau], reshaped_ampl_data[j][idx_landau], 0.0002*a_landau[j])
-      '''
       control_data.append(time_value_control)
       cfd20_para.append(time_value_para)
       cfd20_gaus.append(time_value_gaus)
@@ -675,23 +697,6 @@ def main():
         time_value_voigt_mcp = find_CFD_time_with_threshold(time_array_event_mcp, ampl_array_event_mcp, a_voigt_mcp[j], 0.2/1000)
         time_value_spline_mcp = find_CFD_time_with_threshold(time_array_event_mcp, ampl_array_event_mcp, a_spline_mcp[j], 0.2/1000)
         time_value_landau_mcp = find_CFD_time_with_threshold(time_array_event_mcp, ampl_array_event_mcp, a_landau_mcp[j], 0.2/1000)
-        '''
-        idx_control_mcp = np.where(np.array(rad_mcp[j]) > 0.2*rad_mcp[j].max())[0][0]
-        idx_para_mcp = np.where(np.array(rad_mcp[j]) > 0.0002*a_para_mcp[j])[0][0]
-        idx_gaus_mcp = np.where(np.array(rad_mcp[j]) > 0.0002*a_gaus_mcp[j])[0][0]
-        idx_lorentz_mcp = np.where(np.array(rad_mcp[j]) > 0.0002*a_lorentz_mcp[j])[0][0]
-        idx_voigt_mcp = np.where(np.array(rad_mcp[j]) > 0.0002*a_voigt_mcp[j])[0][0]
-        idx_spline_mcp = np.where(np.array(rad_mcp[j]) > 0.0002*a_spline_mcp[j])[0][0]
-        idx_landau_mcp = np.where(np.array(rad_mcp[j]) > 0.0002*a_landau_mcp[j])[0][0]
-        time_array_event_mcp = np.array(rtd_mcp[j])
-        time_value_control_mcp = linear_interpolation(time_array_event[idx_control_mcp-1], reshaped_ampl_data[j][idx_control_mcp-1], time_array_event[idx_control_mcp], reshaped_ampl_data[j][idx_control_mcp], 0.2*rad_mcp[j].max())
-        time_value_para_mcp = linear_interpolation(time_array_event[idx_para_mcp-1], reshaped_ampl_data[j][idx_para_mcp-1], time_array_event[idx_para_mcp], reshaped_ampl_data[j][idx_para_mcp], 0.0002*a_para_mcp[j])
-        time_value_gaus_mcp = linear_interpolation(time_array_event[idx_gaus_mcp-1], reshaped_ampl_data[j][idx_gaus_mcp-1], time_array_event[idx_gaus_mcp], reshaped_ampl_data[j][idx_gaus_mcp], 0.0002*a_gaus_mcp[j])
-        time_value_lorentz_mcp = linear_interpolation(time_array_event[idx_lorentz_mcp-1], reshaped_ampl_data[j][idx_lorentz_mcp-1], time_array_event[idx_lorentz_mcp], reshaped_ampl_data[j][idx_lorentz_mcp], 0.0002*a_lorentz_mcp[j])
-        time_value_voigt_mcp = linear_interpolation(time_array_event[idx_voigt_mcp-1], reshaped_ampl_data[j][idx_voigt_mcp-1], time_array_event[idx_voigt_mcp], reshaped_ampl_data[j][idx_voigt_mcp], 0.0002*a_voigt_mcp[j])
-        time_value_spline_mcp = linear_interpolation(time_array_event[idx_spline_mcp-1], reshaped_ampl_data[j][idx_spline_mcp-1], time_array_event[idx_spline_mcp], reshaped_ampl_data[j][idx_spline_mcp], 0.0002*a_spline_mcp[j])
-        time_value_landau_mcp = linear_interpolation(time_array_event[idx_landau_mcp-1], reshaped_ampl_data[j][idx_landau_mcp-1], time_array_event[idx_landau_mcp], reshaped_ampl_data[j][idx_landau_mcp], 0.0002*a_landau_mcp[j])
-        '''
         control_mcp.append(time_value_control_mcp)
         cfd20_para_mcp.append(time_value_para_mcp)
         cfd20_gaus_mcp.append(time_value_gaus_mcp)
@@ -792,6 +797,42 @@ def main():
       plt.savefig("./timeres_20_260325.png",dpi=300,facecolor='w')
     else:
       plt.savefig("./cfd_20_260325.png",dpi=300,facecolor='w')
+    plt.clf()
+
+  if make_timewalk_plots:
+    deltaT_para = np.array(t_Amax_para) - np.array(t_w_below_Amax_para)
+    deltaT_gaus = np.array(t_Amax_gaus) - np.array(t_w_below_Amax_gaus)
+    deltaT_lorentz = np.array(t_Amax_lorentz) - np.array(t_w_below_Amax_lorentz)
+    deltaT_voigt = np.array(t_Amax_voigt) - np.array(t_w_below_Amax_voigt)
+    deltaT_spline = np.array(t_Amax_spline) - np.array(t_w_below_Amax_spline)
+    deltaT_landau = np.array(t_Amax_landau) - np.array(t_w_below_Amax_landau)
+
+    deltaT_para = np.where(deltaT_para > 0.1, deltaT_para - 0.1, deltaT_para)
+    deltaT_gaus = np.where(deltaT_gaus > 0.1, deltaT_gaus - 0.1, deltaT_gaus)
+    deltaT_lorentz = np.where(deltaT_lorentz > 0.1, deltaT_lorentz - 0.1, deltaT_lorentz)
+    deltaT_voigt = np.where(deltaT_voigt > 0.1, deltaT_voigt - 0.1, deltaT_voigt)
+    deltaT_spline = np.where(deltaT_spline > 0.1, deltaT_spline - 0.1, deltaT_spline)
+    deltaT_landau = np.where(deltaT_landau > 0.1, deltaT_landau - 0.1, deltaT_landau)
+
+    label_timewalk = r"$\Delta$t(A$_{fit}$,w$<$A$_{fit}$)"
+    fig, axes = plt.subplots(2, 3, figsize=(18, 12))
+    axes[0,0].hist(deltaT_para, bins=100,range=(0.0, 1.0),color='r',edgecolor='black',label=r"$\Delta$t$_{para}$")
+    axes[0,1].hist(deltaT_gaus, bins=100,range=(0.0, 1.0),color='g',edgecolor='black',label=r"$\Delta$t$_{Gaus}$")
+    axes[1,0].hist(deltaT_lorentz, bins=100,range=(0.0, 1.0),color='blue',edgecolor='black',label=r"$\Delta$t$_{Lorentz}$")
+    axes[1,1].hist(deltaT_voigt, bins=100,range=(0.0, 1.0),color='orange',edgecolor='black',label=r"$\Delta$t$_{Voigt}$")
+    axes[0,2].hist(deltaT_spline, bins=100,range=(0.0, 1.0),color='purple',edgecolor='black',label=r"$\Delta$t$_{spline}$")
+    axes[1,2].hist(deltaT_landau, bins=100,range=(0.0, 1.0),color='brown',edgecolor='black',label=r"$\Delta$t$_{Landau}$")
+    for i in range(2):
+      for j in range(3):
+        axes[i,j].set_xlabel(label_timewalk + r" / ns",fontsize=14)
+        axes[i,j].set_ylabel(r"Events",fontsize=14)
+        axes[i,j].set_xlim(0.0,0.1)
+        axes[i,j].legend(fontsize=14)
+        axes[i,j].grid(True, axis='both', linestyle='--', alpha=0.5)
+
+    fig.suptitle(f"Total {len(a_max)} signal events", fontsize=16, fontweight='bold')
+    plt.tight_layout(rect=[0, 0, 1, 0.96])
+    plt.savefig("./timewalk_010425.png",dpi=300,facecolor='w')
     plt.clf()
 
 
