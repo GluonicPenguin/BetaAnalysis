@@ -114,6 +114,14 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
         df_dvdt = df[['dvdt MPV']]
       df_dvdt = df_dvdt.rename(columns={'dvdt MPV':'dV/dt / mV/ps'})
       dfs_to_concat.append(df_dvdt)
+    elif var == "dvdt_2080":
+      if first_df_found == False:
+        first_df_found = True
+        df_dvdt = df[['Channel','Bias','dvdt_2080 MPV']]
+      else:
+        df_dvdt = df[['dvdt_2080 MPV']]
+      df_dvdt = df_dvdt.rename(columns={'dvdt_2080 MPV':'dV/dt[20%:80%] / mV/ps'})
+      dfs_to_concat.append(df_dvdt)
     elif var == "timeres":
       if first_df_found == False:
         first_df_found = True
@@ -129,26 +137,28 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
   dfs_comb['E field / V/cm'] = 10000*(dfs_comb['Bias'] / dfs_comb['Thickness / um'])
   dfs_comb.loc[:, 'E field / V/cm'] = dfs_comb['E field / V/cm'] // 1
   if ('Rise time / ps' in dfs_comb.columns) and ('Amplitude / mV' in dfs_comb.columns) and ('RMS Noise / mV' in dfs_comb.columns):
-    approximation = True
-    if approximation:
-      dfs_comb['Approx Jitter / ps'] = dfs_comb['RMS Noise / mV'] / (dfs_comb['Amplitude / mV'] / dfs_comb['Rise time / ps'])
-      dfs_comb.loc[:, 'Approx Jitter / ps'] = dfs_comb['Approx Jitter / ps'].round(1)
-      unc_cpt_rms = dfs_comb['RMS Unc / mV'] / dfs_comb['RMS Noise / mV']
-      unc_cpt_risetime = dfs_comb['Rise time Unc / ps'] / dfs_comb['Rise time / ps']
-      unc_cpt_ampl = 0 # idk the unc for a Langaus fit
-      dfs_comb['Approx Jitter Unc / ps'] = dfs_comb['Approx Jitter / ps'] * np.sqrt(unc_cpt_rms**2 + unc_cpt_risetime**2 + unc_cpt_ampl**2)
-      dfs_comb.loc[:, 'Approx Jitter Unc / ps'] = dfs_comb['Approx Jitter Unc / ps'].round(1)
-      #else:
-      dfs_comb['Jitter / ps'] = dfs_comb['RMS Noise / mV'] / dfs_comb['dV/dt / mV/ps']
-      unc_cpt_rms = dfs_comb['RMS Unc / mV'] / dfs_comb['RMS Noise / mV']
-      unc_cpt_dvdt = 0 # idk the unc for a Langaus fit
-      dfs_comb['Jitter Unc / ps'] = dfs_comb['Jitter / ps'] * np.sqrt(unc_cpt_rms**2 + unc_cpt_dvdt**2)
-      dfs_comb.loc[:, 'Jitter Unc / ps'] = (1000*dfs_comb['Jitter Unc / ps']).round(1)
-      dfs_comb.loc[:, 'Jitter / ps'] = (1000*dfs_comb['Jitter / ps']).round(1)
-      dfs_comb = dfs_comb.drop(columns=['dV/dt / mV/ps'])
+    dfs_comb['Approx Jitter / ps'] = dfs_comb['RMS Noise / mV'] / (dfs_comb['Amplitude / mV'] / dfs_comb['Rise time / ps'])
+    dfs_comb.loc[:, 'Approx Jitter / ps'] = dfs_comb['Approx Jitter / ps'].round(1)
+    unc_cpt_rms = dfs_comb['RMS Unc / mV'] / dfs_comb['RMS Noise / mV']
+    unc_cpt_risetime = dfs_comb['Rise time Unc / ps'] / dfs_comb['Rise time / ps']
+    unc_cpt_ampl = 0 # idk the unc for a Langaus fit
+    dfs_comb['Approx Jitter Unc / ps'] = dfs_comb['Approx Jitter / ps'] * np.sqrt(unc_cpt_rms**2 + unc_cpt_risetime**2 + unc_cpt_ampl**2)
+    dfs_comb.loc[:, 'Approx Jitter Unc / ps'] = dfs_comb['Approx Jitter Unc / ps'].round(1)
+    dfs_comb['Jitter / ps'] = dfs_comb['RMS Noise / mV'] / dfs_comb['dV/dt / mV/ps']
+    unc_cpt_rms = dfs_comb['RMS Unc / mV'] / dfs_comb['RMS Noise / mV']
+    unc_cpt_dvdt = 0 # idk the unc for a Langaus fit
+    dfs_comb['Jitter Unc / ps'] = dfs_comb['Jitter / ps'] * np.sqrt(unc_cpt_rms**2 + unc_cpt_dvdt**2)
+    dfs_comb.loc[:, 'Jitter Unc / ps'] = (1000*dfs_comb['Jitter Unc / ps']).round(1)
+    dfs_comb.loc[:, 'Jitter / ps'] = (1000*dfs_comb['Jitter / ps']).round(1)
+    dfs_comb = dfs_comb.drop(columns=['dV/dt / mV/ps'])
+    dfs_comb['Jitter[20%:80%] / ps'] = dfs_comb['RMS Noise / mV'] / dfs_comb['dV/dt[20%:80%] / mV/ps']
+    dfs_comb['Jitter[20%:80%] Unc / ps'] = dfs_comb['Jitter[20%:80%] / ps'] * np.sqrt(unc_cpt_rms**2 + unc_cpt_dvdt**2)
+    dfs_comb.loc[:, 'Jitter[20%:80%] Unc / ps'] = (1000*dfs_comb['Jitter[20%:80%] Unc / ps']).round(1)
+    dfs_comb.loc[:, 'Jitter[20%:80%] / ps'] = (1000*dfs_comb['Jitter[20%:80%] / ps']).round(1)
+    dfs_comb = dfs_comb.drop(columns=['dV/dt[20%:80%] / mV/ps'])
     if 'TR @ 30% / ps' in dfs_comb.columns:
-      dfs_comb['Landau TR Cpt / ps'] = np.sqrt(dfs_comb['TR @ 30% / ps']**2 - dfs_comb['Jitter / ps']**2)
-      unc_cpt_jit = dfs_comb['Jitter / ps']*dfs_comb['Jitter Unc / ps']
+      dfs_comb['Landau TR Cpt / ps'] = np.sqrt(dfs_comb['TR @ 30% / ps']**2 - dfs_comb['Jitter[20%:80%] / ps']**2)
+      unc_cpt_jit = dfs_comb['Jitter[20%:80%] / ps']*dfs_comb['Jitter[20%:80%] Unc / ps']
       unc_cpt_tr = dfs_comb['TR @ 30% / ps']*dfs_comb['TR Unc @ 30% / ps']
       dfs_comb['Landau TR Unc / ps'] = np.sqrt(unc_cpt_jit**2 + unc_cpt_tr**2) / dfs_comb['Landau TR Cpt / ps']
       dfs_comb.loc[:, 'Landau TR Cpt / ps'] = dfs_comb['Landau TR Cpt / ps'].round(1)

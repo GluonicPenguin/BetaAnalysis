@@ -72,11 +72,12 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
   arr_of_sse = []
   arr_of_rchi2 = []
 
-  dict_of_vars = {"amplitude": "Amplitude / mV", "charge": "Charge / fC", "dvdt": "dV/dt / mV/ps"}
+  dict_of_vars = {"amplitude": "Amplitude / mV", "charge": "Charge / fC", "dvdt": "dV/dt / mV/ps", "dvdt_2080": "dV/dt[20%:80%] / mV/ps"}
   for ch_ind, ch_val in enumerate(channel_array):
     pmax_list = []
     area_list = []
     dvdt_list = []
+    dvdt_2080_list = []
     sensorType, AtQfactor, (A, B, C, D, E) = ch_val
     if AtQfactor == 0:
       AtQfactor = 1
@@ -102,9 +103,11 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
           #area_sig = entry.area_new[ch_ind]
           area_sig = entry.area[ch_ind]
           dvdt_sig = entry.dvdt[ch_ind]
+          dvdt_2080_sig = entry.dvdt_2080[ch_ind]
           pmax_list.append(pmax_sig)
           area_list.append(area_sig)
           dvdt_list.append(dvdt_sig)
+          dvdt_2080_list.append(dvdt_2080_sig)
     else:
       continue
 
@@ -116,10 +119,13 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
     elif var == "dvdt":
       dvdt = np.array(dvdt_list)
       data_var = dvdt[(dvdt>=xLower) & (dvdt<=xUpper)]
+    elif var == "dvdt_2080":
+      print("selections")
+      dvdt_2080 = np.array(dvdt_2080_list)
+      data_var = dvdt_2080[(dvdt_2080>=xLower) & (dvdt_2080<=xUpper)]
     else:
       pmax = np.array(pmax_list)
       data_var = pmax[(pmax>=xLower) & (pmax<=xUpper)]
-    #print(xUpper)
 
     histo, bins, _ = plt.hist(data_var, bins=nBins, range=(xLower, xUpper), color='blue', edgecolor='black', alpha=0.6, density=True)
     #print(len(data_var))
@@ -193,7 +199,7 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
     fig.write_image(var+"/"+savename+"_Ch"+str(ch_ind)+".png")
     print("[BETA ANALYSIS]: [LANGAUS PLOTTER] Saved file "+var+"/"+savename+"_Ch"+str(ch_ind)+".png")
 
-  if var != "dvdt": var = var.capitalize()
+  if (var != "dvdt") & (var != "dvdt_2080"): var = var.capitalize()
 
   df_of_results = pd.DataFrame({
     "Channel": arr_of_ch,
