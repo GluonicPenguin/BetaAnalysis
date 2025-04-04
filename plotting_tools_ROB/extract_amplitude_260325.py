@@ -143,7 +143,7 @@ def main():
   cfd20_data = []
   cfd30_data = []
   cfd20_mcp_data = []
-  num_curves = 1000
+  num_curves = 1
   ch_sig = 2
   ch_mcp = 3
 
@@ -224,15 +224,16 @@ def main():
   a_spline_mcp = []
   a_landau_mcp = []
 
-  make_plots = False
+  make_plots = True
   make_populated_plots = False
-  cfd_studies = True
+  cfd_studies = False
   add_noise = False
-  time_res_calc = True
+  time_res_calc = False
   numptseitherside = 3
 
   if make_plots:
-    plt.figure(figsize=(10, 6))
+    #plt.figure(figsize=(10, 6))
+    fig, ax = plt.subplots(figsize=(10, 6))
 
   for i in range(1):
     #if i == 0: continue
@@ -273,6 +274,7 @@ def main():
 
       if len(x_peak) == 0 or len(x_peak_mcp) == 0:
         continue
+      x_fine = np.linspace(min(x_peak), max(x_peak), 1000)
 
       # parabola
       parabola_coeffs = np.polyfit(x_peak, y_peak, 2)
@@ -290,6 +292,9 @@ def main():
       a_mcp, b_mcp, _ = parabola_coeffs_mcp
       x_parabola_max_mcp = -b_mcp / (2 * a_mcp)
       y_parabola_max_mcp = np.polyval(parabola_coeffs_mcp, x_parabola_max_mcp)
+
+      idx_below = np.where((y_peak < y_parabola_max) & (x_peak < x_parabola_max))[0][-1]
+      t_w_below_Amax_para = x_peak[idx_below]
 
       # gaussian
       p0 = [np.max(y_peak), x_peak[np.argmax(y_peak)], 1]
@@ -313,6 +318,10 @@ def main():
       try:
         lorentz_peak, lorentz_fit, lorentz_func, lorentz_errors = fit_lorentzian(x_peak, y_peak)
         lorentz_peak_mcp, lorentz_fit_mcp, lorentz_func_mcp, lorentz_errors_mcp = fit_lorentzian(x_peak_mcp, y_peak_mcp)
+        y_fine = lorentz_func(x_fine)
+        t_Amax_lorentz = x_fine[np.argmin(np.abs(y_fine - lorentz_peak))]
+        idx_below = np.where((y_peak < lorentz_peak) & (x_peak < x_fine[np.argmin(np.abs(y_fine - lorentz_peak))]))[0][-1]
+        t_w_below_Amax_lorentz = x_peak[idx_below]
       except RuntimeError:
         continue
 
@@ -333,6 +342,11 @@ def main():
       # landau
       landau_peak, landau_fit, landau_func, landau_errors = fit_landau(x_peak, y_peak)
       landau_peak_mcp, landau_fit_mcp, landau_func_mcp, landau_errors_mcp = fit_landau(x_peak_mcp, y_peak_mcp)
+      y_fine = landau_func(x_fine)
+      landau_peak = max(y_fine)
+      t_Amax_landau = x_fine[np.argmin(np.abs(y_fine - landau_peak))]
+      idx_below = np.where((y_peak < landau_peak) & (x_peak < x_fine[np.argmin(np.abs(y_fine - landau_peak))]))[0][-1]
+      t_w_below_Amax_landau = x_peak[idx_below]
 
       a_max.append(1000*pmax)
       a_para.append(1000*y_parabola_max)
@@ -366,23 +380,30 @@ def main():
       if make_plots:
         x_linspace = np.linspace(x_peak.min(), x_peak.max(), 400)
 
-        plt.scatter(reshaped_time_data[j],reshaped_ampl_data[j],s=20,c=colours[i],marker='o',edgecolor=edges[i],linewidth=0.5,alpha=alphas[i],label=labels[i]+" "+str(round(1000*pmax, 2))+" mV", zorder=1)
-        plt.plot(x_linspace, np.polyval(parabola_coeffs, x_linspace), 'r', label="Parabolic Fit", linewidth = 2, zorder=2)
-        plt.plot(x_linspace, gaussian(x_linspace, *params), 'g', label="Gaussian Fit", linewidth = 2, zorder=2)
-        plt.plot(x_linspace, lorentz_func(x_linspace), 'blue', label="Lorentz Fit", linewidth = 2, zorder=2)
-        plt.plot(x_linspace, voigt_func(x_linspace), 'purple', label="Voigt Fit", linewidth = 2, zorder=2)
-        plt.plot(x_linspace, spline_func(x_linspace), 'orange', label="Interpolated Spline", linewidth = 2, zorder=2)
-        plt.plot(x_linspace, landau_func(x_linspace), 'cyan', label="Landau Fit", linewidth = 2, zorder=2)
-        plt.axhline(y_parabola_max, color='r', linestyle=':', label=r"A$_{para}$: "+str(round(1000*y_parabola_max, 2))+" mV", linewidth = 2, zorder=3)
-        plt.axhline(gaussian(mu, *params), color='g', linestyle=':', label=r"A$_{Gaus}$: "+str(round(1000*gaussian(mu, *params), 2))+" mV", linewidth = 2, zorder=3)
-        plt.axhline(lorentz_peak, color='blue', linestyle=':', label=r"A$_{Lorentz}$: "+str(round(1000*lorentz_peak, 2))+" mV", linewidth = 2, zorder=3)
-        plt.axhline(voigt_peak, color='purple', linestyle=':', label=r"A$_{Voigt}$: "+str(round(1000*voigt_peak, 2))+" mV", linewidth = 2, zorder=3)
-        plt.axhline(spline_peak, color='orange', linestyle=':', label=r"A$_{spline}$: "+str(round(1000*spline_peak, 2))+" mV", linewidth = 2, zorder=3)
-        plt.axhline(landau_peak, color='cyan', linestyle=':', label=r"A$_{Landau}$: "+str(round(1000*landau_peak, 2))+" mV", linewidth = 2, zorder=3)
-        plt.scatter(reshaped_time_data[j],reshaped_ampl_data[j],s=30,c=colours[i],marker='o',edgecolor=edges[i],linewidth=0.5,alpha=alphas[i], zorder=4)
-        #plt.plot(reshaped_time_data[0],reshaped_ampl_data[0],linestyle='-',color=colours[i],linewidth=1.5,alpha=alphas[i],label=labels[i])
-        #for j in range(len(reshaped_time_data)-1):
-        #  plt.plot(reshaped_time_data[j+1],reshaped_ampl_data[j+1],linestyle='-',color=colours[i],linewidth=1.5,alpha=alphas[i])
+        ax.scatter(reshaped_time_data[j],1000*reshaped_ampl_data[j],s=20,c=colours[i],marker='o',edgecolor=edges[i],linewidth=0.5,alpha=alphas[i],label=labels[i]+" "+str(round(1000*pmax, 2))+" mV", zorder=1)
+        #ax.plot(x_linspace, 1000*np.polyval(parabola_coeffs, x_linspace), 'r', label="Parabolic Fit", linewidth = 2, zorder=2)
+        #ax.plot(x_linspace, gaussian(x_linspace, *params), 'g', label="Gaussian Fit", linewidth = 2, zorder=2)
+        #ax.plot(x_linspace, 1000*lorentz_func(x_linspace), 'blue', linewidth = 2, zorder=2)
+        #ax.plot(x_linspace, voigt_func(x_linspace), 'orange', label="Voigt Fit", linewidth = 2, zorder=2)
+        #ax.plot(x_linspace, spline_func(x_linspace), 'purple', label="Interpolated Spline", linewidth = 2, zorder=2)
+        ax.plot(x_linspace, 1000*landau_func(x_linspace), 'brown', label="Landau Fit", linewidth = 2, zorder=2)
+        #ax.axhline(1000*y_parabola_max, color='r', linestyle=':', label=r"A$_{para}$: "+str(round(1000*y_parabola_max, 2))+" mV", linewidth = 2, zorder=3)
+        #ax.axhline(gaussian(mu, *params), color='g', linestyle=':', label=r"A$_{Gaus}$: "+str(round(1000*gaussian(mu, *params), 2))+" mV", linewidth = 2, zorder=3)
+        #ax.axhline(1000*lorentz_peak, color='blue', linestyle=':', label=r"A$_{Lorentz}$: "+str(round(1000*lorentz_peak, 2))+" mV", linewidth = 2, zorder=3)
+        #ax.axhline(voigt_peak, color='orange', linestyle=':', label=r"A$_{Voigt}$: "+str(round(1000*voigt_peak, 2))+" mV", linewidth = 2, zorder=3)
+        #ax.axhline(spline_peak, color='purple', linestyle=':', label=r"A$_{spline}$: "+str(round(1000*spline_peak, 2))+" mV", linewidth = 2, zorder=3)
+        ax.axhline(1000*landau_peak, color='brown', linestyle=':', label=r"A$_{Landau}$: "+str(round(1000*landau_peak, 2))+" mV", linewidth = 2, zorder=3)
+        #ax.scatter(reshaped_time_data[j],reshaped_ampl_data[j],s=30,c=colours[i],marker='o',edgecolor=edges[i],linewidth=0.5,alpha=alphas[i], zorder=4)
+        #ax.axvline(x_parabola_max, color='k', linestyle=':', label=r"t(A$_{para}$) = "+str(round(1000*x_parabola_max, 2))+" ps", linewidth = 2, zorder=3)
+        #ax.axvline(t_w_below_Amax_para, color='k', linestyle='-.', label=r"t(w < A$_{para}$): "+str(round(1000*t_w_below_Amax_para, 2))+" ps", linewidth = 2, zorder=3)
+        #ax.axvline(t_w_below_Amax_para+0.1, color='k', linestyle='-.', label=r"t(w < A$_{para}$): ("+str(round(1000*t_w_below_Amax_para, 2))+" + 100) ps", linewidth = 2, zorder=3, alpha=0.6)
+        #ax.fill_betweenx(y=np.linspace(-50, 500, 100), x1=t_w_below_Amax_para, x2=x_parabola_max, color='orange', alpha=0.4, hatch='//')
+        #ax.axvline(t_Amax_lorentz, color='k', linestyle=':', label=r"t(A$_{Lorentz}$) = "+str(round(1000*t_Amax_lorentz, 2))+" ps", linewidth = 2, zorder=3)
+        #ax.axvline(t_w_below_Amax_lorentz, color='k', linestyle='-.', label=r"t(w < A$_{Lorentz}$): "+str(round(1000*t_w_below_Amax_lorentz, 2))+" ps", linewidth = 2, zorder=3)
+        #ax.fill_betweenx(y=np.linspace(-50, 500, 100), x1=t_w_below_Amax_lorentz, x2=t_Amax_lorentz, color='orange', alpha=0.4, hatch='//')
+        ax.axvline(t_Amax_landau, color='k', linestyle=':', label=r"t(A$_{Landau}$) = "+str(round(1000*t_Amax_landau, 2))+" ps", linewidth = 2, zorder=3)
+        ax.axvline(t_w_below_Amax_landau, color='k', linestyle='-.', label=r"t(w < A$_{Landau}$): "+str(round(1000*t_w_below_Amax_landau, 2))+" ps", linewidth = 2, zorder=3)
+        ax.fill_betweenx(y=np.linspace(-50, 500, 100), x1=t_w_below_Amax_landau, x2=t_Amax_landau, color='orange', alpha=0.4, hatch='//')
         if num_curves == 1:
           print(f"A_max = {(1000*pmax):.2f} mV")
           print(f"A_para = {(1000*y_parabola_max):.2f} mV")
@@ -417,14 +438,16 @@ def main():
           print(f"  RMSE = {landau_errors[1]:.4f}")
 
     if make_plots:
-      plt.xlabel('Time [ns]',fontsize=14)
-      plt.ylabel('Amplitude [mV]',fontsize=14)
+      ax.set_xlabel('Time [ns]',fontsize=14)
+      ax.set_ylabel('Amplitude [mV]',fontsize=14)
       plt.xticks(fontsize=14)
       plt.yticks(fontsize=14)
-      plt.xlim(-2,1)
-      plt.legend(fontsize=12)
-      #plt.yscale('log')
-      plt.grid(True, linestyle='--', alpha=0.5)
+      ax.tick_params(axis='both', labelsize=14)
+      ax.set_xlim(-0.5,0.2)
+      ax.set_ylim(0,60)
+      ax.legend(fontsize=12)
+      #ax.set_yscale('log')
+      ax.grid(True, linestyle='--', alpha=0.5)
       plt.tight_layout()
       plt.savefig("./amplitude_analysis.png",dpi=300,facecolor='w')
       #plt.show()

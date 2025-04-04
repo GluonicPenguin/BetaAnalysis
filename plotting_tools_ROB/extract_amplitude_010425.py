@@ -78,8 +78,8 @@ def fit_voigt(x, y):
 
 def fit_cubic_spline(x, y):
   spline = interp.CubicSpline(x, y)
-  x_fine = np.linspace(min(x), max(x), 1000)
-  y_fine = spline(x_fine)
+  x_spline_fine = np.linspace(min(x), max(x), 1000)
+  y_fine = spline(x_spline_fine)
   peak = max(y_fine)
   return peak, spline(x), spline, compute_errors(y, spline(x))
 
@@ -144,7 +144,7 @@ def main():
   cfd30_data = []
   cfd20_mcp_data = []
   num_curves = 1000
-  ch_sig = 1
+  ch_sig = 2
   ch_mcp = 3
 
   for j in range(len(trees)):
@@ -163,7 +163,7 @@ def main():
       cfd20_sig = entry.cfd[ch_sig][1] # 20%
       cfd20_mcp = entry.cfd[ch_mcp][1]
       cfd30_sig = entry.cfd[ch_sig][2] # 30%
-      if (pmax_sig > 35) and (pmax_mcp < 540) and (pmax_mcp > 40):
+      if (pmax_sig > 25) and (pmax_mcp < 540) and (pmax_mcp > 40):
         # W12 15e14/25e14 (pmax_sig > 10) and (pmax_sig < 30) and (negpmax_sig > -30) and (pmax_mcp < 120) and (peakfind > 9) and (peakfind < 14)
         # W13 35e14 (pmax_sig > 55) and (pmax_sig < 80) and (negpmax_sig > -30) and (pmax_mcp < 120) and (peakfind > 9) and (peakfind < 14)
         w_sig = entry.w[ch_sig]
@@ -240,10 +240,10 @@ def main():
 
   make_plots = False
   make_populated_plots = False
-  cfd_studies = False
+  cfd_studies = True
   add_noise = False
   time_res_calc = True
-  make_timewalk_plots = True
+  make_timewalk_plots = False
   numptseitherside = 3
 
   if make_plots:
@@ -289,12 +289,15 @@ def main():
       if len(x_peak) == 0 or len(x_peak_mcp) == 0:
         continue
 
+      x_fine = np.linspace(min(x_peak), max(x_peak), 1000)
+
       # parabola
       parabola_coeffs = np.polyfit(x_peak, y_peak, 2)
       a, b, _ = parabola_coeffs
       x_parabola_max = -b / (2 * a)
       y_parabola_max = np.polyval(parabola_coeffs, x_parabola_max)
-      t_Amax_para.append(x_parabola_max)
+      res_effect_y = np.polyval(parabola_coeffs, x_fine)
+      t_Amax_para.append(x_fine[np.argmin(np.abs(res_effect_y - max(res_effect_y)))])
 
       y_parabolic_fit = np.polyval(parabola_coeffs, x_peak)
       parabolic_residuals = y_peak - y_parabolic_fit
@@ -332,13 +335,12 @@ def main():
       except RuntimeError:
         continue
 
-      x_fine = np.linspace(min(x_peak), max(x_peak), 1000)
-
       # Lorentzian
       try:
         lorentz_peak, lorentz_fit, lorentz_func, lorentz_errors = fit_lorentzian(x_peak, y_peak)
         lorentz_peak_mcp, lorentz_fit_mcp, lorentz_func_mcp, lorentz_errors_mcp = fit_lorentzian(x_peak_mcp, y_peak_mcp)
         y_fine = lorentz_func(x_fine)
+        lorentz_peak = max(y_fine)
         t_Amax_lorentz.append(x_fine[np.argmin(np.abs(y_fine - lorentz_peak))])
         idx_below = np.where((y_peak < lorentz_peak) & (x_peak < x_fine[np.argmin(np.abs(y_fine - lorentz_peak))]))[0][-1]
         t_w_below_Amax_lorentz.append(x_peak[idx_below])
@@ -350,6 +352,7 @@ def main():
         voigt_peak, voigt_fit, voigt_func, voigt_errors = fit_voigt(x_peak, y_peak)
         voigt_peak_mcp, voigt_fit_mcp, voigt_func_mcp, voigt_errors_mcp = fit_voigt(x_peak_mcp, y_peak_mcp)
         y_fine = voigt_func(x_fine)
+        voigt_peak = max(y_fine)
         t_Amax_voigt.append(x_fine[np.argmin(np.abs(y_fine - voigt_peak))])
         idx_below = np.where((y_peak < voigt_peak) & (x_peak < x_fine[np.argmin(np.abs(y_fine - voigt_peak))]))[0][-1]
         t_w_below_Amax_voigt.append(x_peak[idx_below])
@@ -361,6 +364,7 @@ def main():
         spline_peak, spline_fit, spline_func, spline_errors = fit_cubic_spline(x_peak, y_peak)
         spline_peak_mcp, spline_fit_mcp, spline_func_mcp, spline_errors_mcp = fit_cubic_spline(x_peak_mcp, y_peak_mcp)
         y_fine = spline_func(x_fine)
+        spline_peak = max(y_fine)
         t_Amax_spline.append(x_fine[np.argmin(np.abs(y_fine - spline_peak))])
         idx_below = np.where((y_peak < spline_peak) & (x_peak < x_fine[np.argmin(np.abs(y_fine - spline_peak))]))[0][-1]
         t_w_below_Amax_spline.append(x_peak[idx_below])
@@ -371,6 +375,7 @@ def main():
       landau_peak, landau_fit, landau_func, landau_errors = fit_landau(x_peak, y_peak)
       landau_peak_mcp, landau_fit_mcp, landau_func_mcp, landau_errors_mcp = fit_landau(x_peak_mcp, y_peak_mcp)
       y_fine = landau_func(x_fine)
+      landau_peak = max(y_fine)
       t_Amax_landau.append(x_fine[np.argmin(np.abs(y_fine - landau_peak))])
       idx_below = np.where((y_peak < landau_peak) & (x_peak < x_fine[np.argmin(np.abs(y_fine - landau_peak))]))[0][-1]
       t_w_below_Amax_landau.append(x_peak[idx_below])
@@ -787,13 +792,14 @@ def main():
       for j in range(3):
         axes[i,j].set_xlabel(label_cfd + r"/ ns",fontsize=14)
         axes[i,j].set_ylabel(r"Events",fontsize=14)
-        axes[i,j].set_xlim(-1.0,-0.6)
+        axes[i,j].set_xlim(-0.8,-0.4)
         axes[i,j].legend(fontsize=14)
         axes[i,j].grid(True, axis='both', linestyle='--', alpha=0.5)
 
     fig.suptitle(f"Total {len(a_max)} signal events", fontsize=16, fontweight='bold')
     plt.tight_layout(rect=[0, 0, 1, 0.96])
     if time_res_calc:
+      print("NEW DATA")
       plt.savefig("./timeres_20_260325.png",dpi=300,facecolor='w')
     else:
       plt.savefig("./cfd_20_260325.png",dpi=300,facecolor='w')
@@ -815,20 +821,92 @@ def main():
     deltaT_landau = np.where(deltaT_landau > 0.1, deltaT_landau - 0.1, deltaT_landau)
 
     label_timewalk = r"$\Delta$t(A$_{fit}$,w$<$A$_{fit}$)"
+    num_bins_timewalk = 10
+
     fig, axes = plt.subplots(2, 3, figsize=(18, 12))
-    axes[0,0].hist(deltaT_para, bins=100,range=(0.0, 1.0),color='r',edgecolor='black',label=r"$\Delta$t$_{para}$")
-    axes[0,1].hist(deltaT_gaus, bins=100,range=(0.0, 1.0),color='g',edgecolor='black',label=r"$\Delta$t$_{Gaus}$")
-    axes[1,0].hist(deltaT_lorentz, bins=100,range=(0.0, 1.0),color='blue',edgecolor='black',label=r"$\Delta$t$_{Lorentz}$")
-    axes[1,1].hist(deltaT_voigt, bins=100,range=(0.0, 1.0),color='orange',edgecolor='black',label=r"$\Delta$t$_{Voigt}$")
-    axes[0,2].hist(deltaT_spline, bins=100,range=(0.0, 1.0),color='purple',edgecolor='black',label=r"$\Delta$t$_{spline}$")
-    axes[1,2].hist(deltaT_landau, bins=100,range=(0.0, 1.0),color='brown',edgecolor='black',label=r"$\Delta$t$_{Landau}$")
+    counts_para, bins_para, _ = axes[0,0].hist(deltaT_para, bins=num_bins_timewalk,range=(0.0, 0.1),color='r',edgecolor='black',label=r"$\Delta$t$_{para}$")
+    counts_gaus, bins_gaus, _ = axes[0,1].hist(deltaT_gaus, bins=num_bins_timewalk,range=(0.0, 0.1),color='g',edgecolor='black',label=r"$\Delta$t$_{Gaus}$")
+    counts_lorentz, bins_lorentz, _ = axes[1,0].hist(deltaT_lorentz, bins=num_bins_timewalk,range=(0.0, 0.1),color='blue',edgecolor='black',label=r"$\Delta$t$_{Lorentz}$")
+    counts_voigt, bins_voigt, _ = axes[1,1].hist(deltaT_voigt, bins=num_bins_timewalk,range=(0.0, 0.1),color='orange',edgecolor='black',label=r"$\Delta$t$_{Voigt}$")
+    counts_spline, bins_spline, _ = axes[0,2].hist(deltaT_spline, bins=num_bins_timewalk,range=(0.0, 0.1),color='purple',edgecolor='black',label=r"$\Delta$t$_{spline}$")
+    counts_landau, bins_landau, _ = axes[1,2].hist(deltaT_landau, bins=num_bins_timewalk,range=(0.0, 0.1),color='brown',edgecolor='black',label=r"$\Delta$t$_{Landau}$")
+    
+    if time_res_calc:
+      axes_RHS = np.empty((2, 3), dtype=object)
+
     for i in range(2):
       for j in range(3):
         axes[i,j].set_xlabel(label_timewalk + r" / ns",fontsize=14)
         axes[i,j].set_ylabel(r"Events",fontsize=14)
         axes[i,j].set_xlim(0.0,0.1)
-        axes[i,j].legend(fontsize=14)
+        axes[i,j].legend(loc='upper left',fontsize=14)
         axes[i,j].grid(True, axis='both', linestyle='--', alpha=0.5)
+        if time_res_calc:
+          axes_RHS[i,j] = axes[i,j].twinx()
+          axes_RHS[i,j].set_ylabel(r"$\sigma_{tr}$ of events in given bin / ps",fontsize=14)
+
+    if time_res_calc:
+
+      bin_indices_para = np.digitize(deltaT_para, bins_para, right=False) - 1
+      bin_indices_gaus = np.digitize(deltaT_gaus, bins_gaus, right=False) - 1
+      bin_indices_lorentz = np.digitize(deltaT_lorentz, bins_lorentz, right=False) - 1
+      bin_indices_voigt = np.digitize(deltaT_voigt, bins_voigt, right=False) - 1
+      bin_indices_spline = np.digitize(deltaT_spline, bins_spline, right=False) - 1
+      bin_indices_landau = np.digitize(deltaT_landau, bins_landau, right=False) - 1
+
+      bin_indices_para[bin_indices_para == num_bins_timewalk] = (num_bins_timewalk-1)
+      bin_indices_gaus[bin_indices_gaus == num_bins_timewalk] = (num_bins_timewalk-1)
+      bin_indices_lorentz[bin_indices_lorentz == num_bins_timewalk] = (num_bins_timewalk-1)
+      bin_indices_voigt[bin_indices_voigt == num_bins_timewalk] = (num_bins_timewalk-1)
+      bin_indices_spline[bin_indices_spline == num_bins_timewalk] = (num_bins_timewalk-1)
+      bin_indices_landau[bin_indices_landau == num_bins_timewalk] = (num_bins_timewalk-1)
+
+      binned_para = [np.where(bin_indices_para == i)[0] for i in range(num_bins_timewalk)]
+      binned_gaus = [np.where(bin_indices_gaus == i)[0] for i in range(num_bins_timewalk)]
+      binned_lorentz = [np.where(bin_indices_lorentz == i)[0] for i in range(num_bins_timewalk)]
+      binned_voigt = [np.where(bin_indices_voigt == i)[0] for i in range(num_bins_timewalk)]
+      binned_spline = [np.where(bin_indices_spline == i)[0] for i in range(num_bins_timewalk)]
+      binned_landau = [np.where(bin_indices_landau == i)[0] for i in range(num_bins_timewalk)]
+
+      selected_tr_events_para = [cfd20_para[binned_para[i]] for i in range(num_bins_timewalk)]
+      selected_tr_events_gaus = [cfd20_gaus[binned_gaus[i]] for i in range(num_bins_timewalk)]
+      selected_tr_events_lorentz = [cfd20_lorentz[binned_lorentz[i]] for i in range(num_bins_timewalk)]
+      selected_tr_events_voigt = [cfd20_voigt[binned_voigt[i]] for i in range(num_bins_timewalk)]
+      selected_tr_events_spline = [cfd20_spline[binned_spline[i]] for i in range(num_bins_timewalk)]
+      selected_tr_events_landau = [cfd20_landau[binned_landau[i]] for i in range(num_bins_timewalk)]
+      
+      selected_para_tr_params = [gaussian_fit_binned_data(selected_tr_events_para[i], "Parabolic") for i in range(num_bins_timewalk)]
+      selected_gaus_tr_params = [gaussian_fit_binned_data(selected_tr_events_gaus[i], "Gaussian") for i in range(num_bins_timewalk)]
+      selected_lorentz_tr_params = [gaussian_fit_binned_data(selected_tr_events_lorentz[i], "Lorentz") for i in range(num_bins_timewalk)]
+      selected_voigt_tr_params = [gaussian_fit_binned_data(selected_tr_events_voigt[i], "Voigt") for i in range(num_bins_timewalk)]
+      selected_spline_tr_params = [gaussian_fit_binned_data(selected_tr_events_spline[i], "Interpolated spline") for i in range(num_bins_timewalk)]
+      selected_landau_tr_params = [gaussian_fit_binned_data(selected_tr_events_landau[i], "Landau") for i in range(num_bins_timewalk)]
+
+      bin_centres_para = (bins_para[:-1] + bins_para[1:]) / 2
+      bin_centres_gaus = (bins_gaus[:-1] + bins_gaus[1:]) / 2
+      bin_centres_lorentz = (bins_lorentz[:-1] + bins_lorentz[1:]) / 2
+      bin_centres_voigt = (bins_voigt[:-1] + bins_voigt[1:]) / 2
+      bin_centres_spline = (bins_spline[:-1] + bins_spline[1:]) / 2
+      bin_centres_landau = (bins_landau[:-1] + bins_landau[1:]) / 2
+
+      mcp_tr_est = 5
+      per_bin_tr_val_para = np.sqrt(np.where((1000*np.array(selected_para_tr_params)[:,2])**2 - mcp_tr_est**2 < 0, 0, (1000*np.array(selected_para_tr_params)[:,2])**2 - mcp_tr_est**2))
+      per_bin_tr_val_para = np.sqrt(np.where((1000*np.array(selected_para_tr_params)[:,2])**2 - mcp_tr_est**2 < 0, 0, (1000*np.array(selected_para_tr_params)[:,2])**2 - mcp_tr_est**2))
+      per_bin_tr_val_gaus = np.sqrt(np.where((1000*np.array(selected_gaus_tr_params)[:,2])**2 - mcp_tr_est**2 < 0, 0, (1000*np.array(selected_gaus_tr_params)[:,2])**2 - mcp_tr_est**2))
+      per_bin_tr_val_lorentz = np.sqrt(np.where((1000*np.array(selected_lorentz_tr_params)[:,2])**2 - mcp_tr_est**2 < 0, 0, (1000*np.array(selected_lorentz_tr_params)[:,2])**2 - mcp_tr_est**2))
+      per_bin_tr_val_voigt = np.sqrt(np.where((1000*np.array(selected_voigt_tr_params)[:,2])**2 - mcp_tr_est**2 < 0, 0, (1000*np.array(selected_voigt_tr_params)[:,2])**2 - mcp_tr_est**2))
+      per_bin_tr_val_spline = np.sqrt(np.where((1000*np.array(selected_spline_tr_params)[:,2])**2 - mcp_tr_est**2 < 0, 0, (1000*np.array(selected_spline_tr_params)[:,2])**2 - mcp_tr_est**2))
+      per_bin_tr_val_landau = np.sqrt(np.where((1000*np.array(selected_landau_tr_params)[:,2])**2 - mcp_tr_est**2 < 0, 0, (1000*np.array(selected_landau_tr_params)[:,2])**2 - mcp_tr_est**2))
+
+      axes_RHS[0,0].plot(bin_centres_para, per_bin_tr_val_para, 'o-', color='k', label='$\sigma_{tr}^{para}$', markersize=10, linewidth=2, alpha=0.5)
+      axes_RHS[0,1].plot(bin_centres_gaus, per_bin_tr_val_gaus, 'o-', color='k', label='$\sigma_{tr}^{Gaus}$', markersize=10, linewidth=2, alpha=0.5)
+      axes_RHS[1,0].plot(bin_centres_lorentz, per_bin_tr_val_lorentz, 'o-', color='k', label='$\sigma_{tr}^{Lorentz}$', markersize=10, linewidth=2, alpha=0.5)
+      axes_RHS[1,1].plot(bin_centres_voigt, per_bin_tr_val_voigt, 'o-', color='k', label='$\sigma_{tr}^{Voigt}$', markersize=10, linewidth=2, alpha=0.5)
+      axes_RHS[0,2].plot(bin_centres_spline, per_bin_tr_val_spline, 'o-', color='k', label='$\sigma_{tr}^{spline}$', markersize=10, linewidth=2, alpha=0.5)
+      axes_RHS[1,2].plot(bin_centres_landau, per_bin_tr_val_landau, 'o-', color='k', label='$\sigma_{tr}^{Landau}$', markersize=10, linewidth=2, alpha=0.5)
+      for i in range(2):
+        for j in range(3):
+          axes_RHS[i,j].legend(loc='upper right',fontsize=14)
 
     fig.suptitle(f"Total {len(a_max)} signal events", fontsize=16, fontweight='bold')
     plt.tight_layout(rect=[0, 0, 1, 0.96])
