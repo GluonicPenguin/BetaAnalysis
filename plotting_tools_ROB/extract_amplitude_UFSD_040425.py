@@ -101,6 +101,25 @@ def fit_landau(x, y):
     print("Fucking fit fail")
     return None, None, None, None
 
+def skewed_gaussian(x, A, mu, sigma, alpha):
+  return 2 * A * np.exp(-((x - mu) ** 2) / (2 * sigma ** 2)) * norm.cdf(alpha * (x - mu))
+
+def fit_skewed_gaussian(x, y):
+  A0 = max(y)
+  mu0 = x[np.argmax(y)]
+  sigma0 = (max(x) - min(x)) / 10
+  alpha0 = 1  # skew factor
+
+  p0 = [A0, mu0, sigma0, alpha0]
+
+  try:
+    popt, _ = opt.curve_fit(skewed_gaussian, x, y, p0=p0)
+    A, mu, sigma, alpha = popt
+    y_fit = skewed_gaussian(x, *popt)
+    return A, y_fit, lambda x_new: skewed_gaussian(x_new, *popt), compute_errors(y, y_fit)
+  except RuntimeError:
+    return None, None, None, None
+
 def compute_errors(y_true, y_fit):
   mae = np.mean(np.abs(y_true - y_fit))
   rmse = np.sqrt(np.mean((y_true - y_fit) ** 2))
@@ -211,6 +230,7 @@ def main():
   a_voigt = []
   a_spline = []
   a_landau = []
+  a_skewG = []
   para_mae = []
   para_rmse = []
   gaus_mae = []
@@ -223,6 +243,8 @@ def main():
   spline_rmse = []
   landau_mae = []
   landau_rmse = []
+  landau_mae = []
+  landau_rmse = []
 
   a_max_mcp = []
   a_para_mcp = []
@@ -231,6 +253,7 @@ def main():
   a_voigt_mcp = []
   a_spline_mcp = []
   a_landau_mcp = []
+  a_skewG_mcp = []
 
   t_Amax_para = []
   t_Amax_gaus = []
@@ -238,6 +261,7 @@ def main():
   t_Amax_voigt = []
   t_Amax_spline = []
   t_Amax_landau = []
+  t_Amax_skewG = []
 
   t_w_below_Amax_para = []
   t_w_below_Amax_gaus = []
@@ -245,6 +269,7 @@ def main():
   t_w_below_Amax_voigt = []
   t_w_below_Amax_spline = []
   t_w_below_Amax_landau = []
+  t_w_below_Amax_skewG = []
 
   linfit_cfd = True
   add_noise = True
@@ -396,6 +421,15 @@ def main():
       idx_below = np.where((y_peak < landau_peak) & (x_peak < x_fine[np.argmin(np.abs(y_fine - landau_peak))]))[0][-1]
       t_w_below_Amax_landau.append(x_peak[idx_below])
 
+      # skewed Gaussian
+      skew_peak, skew_fit, skew_func, skew_errors = fit_skewed_gaussian(x_peak, y_peak)
+      skew_peak_mcp, skew_fit_mcp, skew_func_mcp, skew_errors_mcp = fit_skewed_gaussian(x_peak_mcp, y_peak_mcp)
+      y_fine = landau_func(x_fine)
+      skewG_peak = max(y_fine)
+      t_Amax_skewG.append(x_fine[np.argmin(np.abs(y_fine - skewG_peak))])
+      idx_below = np.where((y_peak < skewG_peak) & (x_peak < x_fine[np.argmin(np.abs(y_fine - skewG_peak))]))[0][-1]
+      t_w_below_Amax_skewG.append(x_peak[idx_below])
+
       a_max.append(1000*pmax)
       a_para.append(1000*y_parabola_max)
       a_gaus.append(1000*gaussian(mu, *params))
@@ -403,6 +437,7 @@ def main():
       a_voigt.append(1000*voigt_peak)
       a_spline.append(1000*spline_peak)
       a_landau.append(1000*landau_peak)
+      a_skewG.append(1000*skewG_peak)
 
       para_mae.append(parabolic_mae)
       para_rmse.append(parabolic_rmse)
@@ -416,6 +451,8 @@ def main():
       spline_rmse.append(spline_errors[1])
       landau_mae.append(landau_errors[0])
       landau_rmse.append(landau_errors[1])
+      skewG_mae.append(skewG_errors[0])
+      skewG_rmse.append(skewG_errors[1])
 
       a_max_mcp.append(1000*pmax_mcp)
       a_para_mcp.append(1000*y_parabola_max_mcp)
@@ -424,6 +461,7 @@ def main():
       a_voigt_mcp.append(1000*voigt_peak_mcp)
       a_spline_mcp.append(1000*spline_peak_mcp)
       a_landau_mcp.append(1000*landau_peak_mcp)
+      a_skewG_mcp.append(1000*skewG_peak_mcp)
 
   if make_populated_plots:
     fig = plt.figure(figsize=(20, 20))
@@ -542,6 +580,7 @@ def main():
     ax1.axhline(1, color='black', linestyle='dashed', linewidth=1)
     ax1.set_xlabel(r"A$_{max}$ / mV", fontsize=14)
     ax1.set_ylabel(r"A$_{para}$ / A$_{max}$", fontsize=14)
+    ax1.set_xlim(147, 152)
     ax1.set_ylim(0.99, 1.01)
     ax1.legend(fontsize=12)
 
@@ -550,6 +589,7 @@ def main():
     ax2.set_xlabel(r"A$_{max}$ / mV", fontsize=14)
     ax2.set_ylabel(r"A$_{gaus}$ / A$_{max}$", fontsize=14)
     ax2.set_ylim(0.99, 1.01)
+    ax2.set_xlim(147, 152)
     ax2.legend(fontsize=12)
 
     ax3.scatter(a_max_fam1, ratio_voigt_fam1, c='orange', marker='d', s=20, edgecolors='black', label=r'Voigt / A$_{max}$' + '\nMAE = ' + str(round(mae_fam1_voigt,4)) + " RMSE = " + str(round(rmse_fam1_voigt,4)) + '\nNumber of events = ' + str(len(a_max_fam1)))
@@ -557,6 +597,7 @@ def main():
     ax3.set_xlabel(r"A$_{max}$ / mV", fontsize=14)
     ax3.set_ylabel(r"A$_{voigt}$ / A$_{max}$", fontsize=14)
     ax3.set_ylim(0.99, 1.01)
+    ax3.set_xlim(147, 152)
     ax3.legend(fontsize=12)
 
     ax4.scatter(a_max_fam1, ratio_spline_fam1, c='purple', marker='d', s=20, edgecolors='black', label=r'Spline / A$_{max}$' + '\nMAE = ' + str(round(mae_fam1_spline,4)) + " RMSE = " + str(round(rmse_fam1_spline,4)) + '\nNumber of events = ' + str(len(a_max_fam1)))
@@ -564,6 +605,7 @@ def main():
     ax4.set_xlabel(r"A$_{max}$ / mV", fontsize=14)
     ax4.set_ylabel(r"A$_{spline}$ / A$_{max}$", fontsize=14)
     ax4.set_ylim(0.99, 1.01)
+    ax4.set_xlim(147, 152)
     ax4.legend(fontsize=12)
 
     ax5.scatter(a_max_fam2, ratio_para_fam2, c='r', marker='d', s=20, edgecolors='black', label=r'Parabola / A$_{max}$' + '\nMAE = ' + str(round(mae_fam2_para,4)) + " RMSE = " + str(round(rmse_fam2_para,4)) + '\nNumber of events = ' + str(len(a_max_fam2)))
@@ -571,6 +613,7 @@ def main():
     ax5.set_xlabel(r"A$_{max}$ / mV", fontsize=14)
     ax5.set_ylabel(r"A$_{para}$ / A$_{max}$", fontsize=14)
     ax5.set_ylim(0.99, 1.01)
+    ax5.set_xlim(147, 152)
     ax5.legend(fontsize=12)
 
     ax6.scatter(a_max_fam2, ratio_gaus_fam2, c='g', marker='d', s=20, edgecolors='black', label=r'Gaussian / A$_{max}$' + '\nMAE = ' + str(round(mae_fam2_para,4)) + " RMSE = " + str(round(rmse_fam2_para,4)) + '\nNumber of events = ' + str(len(a_max_fam2)))
@@ -578,6 +621,7 @@ def main():
     ax6.set_xlabel(r"A$_{max}$ / mV", fontsize=14)
     ax6.set_ylabel(r"A$_{gaus}$ / A$_{max}$", fontsize=14)
     ax6.set_ylim(0.99, 1.01)
+    ax6.set_xlim(147, 152)
     ax6.legend(fontsize=12)
 
     ax7.scatter(a_max_fam2, ratio_voigt_fam2, c='orange', marker='d', s=20, edgecolors='black', label=r'Voigt / A$_{max}$' + '\nMAE = ' + str(round(mae_fam2_voigt,4)) + " RMSE = " + str(round(rmse_fam2_voigt,4)) + '\nNumber of events = ' + str(len(a_max_fam2)))
@@ -585,6 +629,7 @@ def main():
     ax7.set_xlabel(r"A$_{max}$ / mV", fontsize=14)
     ax7.set_ylabel(r"A$_{voigt}$ / A$_{max}$", fontsize=14)
     ax7.set_ylim(0.99, 1.01)
+    ax7.set_xlim(147, 152)
     ax7.legend(fontsize=12)
 
     ax8.scatter(a_max_fam2, ratio_spline_fam2, c='purple', marker='d', s=20, edgecolors='black', label=r'Spline / A$_{max}$' + '\nMAE = ' + str(round(mae_fam2_spline,4)) + " RMSE = " + str(round(rmse_fam2_spline,4)) + '\nNumber of events = ' + str(len(a_max_fam2)))
@@ -592,6 +637,7 @@ def main():
     ax8.set_xlabel(r"A$_{max}$ / mV", fontsize=14)
     ax8.set_ylabel(r"A$_{spline}$ / A$_{max}$", fontsize=14)
     ax8.set_ylim(0.99, 1.01)
+    ax8.set_xlim(147, 152)
     ax8.legend(fontsize=12)
 
     ax9.scatter(a_max_fam3, ratio_para_fam3, c='r', marker='d', s=20, edgecolors='black', label=r'Parabola / A$_{max}$' + '\nMAE = ' + str(round(mae_fam3_para,4)) + " RMSE = " + str(round(rmse_fam3_para,4)) + '\nNumber of events = ' + str(len(a_max_fam3)))
@@ -599,6 +645,7 @@ def main():
     ax9.set_xlabel(r"A$_{max}$ / mV", fontsize=14)
     ax9.set_ylabel(r"A$_{para}$ / A$_{max}$", fontsize=14)
     ax9.set_ylim(0.99, 1.01)
+    ax9.set_xlim(147, 152)
     ax9.legend(fontsize=12)
 
     ax10.scatter(a_max_fam3, ratio_gaus_fam3, c='g', marker='d', s=20, edgecolors='black', label=r'Gaussian / A$_{max}$' + '\nMAE = ' + str(round(mae_fam3_para,4)) + " RMSE = " + str(round(rmse_fam3_para,4)) + '\nNumber of events = ' + str(len(a_max_fam3)))
@@ -606,6 +653,7 @@ def main():
     ax10.set_xlabel(r"A$_{max}$ / mV", fontsize=14)
     ax10.set_ylabel(r"A$_{gaus}$ / A$_{max}$", fontsize=14)
     ax10.set_ylim(0.99, 1.01)
+    ax10.set_xlim(147, 152)
     ax10.legend(fontsize=12)
 
     ax11.scatter(a_max_fam3, ratio_voigt_fam3, c='orange', marker='d', s=20, edgecolors='black', label=r'Voigt / A$_{max}$' + '\nMAE = ' + str(round(mae_fam3_voigt,4)) + " RMSE = " + str(round(rmse_fam3_voigt,4)) + '\nNumber of events = ' + str(len(a_max_fam3)))
@@ -613,6 +661,7 @@ def main():
     ax11.set_xlabel(r"A$_{max}$ / mV", fontsize=14)
     ax11.set_ylabel(r"A$_{voigt}$ / A$_{max}$", fontsize=14)
     ax11.set_ylim(0.99, 1.01)
+    ax11.set_xlim(147, 152)
     ax11.legend(fontsize=12)
 
     ax12.scatter(a_max_fam3, ratio_spline_fam3, c='purple', marker='d', s=20, edgecolors='black', label=r'Spline / A$_{max}$' + '\nMAE = ' + str(round(mae_fam3_spline,4)) + " RMSE = " + str(round(rmse_fam3_spline,4)) + '\nNumber of events = ' + str(len(a_max_fam3)))
@@ -620,6 +669,7 @@ def main():
     ax12.set_xlabel(r"A$_{max}$ / mV", fontsize=14)
     ax12.set_ylabel(r"A$_{spline}$ / A$_{max}$", fontsize=14)
     ax12.set_ylim(0.99, 1.01)
+    ax12.set_xlim(147, 152)
     ax12.legend(fontsize=12)
 
     ax13.scatter(a_max_fam1, ratio_lorentz_fam1, c='blue', marker='d', s=20, edgecolors='black', label=r'Lorentz / A$_{max}$' + '\nMAE = ' + str(round(mae_fam1_lorentz,4)) + " RMSE = " + str(round(rmse_fam1_lorentz,4)) + '\nNumber of events = ' + str(len(a_max_fam1)))
@@ -627,6 +677,7 @@ def main():
     ax13.set_xlabel(r"A$_{max}$ / mV", fontsize=14)
     ax13.set_ylabel(r"A$_{Lorentz}$ / A$_{max}$", fontsize=14)
     ax13.set_ylim(0.99, 1.01)
+    ax13.set_xlim(147, 152)
     ax13.legend(fontsize=12)
 
     ax14.scatter(a_max_fam2, ratio_lorentz_fam2, c='blue', marker='d', s=20, edgecolors='black', label=r'Lorentz / A$_{max}$' + '\nMAE = ' + str(round(mae_fam2_lorentz,4)) + " RMSE = " + str(round(rmse_fam2_lorentz,4)) + '\nNumber of events = ' + str(len(a_max_fam2)))
@@ -634,6 +685,7 @@ def main():
     ax14.set_xlabel(r"A$_{max}$ / mV", fontsize=14)
     ax14.set_ylabel(r"A$_{Lorentz}$ / A$_{max}$", fontsize=14)
     ax14.set_ylim(0.99, 1.01)
+    ax14.set_xlim(147, 152)
     ax14.legend(fontsize=12)
 
     ax15.scatter(a_max_fam3, ratio_lorentz_fam3, c='blue', marker='d', s=20, edgecolors='black', label=r'Lorentz / A$_{max}$' + '\nMAE = ' + str(round(mae_fam3_lorentz,4)) + " RMSE = " + str(round(rmse_fam3_lorentz,4)) + '\nNumber of events = ' + str(len(a_max_fam3)))
@@ -641,6 +693,7 @@ def main():
     ax15.set_xlabel(r"A$_{max}$ / mV", fontsize=14)
     ax15.set_ylabel(r"A$_{Lorentz}$ / A$_{max}$", fontsize=14)
     ax15.set_ylim(0.99, 1.01)
+    ax15.set_xlim(147, 152)
     ax15.legend(fontsize=12)
 
     ax16.scatter(a_max_fam1, ratio_landau_fam1, c='brown', marker='d', s=20, edgecolors='black', label=r'Landau / A$_{max}$' + '\nMAE = ' + str(round(mae_fam1_landau,4)) + " RMSE = " + str(round(rmse_fam1_landau,4)) + '\nNumber of events = ' + str(len(a_max_fam1)))
@@ -648,6 +701,7 @@ def main():
     ax16.set_xlabel(r"A$_{max}$ / mV", fontsize=14)
     ax16.set_ylabel(r"A$_{Landau}$ / A$_{max}$", fontsize=14)
     ax16.set_ylim(0.99, 1.01)
+    ax16.set_xlim(147, 152)
     ax16.legend(fontsize=12)
 
     ax17.scatter(a_max_fam2, ratio_landau_fam2, c='brown', marker='d', s=20, edgecolors='black', label=r'Landau / A$_{max}$' + '\nMAE = ' + str(round(mae_fam2_landau,4)) + " RMSE = " + str(round(rmse_fam2_landau,4)) + '\nNumber of events = ' + str(len(a_max_fam2)))
@@ -655,6 +709,7 @@ def main():
     ax17.set_xlabel(r"A$_{max}$ / mV", fontsize=14)
     ax17.set_ylabel(r"A$_{Landau}$ / A$_{max}$", fontsize=14)
     ax17.set_ylim(0.99, 1.01)
+    ax17.set_xlim(147, 152)
     ax17.legend(fontsize=12)
 
     ax18.scatter(a_max_fam3, ratio_landau_fam3, c='brown', marker='d', s=20, edgecolors='black', label=r'Landau / A$_{max}$' + '\nMAE = ' + str(round(mae_fam3_landau,4)) + " RMSE = " + str(round(rmse_fam3_landau,4)) + '\nNumber of events = ' + str(len(a_max_fam3)))
@@ -662,6 +717,7 @@ def main():
     ax18.set_xlabel(r"A$_{max}$ / mV", fontsize=14)
     ax18.set_ylabel(r"A$_{Landau}$ / A$_{max}$", fontsize=14)
     ax18.set_ylim(0.99, 1.01)
+    ax18.set_xlim(147, 152)
     ax18.legend(fontsize=12)
 
     fig.suptitle(f"UFSD 3.2 W7 300V : Total {len(a_max)} signal events across three families of events", fontsize=25, fontweight='bold')
