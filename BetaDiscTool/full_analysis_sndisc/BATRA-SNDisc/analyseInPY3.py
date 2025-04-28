@@ -17,10 +17,10 @@ import math
 import sys
 
 from firstPass_ClassPlotter import plotVar
-from classTRPlotter import plotTRVar
 from cardReader import read_text_card
 from secondPass_Langaus import plot_langaus
 from secondPass_Gaussian import plot_gaussian
+from secondPass_TR import plot_TR
 from export_data import direct_to_table
 
 from SNDisc import SNDisc_extract_signal
@@ -139,20 +139,19 @@ def main():
     data_out.append(('charge', charge_data.sort_values(by=['Channel','Bias'])))
     rms_dfs = []
     for file_ind, file_real in enumerate(file_array):
-      df_data = plot_gaussian("rms", file_real, file_ind, tree_array[file_ind], config['channels'], int(0.3*config['pass_criteria'][1]), signal_event_array[file_ind], output_name_array[file_ind]+"_rms")
+      df_data = plot_gaussian('rms', file_real, file_ind, tree_array[file_ind], config['channels'], int(0.3*config['pass_criteria'][1]), signal_event_array[file_ind], output_name_array[file_ind]+"_rms")
       rms_dfs.append(df_data)
     rms_data = pd.concat(rms_dfs, ignore_index=True)
     print(rms_data.sort_values(by=['Channel','Bias']))
     data_out.append(('rms', rms_data.sort_values(by=['Channel','Bias'])))
-    #print(f"[BETA ANALYSIS]: [TIME RESOLUTION] Performing Gaussian fit to DUT-MCP channels")
-    #time_res_dfs = []
-    #for file_ind, file_real in enumerate(file_array):
-    #  plot_timeres = plotTRVar("timeres", config['pass_criteria'][1], 0.08*config['pass_criteria'][1], True, signal_event_array[file_ind], output_name_array[file_ind]+"_timeres.png")
-    #  df_data = plot_timeres.run(file_real, file_ind, tree_array[file_ind], config['channels'], mcp_specs)
-    #  time_res_dfs.append(df_data)
-    #time_res_data = pd.concat(time_res_dfs, ignore_index=True)
-    #print(time_res_data.sort_values(by=['Channel','Bias']))
-    #data_out.append(('timeres', time_res_data.sort_values(by=['Channel','Bias'])))
+    print(f"[BETA ANALYSIS]: [TIME RESOLUTION] Performing Gaussian fit to DUT-MCP channels")
+    time_res_dfs = []
+    for file_ind, file_real in enumerate(file_array):
+      df_data = plot_TR('timeres', file_real, file_ind, tree_array[file_ind], config['channels'], int(0.08*config['pass_criteria'][1]), signal_event_array[file_ind], output_name_array[file_ind]+"_TR", mcp_specs)
+      time_res_dfs.append(df_data)
+    time_res_data = pd.concat(time_res_dfs, ignore_index=True)
+    print(time_res_data.sort_values(by=['Channel','Bias']))
+    data_out.append(('timeres', time_res_data.sort_values(by=['Channel','Bias'])))
 
   if len(data_out) > 1: direct_to_table(data_out, config['channels'], output_name, thicknesses)
 

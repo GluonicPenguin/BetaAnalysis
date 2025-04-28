@@ -44,7 +44,7 @@ def SNDisc_extract_signal(file, file_index, tree, channel_array, nBins, savename
     width = np.array(width_list)
 
     num_epochs = 10000
-    precision = 0.0005
+    precision = 0.01
     learning_rate = 0.01
     plot_every = precision*1
     dec_p = len(str(precision)) - 2

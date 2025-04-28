@@ -2,8 +2,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 
-
-
 def perform_diagnostics(df_data, ch_index, savename):
   colours = ["r","orange","yellow","lime","green","blue","purple","magenta"]
   markers = ["o","v","s","^","D","p","d","h"]

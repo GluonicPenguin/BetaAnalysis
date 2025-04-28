@@ -42,7 +42,10 @@ def binned_fit_gaussian(samples, nBins, nan='remove'):
 
   mu_ansatz = np.mean(samples)
   sigma_ansatz = np.std(samples)
-  hist, bin_edges = np.histogram(samples, bins=nBins, range=(max(0, mu_ansatz - 2*sigma_ansatz), min(2*mu_ansatz, mu_ansatz + 2*sigma_ansatz)), density=True)
+  if mu_ansatz < 0:
+    hist, bin_edges = np.histogram(samples, bins=nBins, range=(min(0, mu_ansatz - 2*sigma_ansatz), max(0, mu_ansatz + 2*sigma_ansatz)), density=True)
+  else:
+    hist, bin_edges = np.histogram(samples, bins=nBins, range=(max(0, mu_ansatz - 2*sigma_ansatz), min(2*mu_ansatz, mu_ansatz + 2*sigma_ansatz)), density=True)
   bin_centres = bin_edges[:-1] + np.diff(bin_edges) / 2
 
   A_ansatz = np.trapz(hist, bin_centres)
@@ -51,6 +54,7 @@ def binned_fit_gaussian(samples, nBins, nan='remove'):
 
   popt, pcov = curve_fit(gaussian, bin_centres, hist, p0=[A_ansatz, mu_ansatz, sigma_ansatz])
   A, mu, sigma = popt
+  perr = np.sqrt(np.diag(pcov))
 
   y_fit = gaussian(bin_centres, A, mu, sigma)
   residuals = hist - y_fit
@@ -62,4 +66,41 @@ def binned_fit_gaussian(samples, nBins, nan='remove'):
   dof = len(hist) - len(popt)
   rchi2 = chi2 / dof
 
-  return popt, sse, rchi2
+  popt_with_error = np.append(popt, perr[2])
+
+  return popt_with_error, sse, rchi2
+
+def get_fit_results_TR(df_of_results, mcp_specs):
+
+  arr_of_sig_total_30 = [np.sqrt(sig_fit**2 + (1/600)) for sig_fit in df_of_results['Sigma']]
+  arr_of_unc_total_30 = np.array(df_of_results['Uncertainty']) * np.array(df_of_results['Sigma']) / np.array(arr_of_sig_total_30)
+
+  if (mcp_specs is not None) & (mcp_specs != (0, 0)):
+    sig_dut_values_30 = []
+    sig_dut_errors_30 = []
+    mcp_tr = mcp_specs[0]/1000
+    mcp_tr_err = mcp_specs[1]/1000
+    print(f"[BETA ANALYSIS]: [TIME RESOLUTION] Calculating time resolution for DUT, assuming MCP time resolution {1000*mcp_tr} +/- {1000*mcp_tr_err} ps")
+    for ch_ind, ch_val in enumerate(df_of_results['Sigma']):
+      sig30 = np.sqrt(ch_val**2 - mcp_tr**2)
+      sig30err = np.sqrt((ch_val*df_of_results['Uncertainty'][ch_ind])**2 + (mcp_tr*mcp_tr_err)**2)/sig30
+      sig_dut_values_30.append((1000*sig30).round(1))
+      sig_dut_errors_30.append((1000*sig30err).round(1))
+    df_of_results['Resolution @ 30%'] = sig_dut_values_30
+    df_of_results['Uncertainty @ 30%'] = sig_dut_errors_30
+
+  else:
+    print(f"[BETA ANALYSIS]: [TIME RESOLUTION] Calculating time resolution for a dual-plane setup, with unknown time resolutions")
+    sig_30_p1 = np.sqrt(0.5*(df_of_results['Sigma'][0]**2 + df_of_results['Sigma'][2]**2 - df_of_results['Sigma'][1]**2))
+    sig_30_p2 = np.sqrt(0.5*(df_of_results['Sigma'][1]**2 + df_of_results['Sigma'][2]**2 - df_of_results['Sigma'][0]**2))
+    sig_30_p3 = np.sqrt(0.5*(df_of_results['Sigma'][0]**2 + df_of_results['Sigma'][1]**2 - df_of_results['Sigma'][2]**2))
+    sig_30_err = np.sqrt(np.sum((np.array(df_of_results['Uncertainty'])*np.array(df_of_results['Sigma']))**2))
+    sig_30_err1 = sig_30_err / sig_30_p1
+    sig_30_err2 = sig_30_err / sig_30_p2
+    sig_30_err3 = sig_30_err / sig_30_p3
+    sig_dut_values_30 = [(1000*sig_30_p1).round(1),(1000*sig_30_p2).round(1),(1000*sig_30_p3).round(1)]
+    sig_dut_errors_30 = [(1000*sig_30_err1).round(1),(1000*sig_30_err2).round(1),(1000*sig_30_err3).round(1)]
+    df_of_results['Resolution @ 30%'] = sig_dut_values_30
+    df_of_results['Uncertainty @ 30%'] = sig_dut_errors_30
+
+  return df_of_results

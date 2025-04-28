@@ -95,7 +95,7 @@ def plot_gaussian(var, file, file_index, tree, channel_array, nBins, SNDisc_sign
     fig.add_trace(
       go.Scatter(
         x=x_axis,
-        y=gaussian(x_axis, *popt),
+        y=gaussian(x_axis, *popt[:-1]),
         name=f'Gaussian Fit<br>μ={popt[1]:.2e}<br>σ={popt[2]:.2e}',
         mode='lines',
         line=dict(width=3,dash='dash',color='black'),

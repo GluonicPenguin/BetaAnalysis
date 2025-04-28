@@ -89,12 +89,13 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
       df_rms = df_rms.rename(columns={'Mean':'RMS Noise / mV', 'Sigma':'RMS Unc / mV'})
       dfs_to_concat.append(df_rms)
     elif var == "timeres":
+      print(df.head())
       if first_df_found == False:
         first_df_found = True
-        df_tr = df[['Channel','Bias','Resolution @ 30%','Uncertainty @ 30%','Resolution @ 50%','Uncertainty @ 50%']]
+        df_tr = df[['Channel','Bias','Resolution @ 30%','Uncertainty @ 30%']]
       else:
-        df_tr = df[['Resolution @ 30%','Uncertainty @ 30%','Resolution @ 50%','Uncertainty @ 50%']]
-      df_tr = df_tr.rename(columns={'Resolution @ 30%':'TR @ 30% / ps', 'Uncertainty @ 30%':'TR Unc @ 30% / ps', 'Resolution @ 50%':'TR @ 50% / ps', 'Uncertainty @ 50%':'TR Unc @ 50% / ps'})
+        df_tr = df[['Resolution @ 30%','Uncertainty @ 30%']]
+      df_tr = df_tr.rename(columns={'Resolution @ 30%':'TR @ 30% / ps', 'Uncertainty @ 30%':'TR Unc @ 30% / ps'})
       dfs_to_concat.append(df_tr)
   
   dfs_comb = pd.concat(dfs_to_concat, axis=1)
