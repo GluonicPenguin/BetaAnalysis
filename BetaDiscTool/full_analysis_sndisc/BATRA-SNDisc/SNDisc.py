@@ -29,28 +29,32 @@ def SNDisc_extract_signal(file, file_index, tree, channel_array, nBins, savename
   for ch_ind, ch_val in enumerate(channel_array):
     pmax_list = []
     width_list = []
+    tmax_list = []
     sensorType, AtQfactor, ansatz_pmax = ch_val
     if sensorType == 1:
       bias_of_channel = getBias(str(file), ch_ind)
       for entry in tree:
         pmax_sig = entry.pmax[ch_ind]
         width_sig = entry.width[ch_ind][2]
+        tmax_sig = entry.tmax[ch_ind]
         pmax_list.append(pmax_sig) # to fit Gaus noise and Langaus signal
         width_list.append(width_sig) # to fit Gaus noise and Langaus signal on pmax/width@30%
+        tmax_list.append(tmax_sig)
     else:
       continue
 
     pmax = np.array(pmax_list)
     width = np.array(width_list)
+    tmax = np.array(tmax_list)
 
     num_epochs = 10000
-    precision = 0.01
+    precision = 0.0005
     learning_rate = 0.01
     plot_every = precision*1
     dec_p = len(str(precision)) - 2
     arr_prob_threshold = np.round(np.arange(0.03,0.09,precision), dec_p)
 
-    scores, max_amplitudes = differential_programming_SigProbModel(num_epochs, pmax, width, ansatz_pmax[file_index], learning_rate)
+    scores, max_amplitudes = differential_programming_SigProbModel(num_epochs, pmax, width, tmax, ansatz_pmax[file_index], np.max(tmax), learning_rate)
     df = pd.DataFrame(scores)
     df.to_csv(savename + "SNDisc_Ch"+str(ch_ind)+".csv", index=False, header=False)
 
@@ -59,6 +63,7 @@ def SNDisc_extract_signal(file, file_index, tree, channel_array, nBins, savename
 
     scores[max_amplitudes.numpy() > max_pmax] = 0
     stopping_index_cond = len(arr_prob_threshold)
+    print(f"Number of events in linear selection: {len(pmax[pmax > ansatz_pmax[file_index]])}")
 
     for prob_threshold in arr_prob_threshold:
       selected_events = scores > prob_threshold
@@ -150,7 +155,9 @@ def SNDisc_extract_signal(file, file_index, tree, channel_array, nBins, savename
     smallest_prob = min(min_sse_prob, min_chi2_prob)
     optimal_selected_events = scores > smallest_prob
     arr_signal_events.append(optimal_selected_events)
-    
+
+    print(f"Optimal number of filtered signal events: {len(optimal_selected_events)}")
+
     amplitude_df_one_channel = df.loc[df["Probability threshold"] == smallest_prob]
     amplitude_df_one_channel = amplitude_df_one_channel[["Channel","Bias","Amplitude MPV","Landau width","Gaussian sigma","Frac above 1p5 MPV","SSE score","Red. Chi2"]]
 

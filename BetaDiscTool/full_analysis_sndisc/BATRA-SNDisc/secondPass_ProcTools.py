@@ -39,12 +39,14 @@ def gaussian(x, A, mu, sigma):
 def binned_fit_gaussian(samples, nBins, nan='remove'):
   if nan == 'remove':
     samples = samples[~np.isnan(samples)]
+    samples = samples[~np.isinf(samples)]
 
   mu_ansatz = np.mean(samples)
   sigma_ansatz = np.std(samples)
   if mu_ansatz < 0:
     hist, bin_edges = np.histogram(samples, bins=nBins, range=(min(0, mu_ansatz - 2*sigma_ansatz), max(0, mu_ansatz + 2*sigma_ansatz)), density=True)
   else:
+    print(min(2*mu_ansatz, mu_ansatz + 2*sigma_ansatz))
     hist, bin_edges = np.histogram(samples, bins=nBins, range=(max(0, mu_ansatz - 2*sigma_ansatz), min(2*mu_ansatz, mu_ansatz + 2*sigma_ansatz)), density=True)
   bin_centres = bin_edges[:-1] + np.diff(bin_edges) / 2
 
