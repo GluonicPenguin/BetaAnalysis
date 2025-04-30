@@ -147,7 +147,7 @@ def main():
     print(f"[BETA ANALYSIS]: [TIME RESOLUTION] Performing Gaussian fit to DUT-MCP channels")
     time_res_dfs = []
     for file_ind, file_real in enumerate(file_array):
-      df_data = plot_TR('timeres', file_real, file_ind, tree_array[file_ind], config['channels'], int(0.08*config['pass_criteria'][1]), signal_event_array[file_ind], output_name_array[file_ind]+"_TR", mcp_specs)
+      df_data = plot_TR('timeres', file_real, file_ind, tree_array[file_ind], config['channels'], int(0.2*config['pass_criteria'][1]), signal_event_array[file_ind], output_name_array[file_ind]+"_TR", mcp_specs)
       time_res_dfs.append(df_data)
     time_res_data = pd.concat(time_res_dfs, ignore_index=True)
     print(time_res_data.sort_values(by=['Channel','Bias']))

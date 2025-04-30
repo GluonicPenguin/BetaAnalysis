@@ -43,6 +43,7 @@ def binned_fit_gaussian(samples, nBins, nan='remove'):
 
   mu_ansatz = np.mean(samples)
   sigma_ansatz = np.std(samples)
+  print(f"NUMBER OF SAMPLES: {len(samples)}")
   if mu_ansatz < 0:
     hist, bin_edges = np.histogram(samples, bins=nBins, range=(min(0, mu_ansatz - 2*sigma_ansatz), max(0, mu_ansatz + 2*sigma_ansatz)), density=True)
   else:

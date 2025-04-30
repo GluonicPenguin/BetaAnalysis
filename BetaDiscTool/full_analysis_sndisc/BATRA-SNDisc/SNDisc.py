@@ -48,7 +48,7 @@ def SNDisc_extract_signal(file, file_index, tree, channel_array, nBins, savename
     tmax = np.array(tmax_list)
 
     num_epochs = 10000
-    precision = 0.0005
+    precision = 0.001
     learning_rate = 0.01
     plot_every = precision*1
     dec_p = len(str(precision)) - 2
@@ -70,7 +70,7 @@ def SNDisc_extract_signal(file, file_index, tree, channel_array, nBins, savename
       filtered_amplitudes = max_amplitudes[selected_events].numpy()
 
       # Starting condition for probability threshold that doesn't cut away any signal events i.e. number of selected events is equal to the total
-      if len(filtered_amplitudes) > 2*len(pmax[pmax > ansatz_pmax[file_index]]):
+      if len(filtered_amplitudes) > 2.0*len(pmax[pmax > ansatz_pmax[file_index]]):
         continue
 
       # Stopping condition for probability threshold that there are fewer selected events by the NN than from the linear cut in PMAX
@@ -156,7 +156,9 @@ def SNDisc_extract_signal(file, file_index, tree, channel_array, nBins, savename
     optimal_selected_events = scores > smallest_prob
     arr_signal_events.append(optimal_selected_events)
 
-    print(f"Optimal number of filtered signal events: {len(optimal_selected_events)}")
+    np_ose = np.array(optimal_selected_events)
+    print(f"Optimal number of filtered signal events: {len(np_ose[np_ose == True])}")
+    print(f"Optimal cut at {smallest_prob}")
 
     amplitude_df_one_channel = df.loc[df["Probability threshold"] == smallest_prob]
     amplitude_df_one_channel = amplitude_df_one_channel[["Channel","Bias","Amplitude MPV","Landau width","Gaussian sigma","Frac above 1p5 MPV","SSE score","Red. Chi2"]]

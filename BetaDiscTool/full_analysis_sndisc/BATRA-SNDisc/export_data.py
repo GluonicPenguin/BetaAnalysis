@@ -130,6 +130,7 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
   dfs_comb = dfs_comb[columns]
 
   if mcp_channel == True:
+    print(pmax_low_mcp)
     dfs_comb['MCP PMAX low / mV'] = np.tile(pmax_low_mcp, number_of_duts)
     dfs_comb['MCP PMAX high / mV'] = np.tile(pmax_high_mcp, number_of_duts)
 

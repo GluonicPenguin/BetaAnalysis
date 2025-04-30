@@ -14,11 +14,26 @@ class SignalProbabilityModel(nn.Module):
     self.tmax_mu = nn.Parameter(torch.tensor(ansatz_tmax_value)) # Gaussian centre
     self.tmax_sigma = nn.Parameter(torch.tensor(0.5)) # Gaussian width
 
+    self.noise_amp_mu = nn.Parameter(torch.tensor(0.5*ansatz_pmax_value))
+    self.noise_amp_sigma = nn.Parameter(torch.tensor(1.0))
+    self.noise_pow_mu = nn.Parameter(torch.tensor(0.5 * ansatz_pmax_value))
+    self.noise_pow_sigma = nn.Parameter(torch.tensor(1.0))
+
   def forward(self, amplitudes, pow, tmax):
     amp_prob = torch.sigmoid((amplitudes - self.amp_mu) / self.amp_sigma)
     pow_prob = torch.sigmoid((pow - self.pow_mu) / self.pow_sigma)
     tmax_prob = torch.sigmoid((tmax - self.tmax_mu) / self.tmax_sigma)
-    return amp_prob * pow_prob * tmax_prob
+    signal_score = amp_prob * pow_prob
+
+    noise_amp_pdf = torch.exp(-0.5 * ((amplitudes - self.noise_amp_mu) / self.noise_amp_sigma) ** 2)
+    noise_amp_pdf = noise_amp_pdf / (self.noise_amp_sigma * np.sqrt(2 * np.pi))
+    noise_pow_pdf = torch.exp(-0.5 * ((pow - self.noise_pow_mu) / self.noise_pow_sigma) ** 2)
+    noise_pow_pdf = noise_pow_pdf / (self.noise_pow_sigma * np.sqrt(2 * np.pi))
+    noise_score = noise_amp_pdf * noise_pow_pdf
+
+    total_score = signal_score * (1 - noise_score)
+    #total_score = signal_Score - noise_score
+    return torch.clamp(total_score, 1e-6, 1.0)
 
 def differential_programming_SigProbModel(num_epochs, pmax, width, tmax, ansatz_pmax_value, ansatz_tmax_value, learning_rate):
   model = SignalProbabilityModel(ansatz_pmax_value, ansatz_tmax_value)

@@ -33,6 +33,8 @@ def round_to_sig_figs(x, sig):
 
 def plot_TR(var, file, file_index, tree, channel_array, nBins, SNDisc_signal_events_bool, savename, mcp_specs):
 
+  nBins = 100
+
   arr_of_ch = []
   arr_of_biases = []
   arr_of_mean = []
@@ -72,7 +74,6 @@ def plot_TR(var, file, file_index, tree, channel_array, nBins, SNDisc_signal_eve
     else:
       continue
 
-
   if mcp_exists:
     # need to do index selection for each DUT which will depend on data_filtered_signal
     cfd_mcp_indexed_per_dut = []
@@ -97,6 +98,19 @@ def plot_TR(var, file, file_index, tree, channel_array, nBins, SNDisc_signal_eve
 
     final_filter_dut = filter_list_by_indices(data_filtered_signal_dut_set, selected_indices_per_dut)
     final_filter_mcp = filter_list_by_indices(cfd_mcp_indexed_per_dut, selected_indices_per_dut)
+
+    data_dut_low = []
+    data_mcp_low = []
+    for fi, fv in enumerate(final_filter_dut):
+      fv = np.array(fv)
+      fv_new = fv[fv < 0]
+      filtered_ev_mcp = np.array(final_filter_mcp[fi])
+      filtered_ev_mcp_new = filtered_ev_mcp[fv < 0]
+      data_dut_low.append(fv_new)
+      data_mcp_low.append(filtered_ev_mcp_new)
+
+  final_filter_dut = data_dut_low
+  final_filter_mcp = data_mcp_low
 
   for data_dut_ind, data_dut_val in enumerate(final_filter_dut):
 
@@ -123,7 +137,7 @@ def plot_TR(var, file, file_index, tree, channel_array, nBins, SNDisc_signal_eve
     fig.add_trace(
       go.Histogram(
         x=data_var,
-        xbins=dict(start=0, end=2*np.mean(data_var), size=2*np.mean(data_var)/nBins),
+        xbins=dict(start=min(data_var), end=max(data_var), size=(max(data_var)-min(data_var))/nBins),
         name='Histogram',
         histnorm='probability density',
         #nbinsx=nBins,
@@ -132,7 +146,7 @@ def plot_TR(var, file, file_index, tree, channel_array, nBins, SNDisc_signal_eve
       )
     )
 
-    x_axis = np.linspace(0, 2*np.mean(data_var), 999)
+    x_axis = np.linspace(min(data_var), max(data_var), 999)
     fig.add_trace(
       go.Scatter(
         x=x_axis,

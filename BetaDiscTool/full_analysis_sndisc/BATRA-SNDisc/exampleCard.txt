@@ -3,14 +3,10 @@
 
 # Specify the list of files to read and analyse here, in comma-separated format string
 
-files = "../../../../../../DESY_TB_Dec_24/data_TB/Run5_W16_W17_RT_Ex1/stats_Sr_Run5_Ch1-140V_Ch2-100V_Ch3-2750V_trig230V.root"
-
-
-#"../../../../../../DESY_TB_Dec_24/data_TB/Run4_W5_RT_Ex1/stats_Sr_Run4_Ch1-125V_Ch2-125V_Ch3-2750V_trig230V.root"
-
-#         ../../../../../../DESY_TB_Dec_24/data_TB/Run4_W5_RT_Ex1/stats_Sr_Run4_Ch1-130V_Ch2-128V_Ch3-2750V_trig230V.root,
-#         ../../../../../../DESY_TB_Dec_24/data_TB/Run4_W5_RT_Ex1/stats_Sr_Run4_Ch1-135V_Ch2-128V_Ch3-2750V_trig230V.root,
-#         ../../../../../../DESY_TB_Dec_24/data_TB/Run4_W5_RT_Ex1/stats_Sr_Run4_Ch1-140V_Ch2-130V_Ch3-2750V_trig230V.root"
+#files = "../../../../../../DESY_TB_Dec_24/data_TB/Run5_W16_W17_RT_Ex1/stats_Sr_Run5_Ch1-140V_Ch2-100V_Ch3-2750V_trig230V.root"
+#files = "../../../../../../DESY_TB_Dec_24/data_TB/Run5_W16_W17_RT_Ex1/stats_Sr_Run5_Ch1-180V_Ch2-130V_Ch3-2750V_trig230V.root"
+#files = "../../../../../../DESY_TB_Dec_24/data_TB/Run4_W5_RT_Ex1/stats_Sr_Run4_Ch1-120V_Ch2-120V_Ch3-2750V_trig230V.root"
+files = "../../../../../../DESY_TB_Dec_24/data_TB/Run4_W5_RT_Ex1/stats_Sr_Run4_Ch1-110V_Ch2-110V_Ch3-2750V_trig230V.root"
 
 # To use a channel, specify whether it is a DUT or MCP or REF.
 # For DUT, a fit will be performed.
@@ -20,9 +16,9 @@ files = "../../../../../../DESY_TB_Dec_24/data_TB/Run5_W16_W17_RT_Ex1/stats_Sr_R
 # Also specify the thickness of the sensor, in microns
 
 CH_1 = "REF, SC"
-CH_2 = "DUT, SC, 20, [7]"
-CH_3 = "DUT, SC, 20, [7]"
-CH_4 = "MCP, None, (10, 4), (20,540)"
+CH_2 = "DUT, SC, 20, [16]"
+CH_3 = "DUT, SC, 20, [18]"
+CH_4 = "MCP, None, (5, 2), (40,540)"
 CH_5 = 0
 CH_6 = 0
 CH_7 = 0
