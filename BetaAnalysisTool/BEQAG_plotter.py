@@ -22,6 +22,8 @@ def plot_with_uncertainties(ax, df, x_col, y_col, yerr_col, group_col='Channel')
             ecolor=colour,
             label=name
         )
+    if x_col == 'Bias':
+        x_col = 'Bias / V'
     ax.set_xlabel(x_col, fontsize = 14)
     ax.set_ylabel(y_col, fontsize = 14)
     ax.grid(True)
@@ -43,6 +45,8 @@ def plot_without_uncertainties(ax, df, x_col, y_col, group_col='Channel'):
             linewidths=1.2,
             label=name
         )
+    if x_col == 'Bias':
+        x_col = 'Bias / V'
     ax.set_xlabel(x_col, fontsize = 14)
     ax.set_ylabel(y_col, fontsize = 14)
     ax.grid(True)
