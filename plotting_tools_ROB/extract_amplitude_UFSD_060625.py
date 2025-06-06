@@ -281,7 +281,7 @@ def main():
   t_w_below_Amax_skewG = []
 
   linfit_cfd = True
-  add_noise = False
+  add_noise = True
   time_res_calc = True
   make_timewalk_plots = True
   make_populated_plots = True
@@ -301,6 +301,8 @@ def main():
     rtd_mcp = time_data_mcp.reshape(num_curves,1002)
     rad_mcp = w_data_mcp[i].reshape(num_curves,1002)
 
+    original = reshaped_ampl_data[500]
+
     if add_noise:
       reshaped_ampl_data_with_noise = []
       rad_mcp_with_noise = []
@@ -314,6 +316,15 @@ def main():
       reshaped_ampl_data = reshaped_ampl_data_with_noise
       rad_mcp = rad_mcp_with_noise
 
+
+    fig, ax = plt.subplots(figsize = (20,20))
+    ax.scatter(reshaped_time_data[500], original, color='blue', label='Before noise')
+    ax.scatter(reshaped_time_data[500], reshaped_ampl_data[500], color='red', label='After noise', marker='x')
+    ax.set_xlabel("Time / ns")
+    ax.set_ylabel("Amplitude / mV")
+    ax.legend()
+    plt.show()
+
     for j in range(num_curves):
 
       pmax = reshaped_ampl_data[j].max()
@@ -325,13 +336,8 @@ def main():
       y_peak = reshaped_ampl_data[j][start_idx:end_idx]
 
       fam_disc = reshaped_ampl_data[j][start_idx+1] - reshaped_ampl_data[j][end_idx-2]
-      if fam_disc < -0.002:
-        amp_fam_1_ind.append(j)
-      elif (fam_disc > -0.002) & (fam_disc < 0.002):
-        amp_fam_2_ind.append(j)
-      else:
-        amp_fam_3_ind.append(j)
-
+      amp_fam_1_ind.append(j)
+      
       pmax_mcp = rad_mcp[j].max()
       peak_idx_mcp = np.argmax(rad_mcp[j])
       start_idx_mcp = max(0, peak_idx_mcp - numptseitherside)
@@ -477,61 +483,26 @@ def main():
       a_skewG_mcp.append(1000*skewG_peak_mcp)
 
   if make_populated_plots:
-    fig = plt.figure(figsize=(20, 24))
-    gs = gridspec.GridSpec(7, 3, height_ratios=[1, 1, 1, 1, 1, 1, 1], width_ratios=[1, 1, 1])
+    fig = plt.figure(figsize=(20, 8))
+    gs = gridspec.GridSpec(2, 4, height_ratios=[1, 1], width_ratios=[1, 1, 1, 1])
 
     ax1 = fig.add_subplot(gs[0, 0])
     ax2 = fig.add_subplot(gs[1, 0])
-    ax3 = fig.add_subplot(gs[2, 0])
-    ax4 = fig.add_subplot(gs[3, 0])
+    ax3 = fig.add_subplot(gs[0, 1])
+    ax4 = fig.add_subplot(gs[1, 1])
+    ax13 = fig.add_subplot(gs[0, 2])
+    ax16 = fig.add_subplot(gs[1, 2])
+    ax19 = fig.add_subplot(gs[0, 3])
+    ax30 = fig.add_subplot(gs[1, 3])
 
-    ax5 = fig.add_subplot(gs[0, 1])
-    ax6 = fig.add_subplot(gs[1, 1])
-    ax7 = fig.add_subplot(gs[2, 1])
-    ax8 = fig.add_subplot(gs[3, 1])
-
-    ax9 = fig.add_subplot(gs[0, 2])
-    ax10 = fig.add_subplot(gs[1, 2])
-    ax11 = fig.add_subplot(gs[2, 2])
-    ax12 = fig.add_subplot(gs[3, 2])
-
-    ax13 = fig.add_subplot(gs[4, 0])
-    ax14 = fig.add_subplot(gs[4, 1])
-    ax15 = fig.add_subplot(gs[4, 2])
-    ax16 = fig.add_subplot(gs[5, 0])
-    ax17 = fig.add_subplot(gs[5, 1])
-    ax18 = fig.add_subplot(gs[5, 2])
-
-    ax19 = fig.add_subplot(gs[6, 0])
-    ax20 = fig.add_subplot(gs[6, 1])
-    ax21 = fig.add_subplot(gs[6, 2])
-
-    a_max_fam1 = [a_max[i] for i in amp_fam_1_ind]
-    a_gaus_fam1 = [a_gaus[i] for i in amp_fam_1_ind]
-    a_para_fam1 = [a_para[i] for i in amp_fam_1_ind]
-    a_voigt_fam1 = [a_voigt[i] for i in amp_fam_1_ind]
-    a_spline_fam1 = [a_spline[i] for i in amp_fam_1_ind]
-    a_lorentz_fam1 = [a_lorentz[i] for i in amp_fam_1_ind]
-    a_landau_fam1 = [a_landau[i] for i in amp_fam_1_ind]
-    a_skewG_fam1 = [a_skewG[i] for i in amp_fam_1_ind]
-
-    a_max_fam2 = [a_max[i] for i in amp_fam_2_ind]
-    a_gaus_fam2 = [a_gaus[i] for i in amp_fam_2_ind]
-    a_para_fam2 = [a_para[i] for i in amp_fam_2_ind]
-    a_voigt_fam2 = [a_voigt[i] for i in amp_fam_2_ind]
-    a_spline_fam2 = [a_spline[i] for i in amp_fam_2_ind]
-    a_lorentz_fam2 = [a_lorentz[i] for i in amp_fam_2_ind]
-    a_landau_fam2 = [a_landau[i] for i in amp_fam_2_ind]
-    a_skewG_fam2 = [a_skewG[i] for i in amp_fam_2_ind]
-
-    a_max_fam3 = [a_max[i] for i in amp_fam_3_ind]
-    a_gaus_fam3 = [a_gaus[i] for i in amp_fam_3_ind]
-    a_para_fam3 = [a_para[i] for i in amp_fam_3_ind]
-    a_voigt_fam3 = [a_voigt[i] for i in amp_fam_3_ind]
-    a_spline_fam3 = [a_spline[i] for i in amp_fam_3_ind]
-    a_lorentz_fam3 = [a_lorentz[i] for i in amp_fam_3_ind]
-    a_landau_fam3 = [a_landau[i] for i in amp_fam_3_ind]
-    a_skewG_fam3 = [a_skewG[i] for i in amp_fam_3_ind]
+    a_max_fam1 = a_max
+    a_gaus_fam1 = a_gaus
+    a_para_fam1 = a_para
+    a_voigt_fam1 = a_voigt
+    a_spline_fam1 = a_spline
+    a_lorentz_fam1 = a_lorentz
+    a_landau_fam1 = a_landau
+    a_skewG_fam1 = a_skewG
 
     ratio_gaus_fam1 = np.array(a_gaus_fam1) / np.array(a_max_fam1)
     ratio_para_fam1 = np.array(a_para_fam1) / np.array(a_max_fam1)
@@ -540,22 +511,6 @@ def main():
     ratio_lorentz_fam1 = np.array(a_lorentz_fam1) / np.array(a_max_fam1)
     ratio_landau_fam1 = np.array(a_landau_fam1) / np.array(a_max_fam1)
     ratio_skewG_fam1 = np.array(a_skewG_fam1) / np.array(a_max_fam1)
-
-    ratio_gaus_fam2 = np.array(a_gaus_fam2) / np.array(a_max_fam2)
-    ratio_para_fam2 = np.array(a_para_fam2) / np.array(a_max_fam2)
-    ratio_voigt_fam2 = np.array(a_voigt_fam2) / np.array(a_max_fam2)
-    ratio_spline_fam2 = np.array(a_spline_fam2) / np.array(a_max_fam2)
-    ratio_lorentz_fam2 = np.array(a_lorentz_fam2) / np.array(a_max_fam2)
-    ratio_landau_fam2 = np.array(a_landau_fam2) / np.array(a_max_fam2)
-    ratio_skewG_fam2 = np.array(a_skewG_fam2) / np.array(a_max_fam2)
-
-    ratio_gaus_fam3 = np.array(a_gaus_fam3) / np.array(a_max_fam3)
-    ratio_para_fam3 = np.array(a_para_fam3) / np.array(a_max_fam3)
-    ratio_voigt_fam3 = np.array(a_voigt_fam3) / np.array(a_max_fam3)
-    ratio_spline_fam3 = np.array(a_spline_fam3) / np.array(a_max_fam3)
-    ratio_lorentz_fam3 = np.array(a_lorentz_fam3) / np.array(a_max_fam3)
-    ratio_landau_fam3 = np.array(a_landau_fam3) / np.array(a_max_fam3)
-    ratio_skewG_fam3 = np.array(a_skewG_fam3) / np.array(a_max_fam3)
 
     mae_fam1_para = np.mean(np.array([para_mae[i] for i in amp_fam_1_ind]))
     mae_fam1_gaus = np.mean(np.array([gaus_mae[i] for i in amp_fam_1_ind]))
@@ -572,38 +527,6 @@ def main():
     rmse_fam1_lorentz = np.mean(np.array([lorentz_rmse[i] for i in amp_fam_1_ind]))
     rmse_fam1_landau = np.mean(np.array([landau_rmse[i] for i in amp_fam_1_ind]))
     rmse_fam1_skewG = np.mean(np.array([skewG_rmse[i] for i in amp_fam_1_ind]))
-
-    mae_fam2_para = np.mean(np.array([para_mae[i] for i in amp_fam_2_ind]))
-    mae_fam2_gaus = np.mean(np.array([gaus_mae[i] for i in amp_fam_2_ind]))
-    mae_fam2_voigt = np.mean(np.array([voigt_mae[i] for i in amp_fam_2_ind]))
-    mae_fam2_spline = np.mean(np.array([spline_mae[i] for i in amp_fam_2_ind]))
-    mae_fam2_lorentz = np.mean(np.array([lorentz_mae[i] for i in amp_fam_2_ind]))
-    mae_fam2_landau = np.mean(np.array([landau_mae[i] for i in amp_fam_2_ind]))
-    mae_fam2_skewG = np.mean(np.array([skewG_mae[i] for i in amp_fam_2_ind]))
-
-    rmse_fam2_para = np.mean(np.array([para_rmse[i] for i in amp_fam_2_ind]))
-    rmse_fam2_gaus = np.mean(np.array([gaus_rmse[i] for i in amp_fam_2_ind]))
-    rmse_fam2_voigt = np.mean(np.array([voigt_rmse[i] for i in amp_fam_2_ind]))
-    rmse_fam2_spline = np.mean(np.array([spline_rmse[i] for i in amp_fam_2_ind]))
-    rmse_fam2_lorentz = np.mean(np.array([lorentz_rmse[i] for i in amp_fam_2_ind]))
-    rmse_fam2_landau = np.mean(np.array([landau_rmse[i] for i in amp_fam_2_ind]))
-    rmse_fam2_skewG = np.mean(np.array([skewG_rmse[i] for i in amp_fam_2_ind]))
-
-    mae_fam3_para = np.mean(np.array([para_mae[i] for i in amp_fam_3_ind]))
-    mae_fam3_gaus = np.mean(np.array([gaus_mae[i] for i in amp_fam_3_ind]))
-    mae_fam3_voigt = np.mean(np.array([voigt_mae[i] for i in amp_fam_3_ind]))
-    mae_fam3_spline = np.mean(np.array([spline_mae[i] for i in amp_fam_3_ind]))
-    mae_fam3_lorentz = np.mean(np.array([lorentz_mae[i] for i in amp_fam_3_ind]))
-    mae_fam3_landau = np.mean(np.array([landau_mae[i] for i in amp_fam_3_ind]))
-    mae_fam3_skewG = np.mean(np.array([skewG_mae[i] for i in amp_fam_3_ind]))
-    
-    rmse_fam3_para = np.mean(np.array([para_rmse[i] for i in amp_fam_3_ind]))
-    rmse_fam3_gaus = np.mean(np.array([gaus_rmse[i] for i in amp_fam_3_ind]))
-    rmse_fam3_voigt = np.mean(np.array([voigt_rmse[i] for i in amp_fam_3_ind]))
-    rmse_fam3_spline = np.mean(np.array([spline_rmse[i] for i in amp_fam_3_ind]))
-    rmse_fam3_lorentz = np.mean(np.array([lorentz_rmse[i] for i in amp_fam_3_ind]))
-    rmse_fam3_landau = np.mean(np.array([landau_rmse[i] for i in amp_fam_3_ind]))
-    rmse_fam3_skewG = np.mean(np.array([skewG_rmse[i] for i in amp_fam_3_ind]))
 
     ax1.scatter(a_max_fam1, ratio_para_fam1, c='r', marker='d', s=20, edgecolors='black', label=r'Parabola / A$_{max}$' + '\nMAE = ' + str(round(mae_fam1_para,4)) + " RMSE = " + str(round(rmse_fam1_para,4)) + '\nNumber of events = ' + str(len(a_max_fam1)))
     ax1.axhline(1, color='black', linestyle='dashed', linewidth=1)
@@ -649,94 +572,6 @@ def main():
       ax4.set_xlim(147, 152)
     ax4.legend(fontsize=12)
 
-    ax5.scatter(a_max_fam2, ratio_para_fam2, c='r', marker='d', s=20, edgecolors='black', label=r'Parabola / A$_{max}$' + '\nMAE = ' + str(round(mae_fam2_para,4)) + " RMSE = " + str(round(rmse_fam2_para,4)) + '\nNumber of events = ' + str(len(a_max_fam2)))
-    ax5.axhline(1, color='black', linestyle='dashed', linewidth=1)
-    ax5.set_xlabel(r"A$_{max}$ / mV", fontsize=14)
-    ax5.set_ylabel(r"A$_{para}$ / A$_{max}$", fontsize=14)
-    ax5.set_ylim(0.99, 1.01)
-    if add_noise:
-      ax5.set_xlim(146, 153)
-    else:
-      ax5.set_xlim(147, 152)
-    ax5.legend(fontsize=12)
-
-    ax6.scatter(a_max_fam2, ratio_gaus_fam2, c='g', marker='d', s=20, edgecolors='black', label=r'Gaussian / A$_{max}$' + '\nMAE = ' + str(round(mae_fam2_para,4)) + " RMSE = " + str(round(rmse_fam2_para,4)) + '\nNumber of events = ' + str(len(a_max_fam2)))
-    ax6.axhline(1, color='black', linestyle='dashed', linewidth=1)
-    ax6.set_xlabel(r"A$_{max}$ / mV", fontsize=14)
-    ax6.set_ylabel(r"A$_{gaus}$ / A$_{max}$", fontsize=14)
-    ax6.set_ylim(0.99, 1.01)
-    if add_noise:
-      ax6.set_xlim(146, 153)
-    else:
-      ax6.set_xlim(147, 152)
-    ax6.legend(fontsize=12)
-
-    ax7.scatter(a_max_fam2, ratio_voigt_fam2, c='orange', marker='d', s=20, edgecolors='black', label=r'Voigt / A$_{max}$' + '\nMAE = ' + str(round(mae_fam2_voigt,4)) + " RMSE = " + str(round(rmse_fam2_voigt,4)) + '\nNumber of events = ' + str(len(a_max_fam2)))
-    ax7.axhline(1, color='black', linestyle='dashed', linewidth=1)
-    ax7.set_xlabel(r"A$_{max}$ / mV", fontsize=14)
-    ax7.set_ylabel(r"A$_{voigt}$ / A$_{max}$", fontsize=14)
-    ax7.set_ylim(0.99, 1.01)
-    if add_noise:
-      ax7.set_xlim(146, 153)
-    else:
-      ax7.set_xlim(147, 152)
-    ax7.legend(fontsize=12)
-
-    ax8.scatter(a_max_fam2, ratio_spline_fam2, c='purple', marker='d', s=20, edgecolors='black', label=r'Spline / A$_{max}$' + '\nMAE = ' + str(round(mae_fam2_spline,4)) + " RMSE = " + str(round(rmse_fam2_spline,4)) + '\nNumber of events = ' + str(len(a_max_fam2)))
-    ax8.axhline(1, color='black', linestyle='dashed', linewidth=1)
-    ax8.set_xlabel(r"A$_{max}$ / mV", fontsize=14)
-    ax8.set_ylabel(r"A$_{spline}$ / A$_{max}$", fontsize=14)
-    ax8.set_ylim(0.99, 1.01)
-    if add_noise:
-      ax8.set_xlim(146, 153)
-    else:
-      ax8.set_xlim(147, 152)
-    ax8.legend(fontsize=12)
-
-    ax9.scatter(a_max_fam3, ratio_para_fam3, c='r', marker='d', s=20, edgecolors='black', label=r'Parabola / A$_{max}$' + '\nMAE = ' + str(round(mae_fam3_para,4)) + " RMSE = " + str(round(rmse_fam3_para,4)) + '\nNumber of events = ' + str(len(a_max_fam3)))
-    ax9.axhline(1, color='black', linestyle='dashed', linewidth=1)
-    ax9.set_xlabel(r"A$_{max}$ / mV", fontsize=14)
-    ax9.set_ylabel(r"A$_{para}$ / A$_{max}$", fontsize=14)
-    ax9.set_ylim(0.99, 1.01)
-    if add_noise:
-      ax9.set_xlim(146, 153)
-    else:
-      ax9.set_xlim(147, 152)
-    ax9.legend(fontsize=12)
-
-    ax10.scatter(a_max_fam3, ratio_gaus_fam3, c='g', marker='d', s=20, edgecolors='black', label=r'Gaussian / A$_{max}$' + '\nMAE = ' + str(round(mae_fam3_para,4)) + " RMSE = " + str(round(rmse_fam3_para,4)) + '\nNumber of events = ' + str(len(a_max_fam3)))
-    ax10.axhline(1, color='black', linestyle='dashed', linewidth=1)
-    ax10.set_xlabel(r"A$_{max}$ / mV", fontsize=14)
-    ax10.set_ylabel(r"A$_{gaus}$ / A$_{max}$", fontsize=14)
-    ax10.set_ylim(0.99, 1.01)
-    if add_noise:
-      ax10.set_xlim(146, 153)
-    else:
-      ax10.set_xlim(147, 152)
-    ax10.legend(fontsize=12)
-
-    ax11.scatter(a_max_fam3, ratio_voigt_fam3, c='orange', marker='d', s=20, edgecolors='black', label=r'Voigt / A$_{max}$' + '\nMAE = ' + str(round(mae_fam3_voigt,4)) + " RMSE = " + str(round(rmse_fam3_voigt,4)) + '\nNumber of events = ' + str(len(a_max_fam3)))
-    ax11.axhline(1, color='black', linestyle='dashed', linewidth=1)
-    ax11.set_xlabel(r"A$_{max}$ / mV", fontsize=14)
-    ax11.set_ylabel(r"A$_{voigt}$ / A$_{max}$", fontsize=14)
-    ax11.set_ylim(0.99, 1.01)
-    if add_noise:
-      ax11.set_xlim(146, 153)
-    else:
-      ax11.set_xlim(147, 152)
-    ax11.legend(fontsize=12)
-
-    ax12.scatter(a_max_fam3, ratio_spline_fam3, c='purple', marker='d', s=20, edgecolors='black', label=r'Spline / A$_{max}$' + '\nMAE = ' + str(round(mae_fam3_spline,4)) + " RMSE = " + str(round(rmse_fam3_spline,4)) + '\nNumber of events = ' + str(len(a_max_fam3)))
-    ax12.axhline(1, color='black', linestyle='dashed', linewidth=1)
-    ax12.set_xlabel(r"A$_{max}$ / mV", fontsize=14)
-    ax12.set_ylabel(r"A$_{spline}$ / A$_{max}$", fontsize=14)
-    ax12.set_ylim(0.99, 1.01)
-    if add_noise:
-      ax12.set_xlim(146, 153)
-    else:
-      ax12.set_xlim(147, 152)
-    ax12.legend(fontsize=12)
-
     ax13.scatter(a_max_fam1, ratio_lorentz_fam1, c='blue', marker='d', s=20, edgecolors='black', label=r'Lorentz / A$_{max}$' + '\nMAE = ' + str(round(mae_fam1_lorentz,4)) + " RMSE = " + str(round(rmse_fam1_lorentz,4)) + '\nNumber of events = ' + str(len(a_max_fam1)))
     ax13.axhline(1, color='black', linestyle='dashed', linewidth=1)
     ax13.set_xlabel(r"A$_{max}$ / mV", fontsize=14)
@@ -747,28 +582,6 @@ def main():
     else:
       ax13.set_xlim(147, 152)
     ax13.legend(fontsize=12)
-
-    ax14.scatter(a_max_fam2, ratio_lorentz_fam2, c='blue', marker='d', s=20, edgecolors='black', label=r'Lorentz / A$_{max}$' + '\nMAE = ' + str(round(mae_fam2_lorentz,4)) + " RMSE = " + str(round(rmse_fam2_lorentz,4)) + '\nNumber of events = ' + str(len(a_max_fam2)))
-    ax14.axhline(1, color='black', linestyle='dashed', linewidth=1)
-    ax14.set_xlabel(r"A$_{max}$ / mV", fontsize=14)
-    ax14.set_ylabel(r"A$_{Lorentz}$ / A$_{max}$", fontsize=14)
-    ax14.set_ylim(0.99, 1.01)
-    if add_noise:
-      ax14.set_xlim(146, 153)
-    else:
-      ax14.set_xlim(147, 152)
-    ax14.legend(fontsize=12)
-
-    ax15.scatter(a_max_fam3, ratio_lorentz_fam3, c='blue', marker='d', s=20, edgecolors='black', label=r'Lorentz / A$_{max}$' + '\nMAE = ' + str(round(mae_fam3_lorentz,4)) + " RMSE = " + str(round(rmse_fam3_lorentz,4)) + '\nNumber of events = ' + str(len(a_max_fam3)))
-    ax15.axhline(1, color='black', linestyle='dashed', linewidth=1)
-    ax15.set_xlabel(r"A$_{max}$ / mV", fontsize=14)
-    ax15.set_ylabel(r"A$_{Lorentz}$ / A$_{max}$", fontsize=14)
-    ax15.set_ylim(0.99, 1.01)
-    if add_noise:
-      ax15.set_xlim(146, 153)
-    else:
-      ax15.set_xlim(147, 152)
-    ax15.legend(fontsize=12)
 
     ax16.scatter(a_max_fam1, ratio_landau_fam1, c='brown', marker='d', s=20, edgecolors='black', label=r'Landau / A$_{max}$' + '\nMAE = ' + str(round(mae_fam1_landau,4)) + " RMSE = " + str(round(rmse_fam1_landau,4)) + '\nNumber of events = ' + str(len(a_max_fam1)))
     ax16.axhline(1, color='black', linestyle='dashed', linewidth=1)
@@ -781,28 +594,6 @@ def main():
       ax16.set_xlim(147, 152)
     ax16.legend(fontsize=12)
 
-    ax17.scatter(a_max_fam2, ratio_landau_fam2, c='brown', marker='d', s=20, edgecolors='black', label=r'Landau / A$_{max}$' + '\nMAE = ' + str(round(mae_fam2_landau,4)) + " RMSE = " + str(round(rmse_fam2_landau,4)) + '\nNumber of events = ' + str(len(a_max_fam2)))
-    ax17.axhline(1, color='black', linestyle='dashed', linewidth=1)
-    ax17.set_xlabel(r"A$_{max}$ / mV", fontsize=14)
-    ax17.set_ylabel(r"A$_{Landau}$ / A$_{max}$", fontsize=14)
-    ax17.set_ylim(0.99, 1.01)
-    if add_noise:
-      ax17.set_xlim(146, 153)
-    else:
-      ax17.set_xlim(147, 152)
-    ax17.legend(fontsize=12)
-
-    ax18.scatter(a_max_fam3, ratio_landau_fam3, c='brown', marker='d', s=20, edgecolors='black', label=r'Landau / A$_{max}$' + '\nMAE = ' + str(round(mae_fam3_landau,4)) + " RMSE = " + str(round(rmse_fam3_landau,4)) + '\nNumber of events = ' + str(len(a_max_fam3)))
-    ax18.axhline(1, color='black', linestyle='dashed', linewidth=1)
-    ax18.set_xlabel(r"A$_{max}$ / mV", fontsize=14)
-    ax18.set_ylabel(r"A$_{Landau}$ / A$_{max}$", fontsize=14)
-    ax18.set_ylim(0.99, 1.01)
-    if add_noise:
-      ax18.set_xlim(146, 153)
-    else:
-      ax18.set_xlim(147, 152)
-    ax18.legend(fontsize=12)
-
     ax19.scatter(a_max_fam1, ratio_skewG_fam1, c='yellow', marker='d', s=20, edgecolors='black', label=r'Skewed Gaus / A$_{max}$' + '\nMAE = ' + str(round(mae_fam1_skewG,4)) + " RMSE = " + str(round(rmse_fam1_skewG,4)) + '\nNumber of events = ' + str(len(a_max_fam1)))
     ax19.axhline(1, color='black', linestyle='dashed', linewidth=1)
     ax19.set_xlabel(r"A$_{max}$ / mV", fontsize=14)
@@ -814,31 +605,9 @@ def main():
       ax19.set_xlim(147, 152)
     ax19.legend(fontsize=12)
 
-    ax20.scatter(a_max_fam2, ratio_skewG_fam2, c='yellow', marker='d', s=20, edgecolors='black', label=r'Skewed Gaus / A$_{max}$' + '\nMAE = ' + str(round(mae_fam2_skewG,4)) + " RMSE = " + str(round(rmse_fam2_skewG,4)) + '\nNumber of events = ' + str(len(a_max_fam2)))
-    ax20.axhline(1, color='black', linestyle='dashed', linewidth=1)
-    ax20.set_xlabel(r"A$_{max}$ / mV", fontsize=14)
-    ax20.set_ylabel(r"A$_{skewed~Gaus}$ / A$_{max}$", fontsize=14)
-    ax20.set_ylim(0.99, 1.01)
-    if add_noise:
-      ax20.set_xlim(146, 153)
-    else:
-      ax20.set_xlim(147, 152)
-    ax20.legend(fontsize=12)
-
-    ax21.scatter(a_max_fam3, ratio_skewG_fam3, c='yellow', marker='d', s=20, edgecolors='black', label=r'Skewed Gaus / A$_{max}$' + '\nMAE = ' + str(round(mae_fam3_skewG,4)) + " RMSE = " + str(round(rmse_fam3_skewG,4)) + '\nNumber of events = ' + str(len(a_max_fam3)))
-    ax21.axhline(1, color='black', linestyle='dashed', linewidth=1)
-    ax21.set_xlabel(r"A$_{max}$ / mV", fontsize=14)
-    ax21.set_ylabel(r"A$_{skewed~Gaus}$ / A$_{max}$", fontsize=14)
-    ax21.set_ylim(0.99, 1.01)
-    if add_noise:
-      ax21.set_xlim(146, 153)
-    else:
-      ax21.set_xlim(147, 152)
-    ax21.legend(fontsize=12)
-
-    fig.suptitle(f"UFSD 3.2 W7 300V : Total {len(a_max)} signal events across three families of events", fontsize=25, fontweight='bold')
+    fig.suptitle(f"UFSD 3.2 W7 300V : Total {len(a_max)} signal events", fontsize=25, fontweight='bold')
     plt.tight_layout(rect=[0, 0, 1, 0.96])
-    plt.savefig("./amplitudes_by_family.png",dpi=300,facecolor='w')
+    plt.savefig("./amplitudes_060625.png",dpi=300,facecolor='w')
     plt.clf()
 
   if time_res_calc:
@@ -938,7 +707,7 @@ def main():
     label_cfd = r"$\sigma_{t}^{20\%}$"
     mcp_tr_est = 5
 
-    for fam_ind, fam_proper in enumerate([amp_fam_1_ind, amp_fam_2_ind, amp_fam_3_ind]):
+    for fam_ind, fam_proper in enumerate([amp_fam_1_ind]):
       x_tr_fit = np.linspace(-0.4, 0.2, 1000)
 
       cfd20_data_fit = [cfd20_data[i] for i in fam_proper]
@@ -1018,13 +787,13 @@ def main():
           axes[i,j].legend(fontsize=14)
           axes[i,j].grid(True, axis='both', linestyle='--', alpha=0.5)
 
-      fig.suptitle(f"UFSD 3.2 W7 300V : Total {len(fam_proper)} signal events of Family {fam_ind+1}", fontsize=25, fontweight='bold')
+      fig.suptitle(f"UFSD 3.2 W7 300V : Total {len(fam_proper)} signal events", fontsize=25, fontweight='bold')
       plt.tight_layout(rect=[0, 0, 1, 0.96])
-      plt.savefig(f"./timeres_family_{fam_ind+1}.png",dpi=300,facecolor='w')
+      plt.savefig(f"./timeres_060625.png",dpi=300,facecolor='w')
       plt.clf()
 
   if make_timewalk_plots:
-    for fam_ind, fam_proper in enumerate([amp_fam_1_ind, amp_fam_2_ind, amp_fam_3_ind]):
+    for fam_ind, fam_proper in enumerate([amp_fam_1_ind]):
 
       deltaT_para = np.array(t_Amax_para) - np.array(t_w_below_Amax_para)
       deltaT_gaus = np.array(t_Amax_gaus) - np.array(t_w_below_Amax_gaus)
@@ -1067,9 +836,9 @@ def main():
           axes[i,j].set_ylabel(r"Events",fontsize=14)
           axes[i,j].set_xlim(0.0,0.05)
           if add_noise:
-            axes[i,j].set_ylim(0,300)
+            axes[i,j].set_ylim(0,600)
           else:
-            axes[i,j].set_ylim(0,200)
+            axes[i,j].set_ylim(0,500)
           axes[i,j].legend(loc='upper left',fontsize=14)
           axes[i,j].grid(True, axis='both', linestyle='--', alpha=0.5)
           if time_res_calc:
@@ -1148,15 +917,13 @@ def main():
           for j in range(3):
             axes_RHS[i,j].legend(loc='upper right',fontsize=14)
 
-      fig.suptitle(f"UFSD 3.2 W7 300V : Total {len(fam_proper)} signal events of Family {fam_ind+1}", fontsize=16, fontweight='bold')
+      fig.suptitle(f"UFSD 3.2 W7 300V : Total {len(fam_proper)} signal events", fontsize=16, fontweight='bold')
       plt.tight_layout(rect=[0, 0, 1, 0.96])
-      plt.savefig(f"./timewalk_UFSD_040425_family_{fam_ind+1}.png",dpi=300,facecolor='w')
+      plt.savefig(f"./timewalk_UFSD_060625.png",dpi=300,facecolor='w')
       plt.clf()
 
     if make_timewalk_plots & time_res_calc:
-      for fam_ind, fam_proper in enumerate([amp_fam_1_ind, amp_fam_2_ind, amp_fam_3_ind]):
-
-        print(f"PASS {fam_ind}")
+      for fam_ind, fam_proper in enumerate([amp_fam_1_ind]):
 
         fig, axes = plt.subplots(1, 2, figsize=(12, 6))
 
@@ -1194,9 +961,9 @@ def main():
         axes[1].set_ylabel(r"Events",fontsize=14)
         axes[1].set_xlim(0.0,0.05)
         if add_noise:
-          axes[1].set_ylim(0,300)
+          axes[1].set_ylim(0,600)
         else:
-          axes[1].set_ylim(0,200)
+          axes[1].set_ylim(0,500)
         axes[1].legend(loc='upper left',fontsize=14)
         axes[1].grid(True, axis='both', linestyle='--', alpha=0.5)
         axes_RHS = [None] * len(axes)
@@ -1219,9 +986,9 @@ def main():
         per_bin_tr_val_skewG = np.sqrt(np.where((1000*np.array(selected_skewG_tr_params)[:,2])**2 - mcp_tr_est**2 < 0, 0, (1000*np.array(selected_skewG_tr_params)[:,2])**2 - mcp_tr_est**2))
         axes_RHS[1].plot(bin_centres_skewG, per_bin_tr_val_skewG, 'o-', color='k', label='$\sigma_{tr}^{skewed~Gaus}$', markersize=10, linewidth=2, alpha=0.5)
 
-        fig.suptitle(f"UFSD 3.2 W7 300V : Total {len(fam_proper)} signal events of Family {fam_ind+1}", fontsize=25, fontweight='bold')
+        fig.suptitle(f"UFSD 3.2 W7 300V : Total {len(fam_proper)} signal events", fontsize=25, fontweight='bold')
         plt.tight_layout(rect=[0, 0, 1, 0.96])
-        plt.savefig(f"./skewG_family_{fam_ind+1}.png",dpi=300,facecolor='w')
+        plt.savefig(f"./skewG_family.png",dpi=300,facecolor='w')
         plt.clf()
 
 
