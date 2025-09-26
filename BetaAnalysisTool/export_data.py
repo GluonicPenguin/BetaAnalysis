@@ -25,7 +25,8 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
   number_of_duts = sum(1 for element in channel_configs if element[0] == 1)
   number_of_bias_pts = int(len(name_and_df_couples[0][1]) / number_of_duts)
   thickness_info = list(map(int, thickness_info))
-  thickness_col = np.repeat(np.array(thickness_info), number_of_bias_pts)
+  # thickness less 2 um to get active thickness vs nominal thickness of substrate
+  thickness_col = np.repeat(np.array(thickness_info) - 2, number_of_bias_pts)
 
   pmax_low = []
   pmax_high = []

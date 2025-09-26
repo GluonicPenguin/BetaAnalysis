@@ -5,7 +5,7 @@ import scipy.optimize as opt
 import mpmath
 import scipy.special as sp
 from scipy.optimize import minimize
-from scipy.stats import poisson, median_abs_deviation
+from scipy.stats import poisson, median_abs_deviation, norm
 import scipy.interpolate as interp
 from lmfit.models import VoigtModel
 import ROOT as root
@@ -103,6 +103,25 @@ def fit_landau(x, y):
     print("Landau fit failed—perhaps your data isn't 'Landau-y' enough? Try better initial guesses.")
     return None, None, None, None
 
+def skewed_gaussian(x, A, mu, sigma, alpha):
+  return 2 * A * np.exp(-((x - mu) ** 2) / (2 * sigma ** 2)) * norm.cdf(alpha * (x - mu))
+
+def fit_skewed_gaussian(x, y):
+  A0 = max(y)
+  mu0 = x[np.argmax(y)]
+  sigma0 = (max(x) - min(x)) / 10
+  alpha0 = 1  # skew factor
+
+  p0 = [A0, mu0, sigma0, alpha0]
+
+  try:
+    popt, _ = opt.curve_fit(skewed_gaussian, x, y, p0=p0)
+    A, mu, sigma, alpha = popt
+    y_fit = skewed_gaussian(x, *popt)
+    return max(y_fit), y_fit, lambda x_new: skewed_gaussian(x_new, *popt), compute_errors(y, y_fit)
+  except RuntimeError:
+    return 0, 0, 0, [0, 0]
+
 def compute_errors(y_true, y_fit):
   mae = np.mean(np.abs(y_true - y_fit))
   rmse = np.sqrt(np.mean((y_true - y_fit) ** 2))
@@ -142,8 +161,8 @@ def main():
   cfd10_data = []
   cfd20_data = []
   cfd30_data = []
-  cfd20_mcp_data = []
-  num_curves = 1
+  cfd30_mcp_data = []
+  num_curves = 1421
   ch_sig = 2
   ch_mcp = 3
 
@@ -161,9 +180,9 @@ def main():
       pmax_mcp = entry.pmax[ch_mcp]
       cfd10_sig = entry.cfd[ch_sig][0] # 10%
       cfd20_sig = entry.cfd[ch_sig][1] # 20%
-      cfd20_mcp = entry.cfd[ch_mcp][1]
+      cfd30_mcp = entry.cfd[ch_mcp][2]
       cfd30_sig = entry.cfd[ch_sig][2] # 30%
-      if (pmax_sig > 25) and (pmax_mcp < 540) and (pmax_mcp > 40):
+      if (pmax_sig > 25) and (pmax_mcp < 540) and (pmax_mcp > 20):
         # W12 15e14/25e14 (pmax_sig > 10) and (pmax_sig < 30) and (negpmax_sig > -30) and (pmax_mcp < 120) and (peakfind > 9) and (peakfind < 14)
         # W13 35e14 (pmax_sig > 55) and (pmax_sig < 80) and (negpmax_sig > -30) and (pmax_mcp < 120) and (peakfind > 9) and (peakfind < 14)
         w_sig = entry.w[ch_sig]
@@ -171,7 +190,7 @@ def main():
         cfd10_data.append(cfd10_sig)
         cfd20_data.append(cfd20_sig)
         cfd30_data.append(cfd30_sig)
-        cfd20_mcp_data.append(cfd20_mcp)
+        cfd30_mcp_data.append(cfd30_mcp)
         w_data[j].extend(w_sig)
         t_data[j].extend(t_sig)
         w_mcp = entry.w[ch_mcp]
@@ -193,8 +212,8 @@ def main():
   alphas = [1.0,0.8]
   edges = ['black','none']
   #labels = ["W5 new (140 V)","W13 35e14 (420 V) G = 35"]
-  #labels = ["W16 new (210 V)","W12 15e14 (210 V) G = 4"]
-  labels = ["W17 new (160 V)","W12 15e14 (210 V) G = 4"]
+  labels = ["20μm (CBL) 150 V","W12 15e14 (210 V) G = 4"]
+  #labels = ["W17 new (160 V)","W12 15e14 (210 V) G = 4"]
 
   a_max = []
   a_para = []
@@ -203,6 +222,8 @@ def main():
   a_voigt = []
   a_spline = []
   a_landau = []
+  a_skewG = []
+
   para_mae = []
   para_rmse = []
   gaus_mae = []
@@ -215,6 +236,8 @@ def main():
   spline_rmse = []
   landau_mae = []
   landau_rmse = []
+  skewG_mae = []
+  skewG_rmse = []
 
   a_max_mcp = []
   a_para_mcp = []
@@ -223,9 +246,10 @@ def main():
   a_voigt_mcp = []
   a_spline_mcp = []
   a_landau_mcp = []
+  a_skewG_mcp = []
 
-  make_plots = True
-  make_populated_plots = False
+  make_plots = False
+  make_populated_plots = True
   cfd_studies = False
   add_noise = False
   time_res_calc = False
@@ -233,7 +257,7 @@ def main():
 
   if make_plots:
     #plt.figure(figsize=(10, 6))
-    fig, ax = plt.subplots(figsize=(10, 6))
+    fig, ax = plt.subplots(figsize=(16, 10))
 
   for i in range(1):
     #if i == 0: continue
@@ -258,6 +282,7 @@ def main():
 
       pmax = reshaped_ampl_data[j].max()
       peak_idx = np.argmax(reshaped_ampl_data[j])
+      tmax_for_plot = reshaped_time_data[j][peak_idx]
       start_idx = max(0, peak_idx - numptseitherside)
       end_idx = min(len(reshaped_ampl_data[j]), peak_idx + numptseitherside + 1)
 
@@ -348,6 +373,19 @@ def main():
       idx_below = np.where((y_peak < landau_peak) & (x_peak < x_fine[np.argmin(np.abs(y_fine - landau_peak))]))[0][-1]
       t_w_below_Amax_landau = x_peak[idx_below]
 
+      # skewed_gaus
+      try:
+        skewG_peak, skewG_fit, skewG_func, skewG_errors = fit_skewed_gaussian(x_peak, y_peak)
+        skewG_peak_mcp, skewG_fit_mcp, skewG_func_mcp, skewG_errors_mcp = fit_skewed_gaussian(x_peak_mcp, y_peak_mcp)
+        y_fine = skewG_func(x_fine)
+        skewG_peak = max(y_fine)
+        t_Amax_skewG = x_fine[np.argmin(np.abs(y_fine - skewG_peak))]
+        idx_below = np.where((y_peak < skewG_peak) & (x_peak < x_fine[np.argmin(np.abs(y_fine - skewG_peak))]))[0][-1]
+        t_w_below_Amax_skewG = x_peak[idx_below]
+      #except RuntimeError:
+      except:
+        continue
+
       a_max.append(1000*pmax)
       a_para.append(1000*y_parabola_max)
       a_gaus.append(1000*gaussian(mu, *params))
@@ -355,6 +393,7 @@ def main():
       a_voigt.append(1000*voigt_peak)
       a_spline.append(1000*spline_peak)
       a_landau.append(1000*landau_peak)
+      a_skewG.append(1000*skewG_peak)
 
       para_mae.append(parabolic_mae)
       para_rmse.append(parabolic_rmse)
@@ -368,6 +407,8 @@ def main():
       spline_rmse.append(spline_errors[1])
       landau_mae.append(landau_errors[0])
       landau_rmse.append(landau_errors[1])
+      skewG_mae.append(skewG_errors[0])
+      skewG_rmse.append(skewG_errors[1])
 
       a_max_mcp.append(1000*pmax_mcp)
       a_para_mcp.append(1000*y_parabola_max_mcp)
@@ -376,34 +417,39 @@ def main():
       a_voigt_mcp.append(1000*voigt_peak_mcp)
       a_spline_mcp.append(1000*spline_peak_mcp)
       a_landau_mcp.append(1000*landau_peak_mcp)
+      a_skewG_mcp.append(1000*skewG_peak_mcp)
 
       if make_plots:
         x_linspace = np.linspace(x_peak.min(), x_peak.max(), 400)
 
-        ax.scatter(reshaped_time_data[j],1000*reshaped_ampl_data[j],s=20,c=colours[i],marker='o',edgecolor=edges[i],linewidth=0.5,alpha=alphas[i],label=labels[i]+" "+str(round(1000*pmax, 2))+" mV", zorder=1)
-        #ax.plot(x_linspace, 1000*np.polyval(parabola_coeffs, x_linspace), 'r', label="Parabolic Fit", linewidth = 2, zorder=2)
-        #ax.plot(x_linspace, gaussian(x_linspace, *params), 'g', label="Gaussian Fit", linewidth = 2, zorder=2)
-        #ax.plot(x_linspace, 1000*lorentz_func(x_linspace), 'blue', linewidth = 2, zorder=2)
-        #ax.plot(x_linspace, voigt_func(x_linspace), 'orange', label="Voigt Fit", linewidth = 2, zorder=2)
-        #ax.plot(x_linspace, spline_func(x_linspace), 'purple', label="Interpolated Spline", linewidth = 2, zorder=2)
-        ax.plot(x_linspace, 1000*landau_func(x_linspace), 'brown', label="Landau Fit", linewidth = 2, zorder=2)
-        #ax.axhline(1000*y_parabola_max, color='r', linestyle=':', label=r"A$_{para}$: "+str(round(1000*y_parabola_max, 2))+" mV", linewidth = 2, zorder=3)
-        #ax.axhline(gaussian(mu, *params), color='g', linestyle=':', label=r"A$_{Gaus}$: "+str(round(1000*gaussian(mu, *params), 2))+" mV", linewidth = 2, zorder=3)
-        #ax.axhline(1000*lorentz_peak, color='blue', linestyle=':', label=r"A$_{Lorentz}$: "+str(round(1000*lorentz_peak, 2))+" mV", linewidth = 2, zorder=3)
-        #ax.axhline(voigt_peak, color='orange', linestyle=':', label=r"A$_{Voigt}$: "+str(round(1000*voigt_peak, 2))+" mV", linewidth = 2, zorder=3)
-        #ax.axhline(spline_peak, color='purple', linestyle=':', label=r"A$_{spline}$: "+str(round(1000*spline_peak, 2))+" mV", linewidth = 2, zorder=3)
-        ax.axhline(1000*landau_peak, color='brown', linestyle=':', label=r"A$_{Landau}$: "+str(round(1000*landau_peak, 2))+" mV", linewidth = 2, zorder=3)
-        #ax.scatter(reshaped_time_data[j],reshaped_ampl_data[j],s=30,c=colours[i],marker='o',edgecolor=edges[i],linewidth=0.5,alpha=alphas[i], zorder=4)
-        #ax.axvline(x_parabola_max, color='k', linestyle=':', label=r"t(A$_{para}$) = "+str(round(1000*x_parabola_max, 2))+" ps", linewidth = 2, zorder=3)
-        #ax.axvline(t_w_below_Amax_para, color='k', linestyle='-.', label=r"t(w < A$_{para}$): "+str(round(1000*t_w_below_Amax_para, 2))+" ps", linewidth = 2, zorder=3)
-        #ax.axvline(t_w_below_Amax_para+0.1, color='k', linestyle='-.', label=r"t(w < A$_{para}$): ("+str(round(1000*t_w_below_Amax_para, 2))+" + 100) ps", linewidth = 2, zorder=3, alpha=0.6)
+        ax.plot(x_linspace, 1000*np.polyval(parabola_coeffs, x_linspace), 'r', label=r"$A_{\rm{para}}$: "+str(round(1000*y_parabola_max, 2))+" mV", linewidth = 3, zorder=2)
+        ax.plot(x_linspace, 1000*gaussian(x_linspace, *params), 'g', label=r"$A_{\rm{Gaus}}$: "+str(round(1000*gaussian(mu, *params), 2))+" mV", linewidth = 3, zorder=2)
+        ax.plot(x_linspace, 1000*lorentz_func(x_linspace), 'blue', label=r"$A_{\rm{Lorentz}}$: "+str(round(1000*lorentz_peak, 2))+" mV", linewidth = 3, zorder=2)
+        ax.plot(x_linspace, 1000*voigt_func(x_linspace), 'orange', label=r"$A_{\rm{Voigt}}$: "+str(round(1000*voigt_peak, 2))+" mV", linewidth = 3, zorder=2)
+        ax.plot(x_linspace, 1000*spline_func(x_linspace), 'purple', label=r"$A_{\rm{spline}}$: "+str(round(1000*spline_peak, 2))+" mV", linewidth = 3, zorder=2)
+        #ax.plot(x_linspace, 1000*landau_func(x_linspace), 'brown', label=r"$A_{\rm{Landau}}$: "+str(round(1000*landau_peak, 2))+" mV", linewidth = 3, zorder=2)
+        ax.plot(x_linspace, 1000*skewG_func(x_linspace), 'cyan', label=r"$A_{\rm{skewed}}$: "+str(round(1000*skewG_peak, 2))+" mV", linewidth = 3, zorder=2)
+        ax.axhline(1000*y_parabola_max, color='r', linestyle=':', linewidth = 3, zorder=3)
+        ax.axhline(1000*gaussian(mu, *params), color='g', linestyle=':', linewidth = 3, zorder=3)
+        ax.axhline(1000*lorentz_peak, color='blue', linestyle=':', linewidth = 3, zorder=3)
+        ax.axhline(1000*voigt_peak, color='orange', linestyle=':', linewidth = 3, zorder=3)
+        ax.axhline(1000*spline_peak, color='purple', linestyle=':', linewidth = 3, zorder=3)
+        #ax.axhline(1000*landau_peak, color='brown', linestyle=':', linewidth = 3, zorder=3)
+        ax.axhline(1000*skewG_peak, color='cyan', linestyle=':', linewidth = 3, zorder=3)
+        ax.scatter(reshaped_time_data[j],1000*reshaped_ampl_data[j],s=140,c="k",marker='o',edgecolor=edges[i],linewidth=0.5,alpha=1.0, zorder=4)
+        ax.scatter(reshaped_time_data[j][peak_idx-3:peak_idx+4],1000*reshaped_ampl_data[j][peak_idx-3:peak_idx+4],s=200,c="white",marker='o',edgecolor=edges[i],linewidth=3,alpha=1.0,
+                   label=labels[i]+",\n" + r"$A_{\rm{sampling~point}}$: "+str(round(1000*pmax, 2))+" mV", zorder=5)
+        ax.axvline(tmax_for_plot, color='k', alpha = 0.8, linestyle='--', linewidth = 3)
+        #ax.axvline(x_parabola_max, color='k', linestyle=':', label=r"t(A$_{para}$) = "+str(round(1000*x_parabola_max, 2))+" ps", linewidth = 3, zorder=3)
+        #ax.axvline(t_w_below_Amax_para, color='k', linestyle='-.', label=r"t(w < A$_{para}$): "+str(round(1000*t_w_below_Amax_para, 2))+" ps", linewidth = 3, zorder=3)
+        #ax.axvline(t_w_below_Amax_para+0.1, color='k', linestyle='-.', label=r"t(w < A$_{para}$): ("+str(round(1000*t_w_below_Amax_para, 2))+" + 100) ps", linewidth = 3, zorder=3, alpha=0.6)
         #ax.fill_betweenx(y=np.linspace(-50, 500, 100), x1=t_w_below_Amax_para, x2=x_parabola_max, color='orange', alpha=0.4, hatch='//')
-        #ax.axvline(t_Amax_lorentz, color='k', linestyle=':', label=r"t(A$_{Lorentz}$) = "+str(round(1000*t_Amax_lorentz, 2))+" ps", linewidth = 2, zorder=3)
-        #ax.axvline(t_w_below_Amax_lorentz, color='k', linestyle='-.', label=r"t(w < A$_{Lorentz}$): "+str(round(1000*t_w_below_Amax_lorentz, 2))+" ps", linewidth = 2, zorder=3)
+        #ax.axvline(t_Amax_lorentz, color='k', linestyle=':', label=r"t(A$_{Lorentz}$) = "+str(round(1000*t_Amax_lorentz, 2))+" ps", linewidth = 3, zorder=3)
+        #ax.axvline(t_w_below_Amax_lorentz, color='k', linestyle='-.', label=r"t(w < A$_{Lorentz}$): "+str(round(1000*t_w_below_Amax_lorentz, 2))+" ps", linewidth = 3, zorder=3)
         #ax.fill_betweenx(y=np.linspace(-50, 500, 100), x1=t_w_below_Amax_lorentz, x2=t_Amax_lorentz, color='orange', alpha=0.4, hatch='//')
-        ax.axvline(t_Amax_landau, color='k', linestyle=':', label=r"t(A$_{Landau}$) = "+str(round(1000*t_Amax_landau, 2))+" ps", linewidth = 2, zorder=3)
-        ax.axvline(t_w_below_Amax_landau, color='k', linestyle='-.', label=r"t(w < A$_{Landau}$): "+str(round(1000*t_w_below_Amax_landau, 2))+" ps", linewidth = 2, zorder=3)
-        ax.fill_betweenx(y=np.linspace(-50, 500, 100), x1=t_w_below_Amax_landau, x2=t_Amax_landau, color='orange', alpha=0.4, hatch='//')
+        #ax.axvline(t_Amax_landau, color='k', linestyle=':', label=r"t(A$_{Landau}$) = "+str(round(1000*t_Amax_landau, 2))+" ps", linewidth = 3, zorder=3)
+        #ax.axvline(t_w_below_Amax_landau, color='k', linestyle='-.', label=r"t(w < A$_{Landau}$): "+str(round(1000*t_w_below_Amax_landau, 2))+" ps", linewidth = 3, zorder=3)
+        #ax.fill_betweenx(y=np.linspace(-50, 500, 100), x1=t_w_below_Amax_landau, x2=t_Amax_landau, color='orange', alpha=0.4, hatch='//')
         if num_curves == 1:
           print(f"A_max = {(1000*pmax):.2f} mV")
           print(f"A_para = {(1000*y_parabola_max):.2f} mV")
@@ -412,6 +458,7 @@ def main():
           print(f"A_Voigt = {(1000*voigt_peak):.2f} mV")
           print(f"A_spline = {(1000*spline_peak):.2f} mV")
           print(f"A_Landau = {(1000*landau_peak):.2f} mV")
+          print(f"A_skewed = {(1000*skewG_peak):.2f} mV")
 
           print("\nParabolic Fit Errors:")
           print(f"  MAE  = {parabolic_mae:.4f}")
@@ -437,15 +484,23 @@ def main():
           print(f"  MAE  = {landau_errors[0]:.4f}")
           print(f"  RMSE = {landau_errors[1]:.4f}")
 
+          print("\nSkewed Gaus Fit Errors:")
+          print(f"  MAE  = {skewG_errors[0]:.4f}")
+          print(f"  RMSE = {skewG_errors[1]:.4f}")
+
     if make_plots:
-      ax.set_xlabel('Time [ns]',fontsize=14)
-      ax.set_ylabel('Amplitude [mV]',fontsize=14)
-      plt.xticks(fontsize=14)
-      plt.yticks(fontsize=14)
-      ax.tick_params(axis='both', labelsize=14)
-      ax.set_xlim(-0.5,0.2)
-      ax.set_ylim(0,60)
-      ax.legend(fontsize=12)
+      handles, labels = ax.get_legend_handles_labels()
+      handles = handles[-1:] + handles[:-1]
+      labels = labels[-1:] + labels[:-1]
+
+      ax.set_xlabel('Time [ns]',fontsize=24)
+      ax.set_ylabel('Amplitude [mV]',fontsize=24)
+      plt.xticks(fontsize=24)
+      plt.yticks(fontsize=24)
+      ax.tick_params(axis='both', labelsize=24)
+      ax.set_xlim(-0.5,0.1)
+      ax.set_ylim(20,70)
+      ax.legend(handles, labels, fontsize=24)
       #ax.set_yscale('log')
       ax.grid(True, linestyle='--', alpha=0.5)
       plt.tight_layout()
@@ -454,6 +509,109 @@ def main():
       plt.clf()
 
   if make_populated_plots:
+    fig = plt.figure(figsize=(16, 10))
+    gs = gridspec.GridSpec(2, 3, height_ratios=[1, 1], width_ratios=[1, 1, 1])
+
+    ax1 = fig.add_subplot(gs[0, 0])
+    ax2 = fig.add_subplot(gs[0, 1])
+    ax3 = fig.add_subplot(gs[0, 2])
+    ax4 = fig.add_subplot(gs[1, 0])
+    ax5 = fig.add_subplot(gs[1, 1])
+    ax6 = fig.add_subplot(gs[1, 2])
+
+    ratio_gaus = np.array(a_gaus) / np.array(a_max)
+    ratio_para = np.array(a_para) / np.array(a_max)
+    ratio_lorentz = np.array(a_lorentz) / np.array(a_max)
+    ratio_voigt = np.array(a_voigt) / np.array(a_max)
+    ratio_spline = np.array(a_spline) / np.array(a_max)
+    ratio_skewG = np.array(a_skewG) / np.array(a_max)
+
+    mae_tot_para = np.mean(para_mae)
+    mae_tot_gaus = np.mean(gaus_mae)
+    mae_tot_lorentz = np.mean(lorentz_mae)
+    mae_tot_voigt = np.mean(voigt_mae)
+    mae_tot_spline = np.mean(spline_mae)
+    mae_tot_skewG = np.mean(skewG_mae)
+
+    rmse_tot_para = np.mean(para_rmse)
+    rmse_tot_gaus = np.mean(gaus_rmse)
+    rmse_tot_lorentz = np.mean(lorentz_rmse)
+    rmse_tot_voigt = np.mean(voigt_rmse)
+    rmse_tot_spline = np.mean(spline_rmse)
+    rmse_tot_skewG = np.mean(skewG_rmse)
+
+    #ax1.scatter(a_max, ratio_para, c='r', marker='d', s=20, edgecolors='black', label=r'Parabola / A$_{max}$' + '\nMAE = ' + str(round(mae_tot_para,4)) + " RMSE = " + str(round(rmse_tot_para,4)))
+    ax1.scatter(a_max, ratio_para, c='r', marker='D', s=20, edgecolors='black', label=r'Parabola' + '\nRMSE = ' + str(round(rmse_tot_para,4)))
+    ax1.axhline(1, color='black', linestyle='dashed', linewidth=1)
+    ax1.set_xlabel(r"$A_{\rm{sampling~point}}$ / mV", fontsize=24)
+    ax1.set_ylabel(r"$A_{\rm{para}}$ / $A_{\rm{sampling~point}}$", fontsize=24)
+    ax1.set_ylim(0.9, 1.1)
+    ax1.set_xlim(0,600)
+    ax1.grid()
+    ax1.tick_params(axis="both", labelsize=20)
+    ax1.legend(fontsize=20, loc="upper left")
+
+    #ax2.scatter(a_max, ratio_gaus, c='g', marker='d', s=20, edgecolors='black', label=r'Gaussian / A$_{\rm{sampling~point}}$' + '\nMAE = ' + str(round(mae_tot_para,4)) + " RMSE = " + str(round(rmse_tot_para,4)))
+    ax2.scatter(a_max, ratio_gaus, c='g', marker='D', s=20, edgecolors='black', label=r'Gaussian' + '\nRMSE = ' + str(round(rmse_tot_para,4)))
+    ax2.axhline(1, color='black', linestyle='dashed', linewidth=1)
+    ax2.set_xlabel(r"$A_{\rm{sampling~point}}$ / mV", fontsize=24)
+    ax2.set_ylabel(r"$A_{\rm{Gaus}}$ / $A_{\rm{sampling~point}}$", fontsize=24)
+    ax2.set_ylim(0.9, 1.1)
+    ax2.set_xlim(0,600)
+    ax2.grid()
+    ax2.tick_params(axis="both", labelsize=20)
+    ax2.legend(fontsize=20, loc="lower right")
+
+    #ax3.scatter(a_max, ratio_lorentz, c='blue', marker='d', s=20, edgecolors='black', label=r'Lorentz / $A_{\rm{sampling~point}}$' + '\nMAE = ' + str(round(mae_tot_lorentz,4)) + " RMSE = " + str(round(rmse_tot_lorentz,4)))
+    ax3.scatter(a_max, ratio_lorentz, c='blue', marker='D', s=20, edgecolors='black', label=r'Lorentz' + '\nRMSE = ' + str(round(rmse_tot_lorentz,4)))
+    ax3.axhline(1, color='black', linestyle='dashed', linewidth=1)
+    ax3.set_xlabel(r"$A_{\rm{sampling~point}}$ / mV", fontsize=24)
+    ax3.set_ylabel(r"$A_{\rm{Lorentz}}$ / $A_{\rm{sampling~point}}$", fontsize=24)
+    ax3.set_ylim(0.9, 1.1)
+    ax3.set_xlim(0,600)
+    ax3.grid()
+    ax3.tick_params(axis="both", labelsize=20)
+    ax3.legend(fontsize=20, loc="lower right")
+
+    #ax4.scatter(a_max, ratio_voigt, c='orange', marker='d', s=20, edgecolors='black', label=r'Voigt / $A_{\rm{sampling~point}}$' + '\nMAE = ' + str(round(mae_tot_voigt,4)) + " RMSE = " + str(round(rmse_tot_voigt,4)))
+    ax4.scatter(a_max, ratio_voigt, c='orange', marker='D', s=20, edgecolors='black', label=r'Voigt' + '\nRMSE = ' + str(round(rmse_tot_voigt,4)))
+    ax4.axhline(1, color='black', linestyle='dashed', linewidth=1)
+    ax4.set_xlabel(r"$A_{\rm{sampling~point}}$ / mV", fontsize=24)
+    ax4.set_ylabel(r"$A_{\rm{Voigt}}$ / $A_{\rm{sampling~point}}$", fontsize=24)
+    ax4.set_ylim(0.9, 1.1)
+    ax4.set_xlim(0,600)
+    ax4.grid()
+    ax4.tick_params(axis="both", labelsize=20)
+    ax4.legend(fontsize=20, loc="lower right")
+
+    #ax5.scatter(a_max, ratio_spline, c='purple', marker='d', s=20, edgecolors='black', label=r'Spline / $A_{\rm{sampling~point}}$' + '\nMAE = ' + str(round(mae_tot_spline,4)) + " RMSE = " + str(round(rmse_tot_spline,4)))
+    ax5.scatter(a_max, ratio_spline, c='purple', marker='D', s=20, edgecolors='black', label=r'Interpolated spline' + '\nRMSE ≝ ' + str(round(rmse_tot_spline,4)))
+    ax5.axhline(1, color='black', linestyle='dashed', linewidth=1)
+    ax5.set_xlabel(r"$A_{\rm{sampling~point}}$ / mV", fontsize=24)
+    ax5.set_ylabel(r"$A_{\rm{spline}}$ / $A_{\rm{sampling~point}}$", fontsize=24)
+    ax5.set_ylim(0.9, 1.1)
+    ax5.set_xlim(0,600)
+    ax5.grid()
+    ax5.tick_params(axis="both", labelsize=20)
+    ax5.legend(fontsize=20, loc="lower right")
+
+    #ax6.scatter(a_max, ratio_skewG, c='brown', marker='D', s=20, edgecolors='black', label=r'Skewed Gaussian / $A_{\rm{sampling~point}}$' + '\nMAE = ' + str(round(mae_tot_skewG,4)) + " RMSE = " + str(round(rmse_tot_skewG,4)))
+    ax6.scatter(a_max, ratio_skewG, c='brown', marker='D', s=20, edgecolors='black', label=r'Skewed Gaussian' + '\nRMSE = ' + str(round(rmse_tot_skewG,4)))
+    ax6.axhline(1, color='black', linestyle='dashed', linewidth=1)
+    ax6.set_xlabel(r"$A_{\rm{sampling~point}}$ / mV", fontsize=24)
+    ax6.set_ylabel(r"$A_{\rm{skewed}}$ / $A_{\rm{sampling~point}}$", fontsize=24)
+    ax6.set_ylim(0.9, 1.1)
+    ax6.set_xlim(0,600)
+    ax6.grid()
+    ax6.tick_params(axis="both", labelsize=20)
+    ax6.legend(fontsize=20, loc="lower right")
+
+    #fig.suptitle(f"Total {len(a_max)} signal events", fontsize=16, fontweight='bold')
+    plt.tight_layout(rect=[0, 0, 1, 0.96])
+    plt.savefig("./amplitude_to_sampling_trends.png",dpi=300,facecolor='w')
+    plt.clf()
+
+    '''
     fig = plt.figure(figsize=(24, 18))
     gs = gridspec.GridSpec(6, 3, height_ratios=[1, 1, 1, 1, 1, 1], width_ratios=[1, 1, 1])
 
@@ -629,25 +787,27 @@ def main():
     plt.tight_layout(rect=[0, 0, 1, 0.96])
     plt.savefig("./amplitude_big_data_analysis.png",dpi=300,facecolor='w')
     plt.clf()
-
+    '''
   if cfd_studies:
 
-    cfd20_para = []
-    cfd20_gaus = []
-    cfd20_lorentz = []
-    cfd20_voigt = []
-    cfd20_spline = []
-    cfd20_landau = []
+    cfd30_para = []
+    cfd30_gaus = []
+    cfd30_lorentz = []
+    cfd30_voigt = []
+    cfd30_spline = []
+    cfd30_landau = []
 
-    cfd20_para_mcp = []
-    cfd20_gaus_mcp = []
-    cfd20_lorentz_mcp = []
-    cfd20_voigt_mcp = []
-    cfd20_spline_mcp = []
-    cfd20_landau_mcp = []
+    cfd30_para_mcp = []
+    cfd30_gaus_mcp = []
+    cfd30_lorentz_mcp = []
+    cfd30_voigt_mcp = []
+    cfd30_spline_mcp = []
+    cfd30_landau_mcp = []
 
     for j in range(num_curves):
       idx_para = np.where(np.array(reshaped_ampl_data[j]) > 0.0002*a_para[j])[0][0]
+      print(len(reshaped_ampl_data[j]))
+      print(len(a_gaus[j]))
       idx_gaus = np.where(np.array(reshaped_ampl_data[j]) > 0.0002*a_gaus[j])[0][0]
       idx_lorentz = np.where(np.array(reshaped_ampl_data[j]) > 0.0002*a_lorentz[j])[0][0]
       idx_voigt = np.where(np.array(reshaped_ampl_data[j]) > 0.0002*a_voigt[j])[0][0]
@@ -660,12 +820,12 @@ def main():
       mean_time_voigt = np.mean(time_array_event[[idx_voigt-1, idx_voigt]])
       mean_time_spline = np.mean(time_array_event[[idx_spline-1, idx_spline]])
       mean_time_landau = np.mean(time_array_event[[idx_landau-1, idx_landau]])
-      cfd20_para.append(mean_time_para)
-      cfd20_gaus.append(mean_time_gaus)
-      cfd20_lorentz.append(mean_time_lorentz)
-      cfd20_voigt.append(mean_time_voigt)
-      cfd20_spline.append(mean_time_spline)
-      cfd20_landau.append(mean_time_landau)
+      cfd30_para.append(mean_time_para)
+      cfd30_gaus.append(mean_time_gaus)
+      cfd30_lorentz.append(mean_time_lorentz)
+      cfd30_voigt.append(mean_time_voigt)
+      cfd30_spline.append(mean_time_spline)
+      cfd30_landau.append(mean_time_landau)
 
       if time_res_calc:
         idx_para_mcp = np.where(np.array(rad_mcp[j]) > 0.0002*a_para_mcp[j])[0][0]
@@ -681,46 +841,46 @@ def main():
         mean_time_voigt_mcp = np.mean(time_array_event_mcp[[idx_voigt_mcp-1, idx_voigt_mcp]])
         mean_time_spline_mcp = np.mean(time_array_event_mcp[[idx_spline_mcp-1, idx_spline_mcp]])
         mean_time_landau_mcp = np.mean(time_array_event_mcp[[idx_landau_mcp-1, idx_landau_mcp]])
-        cfd20_para_mcp.append(mean_time_para_mcp)
-        cfd20_gaus_mcp.append(mean_time_gaus_mcp)
-        cfd20_lorentz_mcp.append(mean_time_lorentz_mcp)
-        cfd20_voigt_mcp.append(mean_time_voigt_mcp)
-        cfd20_spline_mcp.append(mean_time_spline_mcp)
-        cfd20_landau_mcp.append(mean_time_landau_mcp)
+        cfd30_para_mcp.append(mean_time_para_mcp)
+        cfd30_gaus_mcp.append(mean_time_gaus_mcp)
+        cfd30_lorentz_mcp.append(mean_time_lorentz_mcp)
+        cfd30_voigt_mcp.append(mean_time_voigt_mcp)
+        cfd30_spline_mcp.append(mean_time_spline_mcp)
+        cfd30_landau_mcp.append(mean_time_landau_mcp)
 
-    label_cfd = "CFD@20%"
+    label_cfd = "CFD@30%"
 
     if time_res_calc:
       
       fig2oneoff, ax2oneoff = plt.subplots(figsize=(8, 6))
-      ax2oneoff.hist([cfd20_para,cfd20_para_mcp], bins=150, range=(-2, 1), alpha=0.6, color=['blue','purple'], edgecolor='black', label=['cfd20_para','cfd20_para_mcp'], histtype='stepfilled', linewidth=1.5)
-      dut_fit_para = gaussian_fit_binned_data(cfd20_para, "PARA_DUT")
-      mcp_fit_para = gaussian_fit_binned_data(cfd20_para_mcp, "PARA_MCP")
-      #ax2oneoff.hist([cfd20_data,cfd20_mcp_data], bins=150, range=(-2, 1), color=['red','orange'], edgecolor='black', label=['cfd20_data','cfd20_mcp_data'], histtype='stepfilled', linewidth=1.5, alpha=0.2)
+      ax2oneoff.hist([cfd30_para,cfd30_para_mcp], bins=150, range=(-2, 1), alpha=0.6, color=['blue','purple'], edgecolor='black', label=['cfd30_para','cfd30_para_mcp'], histtype='stepfilled', linewidth=1.5)
+      dut_fit_para = gaussian_fit_binned_data(cfd30_para, "PARA_DUT")
+      mcp_fit_para = gaussian_fit_binned_data(cfd30_para_mcp, "PARA_MCP")
+      #ax2oneoff.hist([cfd30_data,cfd30_mcp_data], bins=150, range=(-2, 1), color=['red','orange'], edgecolor='black', label=['cfd30_data','cfd30_mcp_data'], histtype='stepfilled', linewidth=1.5, alpha=0.2)
       #ax2oneoff.legend()
       #fig2oneoff.savefig(f"datavpara.png", dpi=300, bbox_inches='tight')
 
-      tr_data = np.array(cfd20_data) - np.array(cfd20_mcp_data)
-      tr_para = np.array(cfd20_para) - np.array(cfd20_para_mcp)
-      my_proper_dist = np.subtract(cfd20_para, cfd20_para_mcp)
+      tr_data = np.array(cfd30_data) - np.array(cfd30_mcp_data)
+      tr_para = np.array(cfd30_para) - np.array(cfd30_para_mcp)
+      my_proper_dist = np.subtract(cfd30_para, cfd30_para_mcp)
       #ax2oneoff.hist(my_proper_dist, bins=150, range=(-2, 1), alpha=0.6, color='yellow', edgecolor='black', label='Time resolution', histtype='stepfilled', linewidth=1.5)
       ax2oneoff.legend()
       fig2oneoff.savefig(f"datavpara.png", dpi=300, bbox_inches='tight')
       '''
-      for i in range(len(cfd20_para)):
+      for i in range(len(cfd30_para)):
         print("\n")
-        print(str(cfd20_para[i]))
-        print(str(cfd20_para_mcp[i]) + " -")
+        print(str(cfd30_para[i]))
+        print(str(cfd30_para_mcp[i]) + " -")
         print("---------------------")
-        print(str(cfd20_para[i] - cfd20_para_mcp[i]))
+        print(str(cfd30_para[i] - cfd30_para_mcp[i]))
       '''
-      tr_gaus = np.array(cfd20_gaus) - np.array(cfd20_gaus_mcp)
-      tr_lorentz = np.array(cfd20_lorentz) - np.array(cfd20_lorentz_mcp)
-      tr_voigt = np.array(cfd20_voigt) - np.array(cfd20_voigt_mcp)
-      tr_spline = np.array(cfd20_spline) - np.array(cfd20_spline_mcp)
-      tr_landau = np.array(cfd20_landau) - np.array(cfd20_landau_mcp)
+      tr_gaus = np.array(cfd30_gaus) - np.array(cfd30_gaus_mcp)
+      tr_lorentz = np.array(cfd30_lorentz) - np.array(cfd30_lorentz_mcp)
+      tr_voigt = np.array(cfd30_voigt) - np.array(cfd30_voigt_mcp)
+      tr_spline = np.array(cfd30_spline) - np.array(cfd30_spline_mcp)
+      tr_landau = np.array(cfd30_landau) - np.array(cfd30_landau_mcp)
 
-      label_cfd = r"$\sigma_{t}^{20%}$"
+      label_cfd = r"$\sigma_{t}^{30%}$"
 
       data_tr_params = gaussian_fit_binned_data(tr_data, "Data")
       para_tr_params = gaussian_fit_binned_data(tr_para, "Parabolic")
@@ -731,29 +891,29 @@ def main():
       landau_tr_params = gaussian_fit_binned_data(tr_landau, "Landau")
 
     fig, axes = plt.subplots(2, 3, figsize=(18, 12))
-    rms_diff_para = np.sqrt(np.mean((np.array(cfd20_data) - np.array(cfd20_para)) ** 2)).round(3)
-    axes[0,0].hist(cfd20_data, bins=400,range=(-0.8,-0.4),color='gray',edgecolor='black',label=label_cfd + r"(A$_{max}$)")
-    axes[0,0].hist(cfd20_para, bins=400,range=(-0.8,-0.4),color='r',edgecolor='black',alpha=0.4,label=label_cfd + r"(A$_{para}$)" + "\n" + r"$\Delta_{RMS}$ = " + str(rms_diff_para))
+    rms_diff_para = np.sqrt(np.mean((np.array(cfd30_data) - np.array(cfd30_para)) ** 2)).round(3)
+    axes[0,0].hist(cfd30_data, bins=400,range=(-0.8,-0.4),color='gray',edgecolor='black',label=label_cfd + r"(A$_{max}$)")
+    axes[0,0].hist(cfd30_para, bins=400,range=(-0.8,-0.4),color='r',edgecolor='black',alpha=0.4,label=label_cfd + r"(A$_{para}$)" + "\n" + r"$\Delta_{RMS}$ = " + str(rms_diff_para))
 
-    rms_diff_gaus = np.sqrt(np.mean((np.array(cfd20_data) - np.array(cfd20_gaus)) ** 2)).round(3)
-    axes[0,1].hist(cfd20_data, bins=400,range=(-0.8,-0.4),color='gray',edgecolor='black',label=label_cfd + r"(A$_{max}$)")
-    axes[0,1].hist(cfd20_gaus, bins=400,range=(-0.8,-0.4),color='g',edgecolor='black',alpha=0.4,label=label_cfd + r"(A$_{Gaus}$)" + "\n" + r"$\Delta_{RMS}$ = " + str(rms_diff_gaus))
+    rms_diff_gaus = np.sqrt(np.mean((np.array(cfd30_data) - np.array(cfd30_gaus)) ** 2)).round(3)
+    axes[0,1].hist(cfd30_data, bins=400,range=(-0.8,-0.4),color='gray',edgecolor='black',label=label_cfd + r"(A$_{max}$)")
+    axes[0,1].hist(cfd30_gaus, bins=400,range=(-0.8,-0.4),color='g',edgecolor='black',alpha=0.4,label=label_cfd + r"(A$_{Gaus}$)" + "\n" + r"$\Delta_{RMS}$ = " + str(rms_diff_gaus))
 
-    rms_diff_lorentz = np.sqrt(np.mean((np.array(cfd20_data) - np.array(cfd20_lorentz)) ** 2)).round(3)
-    axes[1,0].hist(cfd20_data, bins=400,range=(-0.8,-0.4),color='gray',edgecolor='black',label=label_cfd + r"(A$_{max}$)")
-    axes[1,0].hist(cfd20_lorentz, bins=400,range=(-0.8,-0.4),color='blue',edgecolor='black',alpha=0.4,label=label_cfd + r"(A$_{Lorentz}$)" + "\n" + r"$\Delta_{RMS}$ = " + str(rms_diff_lorentz))
+    rms_diff_lorentz = np.sqrt(np.mean((np.array(cfd30_data) - np.array(cfd30_lorentz)) ** 2)).round(3)
+    axes[1,0].hist(cfd30_data, bins=400,range=(-0.8,-0.4),color='gray',edgecolor='black',label=label_cfd + r"(A$_{max}$)")
+    axes[1,0].hist(cfd30_lorentz, bins=400,range=(-0.8,-0.4),color='blue',edgecolor='black',alpha=0.4,label=label_cfd + r"(A$_{Lorentz}$)" + "\n" + r"$\Delta_{RMS}$ = " + str(rms_diff_lorentz))
 
-    rms_diff_voigt = np.sqrt(np.mean((np.array(cfd20_data) - np.array(cfd20_voigt)) ** 2)).round(3)
-    axes[1,1].hist(cfd20_data, bins=400,range=(-0.8,-0.4),color='gray',edgecolor='black',label=label_cfd + r"(A$_{max}$)")
-    axes[1,1].hist(cfd20_voigt, bins=400,range=(-0.8,-0.4),color='orange',edgecolor='black',alpha=0.4,label=label_cfd + r"(A$_{Voigt}$)" + "\n" + r"$\Delta_{RMS}$ = " + str(rms_diff_voigt))
+    rms_diff_voigt = np.sqrt(np.mean((np.array(cfd30_data) - np.array(cfd30_voigt)) ** 2)).round(3)
+    axes[1,1].hist(cfd30_data, bins=400,range=(-0.8,-0.4),color='gray',edgecolor='black',label=label_cfd + r"(A$_{max}$)")
+    axes[1,1].hist(cfd30_voigt, bins=400,range=(-0.8,-0.4),color='orange',edgecolor='black',alpha=0.4,label=label_cfd + r"(A$_{Voigt}$)" + "\n" + r"$\Delta_{RMS}$ = " + str(rms_diff_voigt))
 
-    rms_diff_spline = np.sqrt(np.mean((np.array(cfd20_data) - np.array(cfd20_spline)) ** 2)).round(3)
-    axes[0,2].hist(cfd20_data, bins=400,range=(-0.8,-0.4),color='gray',edgecolor='black',label=label_cfd + r"(A$_{max}$)")
-    axes[0,2].hist(cfd20_spline, bins=400,range=(-0.8,-0.4),color='purple',edgecolor='black',alpha=0.4,label=label_cfd + r"(A$_{spline}$)" + "\n" + r"$\Delta_{RMS}$ = " + str(rms_diff_spline))
+    rms_diff_spline = np.sqrt(np.mean((np.array(cfd30_data) - np.array(cfd30_spline)) ** 2)).round(3)
+    axes[0,2].hist(cfd30_data, bins=400,range=(-0.8,-0.4),color='gray',edgecolor='black',label=label_cfd + r"(A$_{max}$)")
+    axes[0,2].hist(cfd30_spline, bins=400,range=(-0.8,-0.4),color='purple',edgecolor='black',alpha=0.4,label=label_cfd + r"(A$_{spline}$)" + "\n" + r"$\Delta_{RMS}$ = " + str(rms_diff_spline))
 
-    rms_diff_landau = np.sqrt(np.mean((np.array(cfd20_data) - np.array(cfd20_landau)) ** 2)).round(3)
-    axes[1,2].hist(cfd20_data, bins=400,range=(-0.8,-0.4),color='gray',edgecolor='black',label=label_cfd + r"(A$_{max}$)")
-    axes[1,2].hist(cfd20_landau, bins=400,range=(-0.8,-0.4),color='brown',edgecolor='black',alpha=0.4,label=label_cfd + r"(A$_{Landau}$)" + "\n" + r"$\Delta_{RMS}$ = " + str(rms_diff_landau))
+    rms_diff_landau = np.sqrt(np.mean((np.array(cfd30_data) - np.array(cfd30_landau)) ** 2)).round(3)
+    axes[1,2].hist(cfd30_data, bins=400,range=(-0.8,-0.4),color='gray',edgecolor='black',label=label_cfd + r"(A$_{max}$)")
+    axes[1,2].hist(cfd30_landau, bins=400,range=(-0.8,-0.4),color='cyan',edgecolor='black',alpha=0.4,label=label_cfd + r"(A$_{Landau}$)" + "\n" + r"$\Delta_{RMS}$ = " + str(rms_diff_landau))
 
     if time_res_calc:
       x_tr_fit = np.linspace(-0.8, -0.4, 400)
@@ -783,7 +943,7 @@ def main():
       axes[1,0].plot(x_fit, lorentz_tr_fit, 'blue', linewidth=2, label=r"$\sigma_{tr}^{Lorentz}$ = " + str(round(data_tr_val, 1)) + " ps")
       axes[1,1].plot(x_fit, voigt_tr_fit, 'orange', linewidth=2, label=r"$\sigma_{tr}^{Voigt}$ = " + str(round(data_tr_val, 1)) + " ps")
       axes[0,2].plot(x_fit, spline_tr_fit, 'purple', linewidth=2, label=r"$\sigma_{tr}^{spline}$ = " + str(round(data_tr_val, 1)) + " ps")
-      axes[1,2].plot(x_fit, landau_tr_fit, 'brown', linewidth=2, label=r"$\sigma_{tr}^{Landau}$ = " + str(round(data_tr_val, 1)) + " ps")
+      axes[1,2].plot(x_fit, landau_tr_fit, 'cyan', linewidth=2, label=r"$\sigma_{tr}^{Landau}$ = " + str(round(data_tr_val, 1)) + " ps")
 
     for i in range(2):
       for j in range(3):
@@ -796,9 +956,9 @@ def main():
     fig.suptitle(f"Total {len(a_max)} signal events", fontsize=16, fontweight='bold')
     plt.tight_layout(rect=[0, 0, 1, 0.96])
     if time_res_calc:
-      plt.savefig("./timeres_20_260325.png",dpi=300,facecolor='w')
+      plt.savefig("./timeres_30_260325.png",dpi=300,facecolor='w')
     else:
-      plt.savefig("./cfd_20_260325.png",dpi=300,facecolor='w')
+      plt.savefig("./cfd_30_260325.png",dpi=300,facecolor='w')
     plt.clf()
 
 

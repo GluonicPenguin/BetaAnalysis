@@ -30,31 +30,43 @@ def SNDisc_extract_signal(file, file_index, tree, channel_array, nBins, savename
     pmax_list = []
     width_list = []
     tmax_list = []
+    area_list = []
+    risetime_list = []
+    rms_list = []
     sensorType, AtQfactor, ansatz_pmax = ch_val
     if sensorType == 1:
       bias_of_channel = getBias(str(file), ch_ind)
       for entry in tree:
         pmax_sig = entry.pmax[ch_ind]
-        width_sig = entry.width[ch_ind][2]
-        tmax_sig = entry.tmax[ch_ind]
+        width_sig = entry.width[ch_ind][4]
+        #tmax_sig = entry.tmax[ch_ind]
+        area_sig = entry.area_new[ch_ind]
+        risetime_sig = entry.risetime[ch_ind]
+        rms_sig = entry.rms[ch_ind]
         pmax_list.append(pmax_sig) # to fit Gaus noise and Langaus signal
         width_list.append(width_sig) # to fit Gaus noise and Langaus signal on pmax/width@30%
-        tmax_list.append(tmax_sig)
+        #tmax_list.append(tmax_sig)
+        area_list.append(area_sig)
+        risetime_list.append(risetime_sig)
+        rms_list.append(rms_sig)
     else:
       continue
 
     pmax = np.array(pmax_list)
     width = np.array(width_list)
-    tmax = np.array(tmax_list)
+    #tmax = np.array(tmax_list)
+    area = np.array(area_list)
+    risetime = np.array(risetime_list)
+    rms = np.array(rms_list)
 
-    num_epochs = 10000
-    precision = 0.001
+    num_epochs = 10000 # 10000
+    precision = 0.0005 # 0.001
     learning_rate = 0.01
     plot_every = precision*1
     dec_p = len(str(precision)) - 2
-    arr_prob_threshold = np.round(np.arange(0.03,0.09,precision), dec_p)
+    arr_prob_threshold = np.round(np.arange(0.01,0.12,precision), dec_p)
 
-    scores, max_amplitudes = differential_programming_SigProbModel(num_epochs, pmax, width, tmax, ansatz_pmax[file_index], np.max(tmax), learning_rate)
+    scores, max_amplitudes = differential_programming_SigProbModel(num_epochs, pmax, width, area, risetime, rms, ansatz_pmax[file_index], learning_rate)
     df = pd.DataFrame(scores)
     df.to_csv(savename + "SNDisc_Ch"+str(ch_ind)+".csv", index=False, header=False)
 
@@ -65,16 +77,18 @@ def SNDisc_extract_signal(file, file_index, tree, channel_array, nBins, savename
     stopping_index_cond = len(arr_prob_threshold)
     print(f"Number of events in linear selection: {len(pmax[pmax > ansatz_pmax[file_index]])}")
 
+    print(scores)
+
     for prob_threshold in arr_prob_threshold:
       selected_events = scores > prob_threshold
       filtered_amplitudes = max_amplitudes[selected_events].numpy()
 
       # Starting condition for probability threshold that doesn't cut away any signal events i.e. number of selected events is equal to the total
-      if len(filtered_amplitudes) > 2.0*len(pmax[pmax > ansatz_pmax[file_index]]):
+      if len(filtered_amplitudes) > 1.5*len(pmax[pmax > ansatz_pmax[file_index]]):
         continue
 
       # Stopping condition for probability threshold that there are fewer selected events by the NN than from the linear cut in PMAX
-      if len(filtered_amplitudes) < 0.95*len(pmax[pmax > ansatz_pmax[file_index]]):
+      if len(filtered_amplitudes) < 0.99*len(pmax[pmax > ansatz_pmax[file_index]]):
         stopping_index_cond = np.where(arr_prob_threshold == prob_threshold)[0]
         continue
 
@@ -149,6 +163,9 @@ def SNDisc_extract_signal(file, file_index, tree, channel_array, nBins, savename
     #print(change_in_number_events)
     #print(arr_prob_threshold[1:stopping_index_cond+2])
 
+    print("HERE IS SSE CALCS")
+    print(df["SSE score"].dtype)
+    print(df["SSE score"].unique())
 
     min_sse_prob = df.loc[df["SSE score"].idxmin(), "Probability threshold"]
     min_chi2_prob = df.loc[df["Red. Chi2"].idxmin(), "Probability threshold"]

@@ -5,7 +5,7 @@ import scipy.optimize as opt
 import mpmath
 import scipy.special as sp
 from scipy.optimize import minimize, curve_fit
-from scipy.stats import poisson, median_abs_deviation
+from scipy.stats import poisson, median_abs_deviation, norm
 import scipy.interpolate as interp
 from scipy.interpolate import CubicSpline
 from lmfit.models import VoigtModel
@@ -97,6 +97,25 @@ def fit_landau(x, y):
   except RuntimeError:
     print("Landau fit failed—perhaps your data isn't 'Landau-y' enough? Try better initial guesses.")
     return None, None, None, None
+
+def skewed_gaussian(x, A, mu, sigma, alpha):
+  return 2 * A * np.exp(-((x - mu) ** 2) / (2 * sigma ** 2)) * norm.cdf(alpha * (x - mu))
+
+def fit_skewed_gaussian(x, y):
+  A0 = max(y)
+  mu0 = x[np.argmax(y)]
+  sigma0 = (max(x) - min(x)) / 10
+  alpha0 = 1  # skew factor
+
+  p0 = [A0, mu0, sigma0, alpha0]
+
+  try:
+    popt, _ = opt.curve_fit(skewed_gaussian, x, y, p0=p0)
+    A, mu, sigma, alpha = popt
+    y_fit = skewed_gaussian(x, *popt)
+    return A, y_fit, lambda x_new: skewed_gaussian(x_new, *popt), compute_errors(y, y_fit)
+  except RuntimeError:
+    return 0, 0, 0, [0, 0]
 
 def compute_errors(y_true, y_fit):
   mae = np.mean(np.abs(y_true - y_fit))
@@ -228,6 +247,8 @@ def main():
   spline_rmse = []
   landau_mae = []
   landau_rmse = []
+  skewG_mae = []
+  skewG_rmse = []
 
   a_max_mcp = []
   a_para_mcp = []
@@ -236,6 +257,7 @@ def main():
   a_voigt_mcp = []
   a_spline_mcp = []
   a_landau_mcp = []
+  a_skewG_mcp = []
 
   t_Amax_para = []
   t_Amax_gaus = []
@@ -243,6 +265,7 @@ def main():
   t_Amax_voigt = []
   t_Amax_spline = []
   t_Amax_landau = []
+  t_Amax_skewG = []
 
   t_w_below_Amax_para = []
   t_w_below_Amax_gaus = []
@@ -250,10 +273,11 @@ def main():
   t_w_below_Amax_voigt = []
   t_w_below_Amax_spline = []
   t_w_below_Amax_landau = []
+  t_w_below_Amax_skewG = []
 
-  linfit_cfd = False
+  linfit_cfd = True
   add_noise = False
-  time_res_calc = True
+  time_res_calc = False
   make_timewalk_plots = False
   make_populated_plots = False
   numptseitherside = 3
@@ -400,6 +424,18 @@ def main():
       t_Amax_landau.append(x_fine[np.argmin(np.abs(y_fine - landau_peak))])
       idx_below = np.where((y_peak < landau_peak) & (x_peak < x_fine[np.argmin(np.abs(y_fine - landau_peak))]))[0][-1]
       t_w_below_Amax_landau.append(x_peak[idx_below])
+      
+      # skewed_gaus
+      try:
+        skewG_peak, skewG_fit, skewG_func, skewG_errors = fit_skewed_gaussian(x_peak, y_peak)
+        skewG_peak_mcp, skewG_fit_mcp, skewG_func_mcp, skewG_errors_mcp = fit_skewed_gaussian(x_peak_mcp, y_peak_mcp)
+        y_fine = skewG_func(x_fine)
+        skewG_peak = max(y_fine)
+        t_Amax_skewG.append(x_fine[np.argmin(np.abs(y_fine - skewG_peak))])
+        idx_below = np.where((y_peak < skewG_peak) & (x_peak < x_fine[np.argmin(np.abs(y_fine - skewG_peak))]))[0][-1]
+        t_w_below_Amax_skewG.append(x_peak[idx_below])
+      except RuntimeError:
+        continue
 
       a_max.append(1000*pmax)
       a_para.append(1000*y_parabola_max)
@@ -408,6 +444,7 @@ def main():
       a_voigt.append(1000*voigt_peak)
       a_spline.append(1000*spline_peak)
       a_landau.append(1000*landau_peak)
+      a_skewG.append(1000*skewG_peak)
 
       para_mae.append(parabolic_mae)
       para_rmse.append(parabolic_rmse)
@@ -421,6 +458,8 @@ def main():
       spline_rmse.append(spline_errors[1])
       landau_mae.append(landau_errors[0])
       landau_rmse.append(landau_errors[1])
+      skewG_mae.append(skewG_errors[0])
+      skewG_rmse.append(skewG_errors[1])
 
       a_max_mcp.append(1000*pmax_mcp)
       a_para_mcp.append(1000*y_parabola_max_mcp)
@@ -429,6 +468,7 @@ def main():
       a_voigt_mcp.append(1000*voigt_peak_mcp)
       a_spline_mcp.append(1000*spline_peak_mcp)
       a_landau_mcp.append(1000*landau_peak_mcp)
+      a_skewG_mcp.append(1000*skewG_peak_mcp)
 
   if make_populated_plots:
     fig = plt.figure(figsize=(20, 11))

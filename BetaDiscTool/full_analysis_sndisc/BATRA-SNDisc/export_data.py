@@ -89,7 +89,6 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
       df_rms = df_rms.rename(columns={'Mean':'RMS Noise / mV', 'Sigma':'RMS Unc / mV'})
       dfs_to_concat.append(df_rms)
     elif var == "timeres":
-      print(df.head())
       if first_df_found == False:
         first_df_found = True
         df_tr = df[['Channel','Bias','Resolution @ 30%','Uncertainty @ 30%']]
@@ -104,7 +103,7 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
   dfs_comb['E field / V/cm'] = 10000*(dfs_comb['Bias'] / dfs_comb['Thickness / um'])
   dfs_comb.loc[:, 'E field / V/cm'] = dfs_comb['E field / V/cm'] // 1
   if ('Rise time / ps' in dfs_comb.columns) and ('Amplitude / mV' in dfs_comb.columns) and ('RMS Noise / mV' in dfs_comb.columns):
-    dfs_comb['Jitter / ps'] = dfs_comb['Rise time / ps'] / dfs_comb['Amplitude / mV']
+    dfs_comb['Jitter / ps'] = dfs_comb['RMS Noise / mV'] / (dfs_comb['Amplitude / mV'] / dfs_comb['Rise time / ps'])
     dfs_comb.loc[:, 'Jitter / ps'] = dfs_comb['Jitter / ps'].round(1)
     unc_cpt_rms = dfs_comb['RMS Unc / mV'] / dfs_comb['RMS Noise / mV']
     unc_cpt_risetime = dfs_comb['Rise time Unc / ps'] / dfs_comb['Rise time / ps']

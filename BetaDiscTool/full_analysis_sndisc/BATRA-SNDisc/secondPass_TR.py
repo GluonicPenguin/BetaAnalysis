@@ -137,7 +137,7 @@ def plot_TR(var, file, file_index, tree, channel_array, nBins, SNDisc_signal_eve
     fig.add_trace(
       go.Histogram(
         x=data_var,
-        xbins=dict(start=min(data_var), end=max(data_var), size=(max(data_var)-min(data_var))/nBins),
+        xbins=dict(start=max(-3,min(data_var)), end=max(data_var), size=(max(data_var)-min(data_var))/nBins),
         name='Histogram',
         histnorm='probability density',
         #nbinsx=nBins,
@@ -146,7 +146,7 @@ def plot_TR(var, file, file_index, tree, channel_array, nBins, SNDisc_signal_eve
       )
     )
 
-    x_axis = np.linspace(min(data_var), max(data_var), 999)
+    x_axis = np.linspace(max(-3,min(data_var)), max(data_var), 999)
     fig.add_trace(
       go.Scatter(
         x=x_axis,
