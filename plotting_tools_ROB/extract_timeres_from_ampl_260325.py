@@ -45,7 +45,7 @@ def gaussian(x, A, mu, sigma):
   return A * np.exp(-((x - mu) ** 2) / (2 * sigma ** 2))
 
 def gaussian_fit_binned_data(data_to_bin, fittype):
-  counts, bin_edges = np.histogram(data_to_bin, bins=60, range=(-0.8, -0.4))
+  counts, bin_edges = np.histogram(data_to_bin, bins=200, range=(-1.0,0.0))
   bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
   p0 = [max(counts), np.mean(data_to_bin), np.std(data_to_bin)]
   try:
@@ -349,16 +349,16 @@ def main():
       ampl_array_event = np.array(reshaped_ampl_data[j])
 
       if linfit_cfd:
-        time_value_control = find_CFD_time_with_threshold(time_array_event, ampl_array_event, ampl_array_event.max(), 0.2)
-        time_value_gaus = find_CFD_time_with_threshold(time_array_event, ampl_array_event, a_gaus[j], 0.2/1000)
-        time_value_voigt = find_CFD_time_with_threshold(time_array_event, ampl_array_event, a_voigt[j], 0.2/1000)
-        time_value_spline = find_CFD_time_with_threshold(time_array_event, ampl_array_event, a_spline[j], 0.2/1000)
+        time_value_control = find_CFD_time_with_threshold(time_array_event, ampl_array_event, ampl_array_event.max(), 0.3)
+        time_value_gaus = find_CFD_time_with_threshold(time_array_event, ampl_array_event, a_gaus[j], 0.3/1000)
+        time_value_voigt = find_CFD_time_with_threshold(time_array_event, ampl_array_event, a_voigt[j], 0.3/1000)
+        time_value_spline = find_CFD_time_with_threshold(time_array_event, ampl_array_event, a_spline[j], 0.3/1000)
 
       else:
-        time_value_control = find_CFD_time_with_threshold_spline(time_array_event, ampl_array_event, ampl_array_event.max(), 0.2)
-        time_value_gaus = find_CFD_time_with_threshold_spline(time_array_event, ampl_array_event, a_gaus[j], 0.2/1000)
-        time_value_voigt = find_CFD_time_with_threshold_spline(time_array_event, ampl_array_event, a_voigt[j], 0.2/1000)
-        time_value_spline = find_CFD_time_with_threshold_spline(time_array_event, ampl_array_event, a_spline[j], 0.2/1000)
+        time_value_control = find_CFD_time_with_threshold_spline(time_array_event, ampl_array_event, ampl_array_event.max(), 0.3)
+        time_value_gaus = find_CFD_time_with_threshold_spline(time_array_event, ampl_array_event, a_gaus[j], 0.3/1000)
+        time_value_voigt = find_CFD_time_with_threshold_spline(time_array_event, ampl_array_event, a_voigt[j], 0.3/1000)
+        time_value_spline = find_CFD_time_with_threshold_spline(time_array_event, ampl_array_event, a_spline[j], 0.3/1000)
         
       control_data.append(time_value_control)
       cfd20_gaus.append(time_value_gaus)
@@ -369,15 +369,15 @@ def main():
       ampl_array_event_mcp = np.array(rad_mcp[j])
 
       if linfit_cfd:
-        time_value_control_mcp = find_CFD_time_with_threshold(time_array_event_mcp, ampl_array_event_mcp, ampl_array_event_mcp.max(), 0.2)
-        time_value_gaus_mcp = find_CFD_time_with_threshold(time_array_event_mcp, ampl_array_event_mcp, a_gaus_mcp[j], 0.2/1000)
-        time_value_voigt_mcp = find_CFD_time_with_threshold(time_array_event_mcp, ampl_array_event_mcp, a_voigt_mcp[j], 0.2/1000)
-        time_value_spline_mcp = find_CFD_time_with_threshold(time_array_event_mcp, ampl_array_event_mcp, a_spline_mcp[j], 0.2/1000)
+        time_value_control_mcp = find_CFD_time_with_threshold(time_array_event_mcp, ampl_array_event_mcp, ampl_array_event_mcp.max(), 0.3)
+        time_value_gaus_mcp = find_CFD_time_with_threshold(time_array_event_mcp, ampl_array_event_mcp, a_gaus_mcp[j], 0.3/1000)
+        time_value_voigt_mcp = find_CFD_time_with_threshold(time_array_event_mcp, ampl_array_event_mcp, a_voigt_mcp[j], 0.3/1000)
+        time_value_spline_mcp = find_CFD_time_with_threshold(time_array_event_mcp, ampl_array_event_mcp, a_spline_mcp[j], 0.3/1000)
       else:
-        time_value_control_mcp = find_CFD_time_with_threshold_spline(time_array_event_mcp, ampl_array_event_mcp, ampl_array_event_mcp.max(), 0.2)
-        time_value_gaus_mcp = find_CFD_time_with_threshold_spline(time_array_event_mcp, ampl_array_event_mcp, a_gaus_mcp[j], 0.2/1000)
-        time_value_voigt_mcp = find_CFD_time_with_threshold_spline(time_array_event_mcp, ampl_array_event_mcp, a_voigt_mcp[j], 0.2/1000)
-        time_value_spline_mcp = find_CFD_time_with_threshold_spline(time_array_event_mcp, ampl_array_event_mcp, a_spline_mcp[j], 0.2/1000)
+        time_value_control_mcp = find_CFD_time_with_threshold_spline(time_array_event_mcp, ampl_array_event_mcp, ampl_array_event_mcp.max(), 0.3)
+        time_value_gaus_mcp = find_CFD_time_with_threshold_spline(time_array_event_mcp, ampl_array_event_mcp, a_gaus_mcp[j], 0.3/1000)
+        time_value_voigt_mcp = find_CFD_time_with_threshold_spline(time_array_event_mcp, ampl_array_event_mcp, a_voigt_mcp[j], 0.3/1000)
+        time_value_spline_mcp = find_CFD_time_with_threshold_spline(time_array_event_mcp, ampl_array_event_mcp, a_spline_mcp[j], 0.3/1000)
 
       control_mcp.append(time_value_control_mcp)
       cfd20_gaus_mcp.append(time_value_gaus_mcp)
@@ -389,7 +389,7 @@ def main():
     cfd20_voigt = np.array(cfd20_voigt) - np.array(cfd20_voigt_mcp)
     cfd20_spline = np.array(cfd20_spline) - np.array(cfd20_spline_mcp)
 
-    label_cfd = r"$\sigma_{\rm{DUT}}^{20\%}$"
+    label_cfd = r"$\Delta_{t}^{\rm{CFD}}(\rm{DUT,~MCP})$"
     mcp_tr_est = 5
     mcp_tr_est_err = 2
 
@@ -412,65 +412,71 @@ def main():
 
     print(data_tr_val)
     print(data_tr_val_err)
-
+    print("")
     print(gaus_tr_val)
     print(gaus_tr_val_err)
-
+    print("")
     print(voigt_tr_val)
     print(voigt_tr_val_err)
-
+    print("")
     print(spline_tr_val)
     print(spline_tr_val_err)
 
     data_tr_val, data_tr_val_err = 20.2, 0.7
-    gaus_tr_val, gaus_tr_val_err = 20.4, 0.7
-    voigt_tr_val, voigt_tr_val_err = 20.0, 0.6
-    spline_tr_val, spline_tr_val_err = 20.4, 0.7
+    gaus_tr_val, gaus_tr_val_err = 20.2, 0.7
+    voigt_tr_val, voigt_tr_val_err = 20.2, 0.7
+    spline_tr_val, spline_tr_val_err = 20.1, 0.7
 
     fig, axes1 = plt.subplots(figsize=(16, 10))
     rms_diff_gaus = np.sqrt(np.mean((np.array(cfd20_data) - np.array(cfd20_gaus)) ** 2)).round(4)
-    axes1.hist(cfd20_data, bins=60,range=(-0.8, -0.4),color='gray',edgecolor='black',label=label_cfd + r"($A_{\rm{sampling~point}}$)")
-    axes1.hist(cfd20_gaus, bins=60,range=(-0.8, -0.4),color='g',edgecolor='black',alpha=0.4,label=label_cfd + r"($A_{\rm{Gaus}}$)" + "\n" + r"$\Delta_{RMS}$ = " + str(rms_diff_gaus))
-    axes1.plot(x_tr_fit, data_tr_fit, 'k--', linewidth=2, label=r"$\sigma_{\rm{DUT}}$ = " + str(round(data_tr_val, 1)) + r"$\pm$" + str(round(data_tr_val_err, 1)) + " ps")
-    axes1.plot(x_tr_fit, gaus_tr_fit, 'g', linewidth=2, label=r"$\sigma_{\rm{DUT}}^{\rm{Gaus}}$ = " + str(round(gaus_tr_val, 1)) + r"$\pm$" + str(round(gaus_tr_val_err, 1)) + " ps")
+    axes1.hist(cfd20_data, bins=200,range=(-1.0,0.0),color='gray',edgecolor='black',
+               label=r"$\sigma_{t}(\rm{A_{\rm{Sa}}})$ = " + str(round(data_tr_val, 1)) + r"$\pm$" + str(round(data_tr_val_err, 1)) + " ps")
+    axes1.hist(cfd20_gaus, bins=200,range=(-1.0,0.0),color='g',edgecolor='black',alpha=0.4,
+               label=r"$\sigma_{t}(\rm{A_{\rm{Gaus}}})$ = " + str(round(gaus_tr_val, 1)) + r"$\pm$" + str(round(gaus_tr_val_err, 1)) + " ps") # + "\n" + r"$\Delta_{RMS}$ = " + str(rms_diff_gaus))
+    axes1.plot(x_tr_fit, data_tr_fit, 'k--', linewidth=2) #, label=r"$\sigma_{\rm{DUT}}$ = " + str(round(data_tr_val, 1)) + r"$\pm$" + str(round(data_tr_val_err, 1)) + " ps")
+    axes1.plot(x_tr_fit, gaus_tr_fit, 'g', linewidth=2) #, label=r"$\sigma_{\rm{DUT}}^{\rm{Gaus}}$ = " + str(round(gaus_tr_val, 1)) + r"$\pm$" + str(round(gaus_tr_val_err, 1)) + " ps")
     axes1.set_xlabel(label_cfd + r" [ns]",fontsize=24)
     axes1.set_ylabel(r"Events",fontsize=24)
     axes1.tick_params(axis="both", labelsize=24)
     axes1.set_xlim(-0.7,-0.5)
-    axes1.set_ylim(0,200)
-    axes1.legend(fontsize=24)
+    axes1.set_ylim(0,180)
+    axes1.legend(fontsize=32)
     axes1.grid(True, axis='both', linestyle='--', alpha=0.5)
     plt.savefig(f"./timeres_comparing_fitting_gaus.png",dpi=300,facecolor='w')
     plt.clf()
 
     fig, axes2 = plt.subplots(figsize=(16, 10))
     rms_diff_voigt = np.sqrt(np.mean((np.array(cfd20_data) - np.array(cfd20_voigt)) ** 2)).round(4)
-    axes2.hist(cfd20_data, bins=60,range=(-0.8, -0.4),color='gray',edgecolor='black',label=label_cfd + r"($A_{\rm{sampling~point}}$)")
-    axes2.hist(cfd20_voigt, bins=60,range=(-0.8, -0.4),color='orange',edgecolor='black',alpha=0.4,label=label_cfd + r"($A_{\rm{Voigt}}$)" + "\n" + r"$\Delta_{RMS}$ = " + str(rms_diff_voigt))
-    axes2.plot(x_tr_fit, data_tr_fit, 'k--', linewidth=2, label=r"$\sigma_{\rm{DUT}}$ = " + str(round(data_tr_val, 1)) + r"$\pm$" + str(round(data_tr_val_err, 1)) + " ps")
-    axes2.plot(x_tr_fit, voigt_tr_fit, 'orange', linewidth=2, label=r"$\sigma_{\rm{DUT}}^{\rm{Voigt}}$ = " + str(round(voigt_tr_val, 1)) + r"$\pm$" + str(round(voigt_tr_val_err, 1)) + " ps")
+    axes2.hist(cfd20_data, bins=200,range=(-1.0,0.0),color='gray',edgecolor='black',
+               label=r"$\sigma_{t}(\rm{A_{\rm{Sa}}})$ = " + str(round(data_tr_val, 1)) + r"$\pm$" + str(round(data_tr_val_err, 1)) + " ps")
+    axes2.hist(cfd20_voigt, bins=200,range=(-1.0,0.0),color='orange',edgecolor='black',alpha=0.4,
+               label=r"$\sigma_{t}(\rm{A_{\rm{Voigt}}})$ = " + str(round(voigt_tr_val, 1)) + r"$\pm$" + str(round(voigt_tr_val_err, 1)) + " ps") # + "\n" + r"$\Delta_{RMS}$ = " + str(rms_diff_voigt))
+    axes2.plot(x_tr_fit, data_tr_fit, 'k--', linewidth=2) #, label=r"$\sigma_{\rm{DUT}}$ = " + str(round(data_tr_val, 1)) + r"$\pm$" + str(round(data_tr_val_err, 1)) + " ps")
+    axes2.plot(x_tr_fit, voigt_tr_fit, 'orange', linewidth=2) #, label=r"$\sigma_{\rm{DUT}}^{\rm{Voigt}}$ = " + str(round(voigt_tr_val, 1)) + r"$\pm$" + str(round(voigt_tr_val_err, 1)) + " ps")
     axes2.set_xlabel(label_cfd + r" [ns]",fontsize=24)
     axes2.set_ylabel(r"Events",fontsize=24)
     axes2.tick_params(axis="both", labelsize=24)
     axes2.set_xlim(-0.7,-0.5)
-    axes2.set_ylim(0,200)
-    axes2.legend(fontsize=24)
+    axes2.set_ylim(0,180)
+    axes2.legend(fontsize=32)
     axes2.grid(True, axis='both', linestyle='--', alpha=0.5)
     plt.savefig(f"./timeres_comparing_fitting_voigt.png",dpi=300,facecolor='w')
     plt.clf()
 
     fig, axes3 = plt.subplots(figsize=(16, 10))
     rms_diff_spline = np.sqrt(np.mean((np.array(cfd20_data) - np.array(cfd20_spline)) ** 2)).round(4)
-    axes3.hist(cfd20_data, bins=60,range=(-0.8, -0.4),color='gray',edgecolor='black',label=label_cfd + r"($A_{\rm{sampling~point}}$)")
-    axes3.hist(cfd20_spline, bins=60,range=(-0.8, -0.4),color='purple',edgecolor='black',alpha=0.4,label=label_cfd + r"($A_{\rm{spline}}$)" + "\n" + r"$\Delta_{\rm{RMS}}$ = " + str(rms_diff_spline))
-    axes3.plot(x_tr_fit, data_tr_fit, 'k--', linewidth=2, label=r"$\sigma_{\rm{DUT}}$ = " + str(round(data_tr_val, 1)) + r"$\pm$" + str(round(data_tr_val_err, 1)) + " ps")
-    axes3.plot(x_tr_fit, spline_tr_fit, 'purple', linewidth=2, label=r"$\sigma_{\rm{DUT}}^{\rm{spline}}$ = " + str(round(spline_tr_val, 1)) + r"$\pm$" + str(round(spline_tr_val_err, 1)) + " ps")
+    axes3.hist(cfd20_data, bins=200,range=(-1.0,0.0),color='gray',edgecolor='black',
+               label=r"$\sigma_{t}(\rm{A_{\rm{Sa}}})$ = " + str(round(data_tr_val, 1)) + r"$\pm$" + str(round(data_tr_val_err, 1)) + " ps")
+    axes3.hist(cfd20_spline, bins=200,range=(-1.0,0.0),color='purple',edgecolor='black',alpha=0.4,
+               label=r"$\sigma_{t}(\rm{A_{\rm{spline}}})$ = " + str(round(spline_tr_val, 1)) + r"$\pm$" + str(round(spline_tr_val_err, 1)) + " ps") # + "\n" + r"$\Delta_{\rm{RMS}}$ = " + str(rms_diff_spline))
+    axes3.plot(x_tr_fit, data_tr_fit, 'k--', linewidth=2) #, label=r"$\sigma_{\rm{DUT}}$ = " + str(round(data_tr_val, 1)) + r"$\pm$" + str(round(data_tr_val_err, 1)) + " ps")
+    axes3.plot(x_tr_fit, spline_tr_fit, 'purple', linewidth=2) #, label=r"$\sigma_{\rm{DUT}}^{\rm{spline}}$ = " + str(round(spline_tr_val, 1)) + r"$\pm$" + str(round(spline_tr_val_err, 1)) + " ps")
     axes3.set_xlabel(label_cfd + r" [ns]",fontsize=24)
     axes3.set_ylabel(r"Events",fontsize=24)
     axes3.tick_params(axis="both", labelsize=24)
     axes3.set_xlim(-0.7,-0.5)
-    axes3.set_ylim(0,200)
-    axes3.legend(fontsize=24)
+    axes3.set_ylim(0,180)
+    axes3.legend(fontsize=32)
     axes3.grid(True, axis='both', linestyle='--', alpha=0.5)
     plt.savefig(f"./timeres_comparing_fitting_spline.png",dpi=300,facecolor='w')
     plt.clf()
