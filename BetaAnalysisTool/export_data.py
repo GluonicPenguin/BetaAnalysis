@@ -74,7 +74,7 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
       df_ampl.loc[:, 'Amplitude MPV'] = df_ampl['Amplitude MPV'].round(1)
       df_ampl = df_ampl.rename(columns={'Amplitude MPV':'Amplitude / mV'})
       dfs_to_concat.append(df_ampl)
-    elif var == "risetime":
+    elif var == "risetime": # risetime between 10% and 90%
       if first_df_found == False:
         first_df_found = True
         df_rt = df[['Channel','Bias','Mean','Sigma']]
@@ -107,7 +107,7 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
       df_rms.loc[:, 'Sigma'] = df_rms['Sigma'].round(2)
       df_rms = df_rms.rename(columns={'Mean':'RMS Noise / mV', 'Sigma':'RMS Unc / mV'})
       dfs_to_concat.append(df_rms)
-    elif var == "dvdt":
+    elif var == "dvdt": # dvdt between 20% and 100%
       if first_df_found == False:
         first_df_found = True
         df_dvdt = df[['Channel','Bias','dvdt MPV']]
