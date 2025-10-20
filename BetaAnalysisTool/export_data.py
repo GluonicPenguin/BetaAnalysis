@@ -18,7 +18,7 @@ import csv
 import math
 import sys
 
-from proc_tools import getBias
+from proc_tools import getBias, landau_tr_quad_fit
 
 def direct_to_table(name_and_df_couples, channel_configs, output_savename, thickness_info):
 
@@ -158,10 +158,13 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
     dfs_comb.loc[:, 'Jitter[20%:80%] / ps'] = (1000*dfs_comb['Jitter[20%:80%] / ps']).round(1)
     dfs_comb = dfs_comb.drop(columns=['dV/dt[20%:80%] / mV/ps'])
     if 'TR @ 30% / ps' in dfs_comb.columns:
-      dfs_comb['Landau TR Cpt / ps'] = np.sqrt(dfs_comb['TR @ 30% / ps']**2 - dfs_comb['Jitter[20%:80%] / ps']**2)
-      unc_cpt_jit = dfs_comb['Jitter[20%:80%] / ps']*dfs_comb['Jitter[20%:80%] Unc / ps']
-      unc_cpt_tr = dfs_comb['TR @ 30% / ps']*dfs_comb['TR Unc @ 30% / ps']
-      dfs_comb['Landau TR Unc / ps'] = np.sqrt(unc_cpt_jit**2 + unc_cpt_tr**2) / dfs_comb['Landau TR Cpt / ps']
+      # Fit between charge and time res calculation
+      dfs_comb['Landau TR Cpt / ps'], dfs_comb['Landau TR Unc / ps'] = landau_tr_quad_fit(dfs_comb['Charge / fC'], dfs_comb['TR @ 30% / ps'], dfs_comb['TR Unc @ 30% / ps'])
+      # Direct quad difference calculation
+      #dfs_comb['Landau TR Cpt / ps'] = np.sqrt(dfs_comb['TR @ 30% / ps']**2 - dfs_comb['Jitter[20%:80%] / ps']**2)
+      #unc_cpt_jit = dfs_comb['Jitter[20%:80%] / ps']*dfs_comb['Jitter[20%:80%] Unc / ps']
+      #unc_cpt_tr = dfs_comb['TR @ 30% / ps']*dfs_comb['TR Unc @ 30% / ps']
+      #dfs_comb['Landau TR Unc / ps'] = np.sqrt(unc_cpt_jit**2 + unc_cpt_tr**2) / dfs_comb['Landau TR Cpt / ps']
       dfs_comb.loc[:, 'Landau TR Cpt / ps'] = dfs_comb['Landau TR Cpt / ps'].round(1)
       dfs_comb.loc[:, 'Landau TR Unc / ps'] = dfs_comb['Landau TR Unc / ps'].round(1)
       dfs_comb['WF6 Param / ps/um'] = dfs_comb['Landau TR Cpt / ps'] / dfs_comb['Thickness / um']
@@ -174,6 +177,9 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
     columns.remove(col_to_move)
   columns[2:2] = ['Thickness / um','E field / V/cm']
   dfs_comb = dfs_comb[columns]
+
+  dfs_comb['Bias'] = pd.to_numeric(dfs_comb['Bias'], errors='coerce')
+  dfs_comb = dfs_comb.sort_values(by=['Channel','Bias'])
 
   dfs_comb['PMAX low / mV'] = np.ravel(pmax_low)
   dfs_comb['PMAX high / mV'] = np.ravel(pmax_high)
@@ -188,8 +194,6 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
     dfs_comb['MCP TMAX low / ns'] = np.tile(tmax_low_mcp, number_of_duts)
     dfs_comb['MCP TMAX high / ns'] = np.tile(tmax_high_mcp, number_of_duts)
 
-  dfs_comb['Bias'] = pd.to_numeric(dfs_comb['Bias'], errors='coerce')
-  dfs_comb = dfs_comb.sort_values(by=['Channel','Bias'])
 
   print(f"[BETA ANALYSIS] : [DATA COLLATOR] Writing data to {output_savename}.csv.")
   dfs_comb.to_csv(output_savename+'.csv', index=False)

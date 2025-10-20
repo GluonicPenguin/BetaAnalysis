@@ -2,7 +2,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.optimize import minimize
+from scipy.optimize import minimize, curve_fit
 from scipy.stats import poisson
 import ROOT as root
 from ROOT import TF1
@@ -89,6 +89,19 @@ def getBias(filename, chnum):
       return None
   else:
     return None
+
+def landau_tr_quad_fit(Q_df, tr_df, tre_df):
+  Q = Q_df.to_numpy()
+  tr = tr_df.to_numpy()
+  tre = tre_df.to_numpy()
+  def model(Q, A, B):
+    return A**2 + (B/Q)**2
+  tr2 = tr**2
+  tre2 = 2 * tr * tre
+  popt, pcov = curve_fit(model, Q, tr2, sigma=tre2, absolute_sigma=True)
+  A_fit, B_fit = popt
+  A_unc, B_unc = np.sqrt(np.diag(pcov))
+  return A_fit, A_unc
 
 def hist_tree_file_basics(tree,file,var,index,nBins,xLower,xUpper,biasVal,cut_cond,ch):
   var_dict = {"tmax":"t_{max} / 10 ns" , "pmax":"p_max / mV" , "negpmax":"-p_max / mV", "risetime":"Rise time / ns", "area_new":"Area / pWb" , "rms":"RMS / mV", "dvdt":"dV/dt / mV/ns", "dvdt_2080": "dV/dt[20%:80%] / mV/ns"}
