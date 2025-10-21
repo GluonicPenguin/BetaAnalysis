@@ -32,7 +32,7 @@ def round_to_sig_figs(x, sig):
   else:
     return round(x, sig - int(math.floor(math.log10(abs(x)))) - 1)
 
-def get_fit_results(arr_of_fits,arr_of_biases,channel_of_dut, decomp_sigma=False,simplified=False,add_threshold_frac=None):
+def get_fit_results(arr_of_fits, arr_of_biases, arr_of_nevents, channel_of_dut, decomp_sigma=False,simplified=False,add_threshold_frac=None):
   arr_of_ch = []
   arr_of_biases_fitted = []
   arr_of_mean = []
@@ -40,18 +40,22 @@ def get_fit_results(arr_of_fits,arr_of_biases,channel_of_dut, decomp_sigma=False
   arr_of_ampl = []
   arr_langaus_sig = []
   arr_of_red_chi2 = []
-
+  arr_of_nevents_fitted = []
   for channel_i, fit_func in enumerate(arr_of_fits):
     if fit_func.GetNpar() > 3: # NEED TO CHANGE THIS TO TYPE OF TIME RES FIT
       langaus_sig = fit_func.GetParameter(3)
     else:
       langaus_sig = 0
 
+    #ndf = fit_func.GetNDF()
+    #npar = fit_func.GetNpar()
+    #nevents = ndf + npar
     mean = fit_func.GetParameter(1)  # Mean of the gauss distribution
     sigma = fit_func.GetParameter(2) # Sigma of the gauss distribution
     amplitude = fit_func.GetParameter(0)  # Amplitude of the gauss distribution
     chi2 = fit_func.GetChisquare()  # Chi-squared value of the fit
     ndf = fit_func.GetNDF()  # Number of degrees of freedom
+    arr_of_nevents_fitted.append(arr_of_nevents[channel_of_dut[channel_i]])
     arr_of_mean.append(round_to_sig_figs(mean,4))
     arr_of_sigma.append(round_to_sig_figs(sigma,4))
     arr_of_ampl.append(round_to_sig_figs(amplitude,3))
@@ -68,7 +72,8 @@ def get_fit_results(arr_of_fits,arr_of_biases,channel_of_dut, decomp_sigma=False
     "Mean": arr_of_mean,
     "Sigma": arr_of_sigma,
     "Amplitude": arr_of_ampl,
-    "RChi2": arr_of_red_chi2
+    "RChi2": arr_of_red_chi2,
+    "NEvents": arr_of_nevents_fitted
   })
 
   return df_of_results

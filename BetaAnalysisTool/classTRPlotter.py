@@ -35,6 +35,7 @@ class plotTRVar:
 
     arr_of_hists = []
     arr_of_biases = []
+    arr_of_nevents = []
 
     root.gErrorIgnoreLevel = root.kWarning
 
@@ -81,11 +82,13 @@ class plotTRVar:
       hist_down_up_dev = []
       for dut_var_ind, dut_var in enumerate(duts_vars_cuts[j][0]):
         thisHist = hist_tree_file_timeres(tree, file, dut_var, duts_vars_cuts[j][2], self.nBins, self.xLower, self.xUpper, arr_of_biases[j], duts_vars_cuts[j][1])
+        num_ev = thisHist.GetEntries()
         if dut_var_ind == 0:
           hists_to_plot.append(thisHist)
         hist_down_up_dev.append(thisHist)
       arr_of_hists.append(hist_down_up_dev)
       arr_of_biases.append(bias)
+      arr_of_nevents.append(num_ev)
 
     c1 = root.TCanvas("c1", f"Distribution time resolution", 800, 600)
     if self.log_scale:
@@ -121,5 +124,5 @@ class plotTRVar:
         fit_down_up_dev.append(thisFit)
       arr_of_fits.append(fit_down_up_dev)
 
-    fit_results = get_fit_results_TR(arr_of_fits, arr_of_biases, channel_of_dut, mcp_tr)
+    fit_results = get_fit_results_TR(arr_of_fits, arr_of_biases, arr_of_nevents, channel_of_dut, mcp_tr)
     return fit_results

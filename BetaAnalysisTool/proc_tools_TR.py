@@ -32,7 +32,7 @@ def round_to_sig_figs(x, sig):
   else:
     return round(x, sig - int(math.floor(math.log10(abs(x)))) - 1)
 
-def get_fit_results_TR(arr_of_fits, arr_of_biases, dut_channels, mcp_channel):
+def get_fit_results_TR(arr_of_fits, arr_of_biases, arr_of_nevents, dut_channels, mcp_channel):
 
   arr_of_ch = []
   arr_of_biases_fitted = []
@@ -43,6 +43,7 @@ def get_fit_results_TR(arr_of_fits, arr_of_biases, dut_channels, mcp_channel):
   arr_up_var_unc = []
   arr_of_ampl = []
   arr_of_red_chi2 = []
+  arr_of_nevents_fitted = []
 
   for channel_i, fit_func in enumerate(arr_of_fits):
 
@@ -62,6 +63,7 @@ def get_fit_results_TR(arr_of_fits, arr_of_biases, dut_channels, mcp_channel):
     arr_of_ampl.append(round_to_sig_figs(amplitude,3))
     arr_of_ch.append("Ch" + str(dut_channels[channel_i]))
     arr_of_biases_fitted.append(arr_of_biases[channel_i])
+    arr_of_nevents_fitted.append(arr_of_nevents[channel_i])
     if ndf == 0:
       ndf = 1
     arr_of_red_chi2.append(round_to_sig_figs((chi2/ndf),3))
@@ -72,7 +74,8 @@ def get_fit_results_TR(arr_of_fits, arr_of_biases, dut_channels, mcp_channel):
     "Mean": arr_of_mean,
     "Sigma": arr_of_sigma,
     "Amplitude": arr_of_ampl,
-    "RChi2": arr_of_red_chi2
+    "RChi2": arr_of_red_chi2,
+    "NEvents_TR": arr_of_nevents_fitted
   })
 
   arr_of_sig_fit_30 = arr_of_sigma

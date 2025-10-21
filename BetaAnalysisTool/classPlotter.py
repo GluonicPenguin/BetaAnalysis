@@ -35,6 +35,7 @@ class plotVar:
 
     arr_of_hists = []
     arr_of_biases = []
+    arr_of_nevents = []
 
     root.gErrorIgnoreLevel = root.kWarning
 
@@ -52,10 +53,13 @@ class plotVar:
       if (channel_array[j][0] == 1) or (channel_array[j][0] == 2):
         if (channel_array[j][0] == 1): channel_of_dut.append(j)
         thisHist = hist_tree_file_basics(tree, file, self.var, j, self.nBins, self.xLower, self.xUpper, bias, result[j], j)
+        num_ev = thisHist.GetEntries()
       else:
         thisHist = None
+        num_ev = 0
       arr_of_hists.append(thisHist)
       arr_of_biases.append(bias)
+      arr_of_nevents.append(num_ev)
 
     c1 = root.TCanvas("c1", f"Distribution {self.var}", 800, 600)
     if self.log_scale:
@@ -94,5 +98,5 @@ class plotVar:
 
     if (self.fit) is not None:
       arr_of_fits = [fit for fit in arr_of_fits if fit is not None]
-      fit_results = get_fit_results(arr_of_fits,arr_of_biases,channel_of_dut)
+      fit_results = get_fit_results(arr_of_fits, arr_of_biases, arr_of_nevents, channel_of_dut)
       return fit_results

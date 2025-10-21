@@ -120,7 +120,6 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
       dvdt = np.array(dvdt_list)
       data_var = dvdt[(dvdt>=xLower) & (dvdt<=xUpper)]
     elif var == "dvdt_2080":
-      print("selections")
       dvdt_2080 = np.array(dvdt_2080_list)
       data_var = dvdt_2080[(dvdt_2080>=xLower) & (dvdt_2080<=xUpper)]
     else:

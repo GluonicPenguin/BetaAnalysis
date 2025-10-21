@@ -77,9 +77,9 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
     elif var == "risetime": # risetime between 10% and 90%
       if first_df_found == False:
         first_df_found = True
-        df_rt = df[['Channel','Bias','Mean','Sigma']]
+        df_rt = df[['Channel','Bias','Mean','Sigma','NEvents']]
       else:
-        df_rt = df[['Mean','Sigma']]
+        df_rt = df[['Mean','Sigma','NEvents']]
       df_rt.loc[:, 'Mean'] = (1000*df_rt['Mean']).round(0)
       df_rt.loc[:, 'Sigma'] = (1000*df_rt['Sigma']).round(0)
       df_rt = df_rt.rename(columns={'Mean':'Rise time / ps','Sigma':'Rise time Unc / ps'})
@@ -101,7 +101,7 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
     elif var == "rms":
       if first_df_found == False:
         first_df_found = True
-        df_rms = df[['Channel','Bias','Mean','Sigma']]
+        df_rms = df[['Channel','Bias','Mean','Sigma','NEvents']]
       else:
         df_rms = df[['Mean','Sigma']]
       df_rms.loc[:, 'Sigma'] = df_rms['Sigma'].round(2)
@@ -126,10 +126,10 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
     elif var == "timeres":
       if first_df_found == False:
         first_df_found = True
-        df_tr = df[['Channel','Bias','Resolution @ 30%','Uncertainty @ 30%','Resolution @ 50%','Uncertainty @ 50%']]
+        df_tr = df[['Channel','Bias','Resolution @ 30%','Uncertainty @ 30%','Resolution @ 50%','Uncertainty @ 50%','NEvents_TR']]
       else:
-        df_tr = df[['Resolution @ 30%','Uncertainty @ 30%','Resolution @ 50%','Uncertainty @ 50%']]
-      df_tr = df_tr.rename(columns={'Resolution @ 30%':'TR @ 30% / ps', 'Uncertainty @ 30%':'TR Unc @ 30% / ps', 'Resolution @ 50%':'TR @ 50% / ps', 'Uncertainty @ 50%':'TR Unc @ 50% / ps'})
+        df_tr = df[['Resolution @ 30%','Uncertainty @ 30%','Resolution @ 50%','Uncertainty @ 50%','NEvents_TR']]
+      df_tr = df_tr.rename(columns={'Resolution @ 30%':'TR @ 30% / ps', 'Uncertainty @ 30%':'TR Unc @ 30% / ps', 'Resolution @ 50%':'TR @ 50% / ps', 'Uncertainty @ 50%':'TR Unc @ 50% / ps', 'NEvents_TR':'N.Ev. [DUT:MCP]'})
       dfs_to_concat.append(df_tr)
   
   dfs_comb = pd.concat(dfs_to_concat, axis=1)
@@ -137,6 +137,7 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
   dfs_comb['Thickness / um'] = thickness_col
   dfs_comb['E field / V/cm'] = 10000*(dfs_comb['Bias'] / dfs_comb['Thickness / um'])
   dfs_comb.loc[:, 'E field / V/cm'] = dfs_comb['E field / V/cm'] // 1
+  dfs_comb = dfs_comb.rename(columns={'NEvents':'N.Ev. [DUT]'})
   if ('Rise time / ps' in dfs_comb.columns) and ('Amplitude / mV' in dfs_comb.columns) and ('RMS Noise / mV' in dfs_comb.columns):
     dfs_comb['Approx Jitter / ps'] = dfs_comb['RMS Noise / mV'] / (dfs_comb['Amplitude / mV'] / dfs_comb['Rise time / ps'])
     dfs_comb.loc[:, 'Approx Jitter / ps'] = dfs_comb['Approx Jitter / ps'].round(1)
