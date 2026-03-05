@@ -162,7 +162,7 @@ def main():
   cfd20_data = []
   cfd30_data = []
   cfd30_mcp_data = []
-  num_curves = 1421
+  num_curves = 1 #1421
   ch_sig = 2
   ch_mcp = 3
 
@@ -248,8 +248,8 @@ def main():
   a_landau_mcp = []
   a_skewG_mcp = []
 
-  make_plots = False
-  make_populated_plots = True
+  make_plots = True
+  make_populated_plots = False
   cfd_studies = False
   add_noise = False
   time_res_calc = False
@@ -500,7 +500,7 @@ def main():
       ax.tick_params(axis='both', labelsize=24)
       ax.set_xlim(-0.5,0.1)
       ax.set_ylim(20,70)
-      ax.legend(handles, labels, fontsize=24)
+      ax.legend(handles, labels, fontsize=24, facecolor='white', framealpha=1)
       #ax.set_yscale('log')
       ax.grid(True, linestyle='--', alpha=0.5)
       plt.tight_layout()
@@ -549,7 +549,7 @@ def main():
     ax1.set_xlim(0,600)
     ax1.grid()
     ax1.tick_params(axis="both", labelsize=20)
-    ax1.legend(fontsize=20, loc="upper left")
+    ax1.legend(fontsize=20, loc="upper left", facecolor='white', framealpha=1)
 
     #ax2.scatter(a_max, ratio_gaus, c='g', marker='d', s=20, edgecolors='black', label=r'Gaussian / A$_{\rm{Sa}}$' + '\nMAE = ' + str(round(mae_tot_para,4)) + " RMSE = " + str(round(rmse_tot_para,4)))
     ax2.scatter(a_max, ratio_gaus, c='g', marker='D', s=20, edgecolors='black', label=r'Gaussian' + '\nRMSE = ' + str(round(rmse_tot_para,4)))
@@ -560,7 +560,7 @@ def main():
     ax2.set_xlim(0,600)
     ax2.grid()
     ax2.tick_params(axis="both", labelsize=20)
-    ax2.legend(fontsize=20, loc="lower right")
+    ax2.legend(fontsize=20, loc="lower right", facecolor='white', framealpha=1)
 
     #ax3.scatter(a_max, ratio_lorentz, c='blue', marker='d', s=20, edgecolors='black', label=r'Lorentz / $A_{\rm{Sa}}$' + '\nMAE = ' + str(round(mae_tot_lorentz,4)) + " RMSE = " + str(round(rmse_tot_lorentz,4)))
     ax3.scatter(a_max, ratio_lorentz, c='blue', marker='D', s=20, edgecolors='black', label=r'Lorentz' + '\nRMSE = ' + str(round(rmse_tot_lorentz,4)))
@@ -571,7 +571,7 @@ def main():
     ax3.set_xlim(0,600)
     ax3.grid()
     ax3.tick_params(axis="both", labelsize=20)
-    ax3.legend(fontsize=20, loc="lower right")
+    ax3.legend(fontsize=20, loc="lower right", facecolor='white', framealpha=1)
 
     #ax4.scatter(a_max, ratio_voigt, c='orange', marker='d', s=20, edgecolors='black', label=r'Voigt / $A_{\rm{Sa}}$' + '\nMAE = ' + str(round(mae_tot_voigt,4)) + " RMSE = " + str(round(rmse_tot_voigt,4)))
     ax4.scatter(a_max, ratio_voigt, c='orange', marker='D', s=20, edgecolors='black', label=r'Voigt' + '\nRMSE = ' + str(round(rmse_tot_voigt,4)))
@@ -582,7 +582,7 @@ def main():
     ax4.set_xlim(0,600)
     ax4.grid()
     ax4.tick_params(axis="both", labelsize=20)
-    ax4.legend(fontsize=20, loc="lower right")
+    ax4.legend(fontsize=20, loc="lower right", facecolor='white', framealpha=1)
 
     #ax5.scatter(a_max, ratio_spline, c='purple', marker='d', s=20, edgecolors='black', label=r'Spline / $A_{\rm{Sa}}$' + '\nMAE = ' + str(round(mae_tot_spline,4)) + " RMSE = " + str(round(rmse_tot_spline,4)))
     ax5.scatter(a_max, ratio_spline, c='purple', marker='D', s=20, edgecolors='black', label=r'Interpolated spline' + '\nRMSE ≝ ' + str(round(rmse_tot_spline,4)))
@@ -593,7 +593,7 @@ def main():
     ax5.set_xlim(0,600)
     ax5.grid()
     ax5.tick_params(axis="both", labelsize=20)
-    ax5.legend(fontsize=20, loc="lower right")
+    ax5.legend(fontsize=20, loc="lower right", facecolor='white', framealpha=1)
 
     #ax6.scatter(a_max, ratio_skewG, c='brown', marker='D', s=20, edgecolors='black', label=r'Skewed Gaussian / $A_{\rm{Sa}}$' + '\nMAE = ' + str(round(mae_tot_skewG,4)) + " RMSE = " + str(round(rmse_tot_skewG,4)))
     ax6.scatter(a_max, ratio_skewG, c='brown', marker='D', s=20, edgecolors='black', label=r'Skewed Gaussian' + '\nRMSE = ' + str(round(rmse_tot_skewG,4)))
@@ -604,7 +604,7 @@ def main():
     ax6.set_xlim(0,600)
     ax6.grid()
     ax6.tick_params(axis="both", labelsize=20)
-    ax6.legend(fontsize=20, loc="lower right")
+    ax6.legend(fontsize=20, loc="lower right", facecolor='white', framealpha=1)
 
     #fig.suptitle(f"Total {len(a_max)} signal events", fontsize=16, fontweight='bold')
     plt.tight_layout(rect=[0, 0, 1, 0.96])

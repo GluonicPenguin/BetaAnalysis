@@ -154,12 +154,13 @@ def main():
     print(f"[BETA ANALYSIS]: [PLOTTER] Performing Gaussian fit to RISETIME distribution")
     risetime_dfs = []
     for file_ind, file_real in enumerate(file_array):
-      plot_risetime = plotVar("risetime", risetime_params[0], risetime_params[1], risetime_params[2], True, output_name_array[file_ind]+"_risetime.png", fit="gaus")
+      plot_risetime = plotVar("risetime", risetime_params[0], risetime_params[1], risetime_params[2], True, output_name_array[file_ind]+"_risetime_relu.png", fit="gaus")
       df_data = plot_risetime.run(file_real, file_ind, tree_array[file_ind], config['channels'])
       risetime_dfs.append(df_data)
     risetime_data = pd.concat(risetime_dfs, ignore_index=True)
     print(risetime_data.sort_values(by=['Channel','Bias']))
     data_out.append(('risetime', risetime_data.sort_values(by=['Channel','Bias'])))
+
   if config.get('charge', False) == True:
     charge_dfs = []
     for file_ind, file_real in enumerate(file_array):
@@ -180,10 +181,11 @@ def main():
     data_out.append(('rms', rms_data.sort_values(by=['Channel','Bias'])))
 
     # ADD IN JITTER CPT MEASUREMENTS, NEED TO GET dvdt BRANCH AND FIT A GAUSSIAN TO MEASURE N_RMS / dV/dt
+    '''
     print(f"[BETA ANALYSIS]: [PLOTTER] Additionally performing Langaus fit to dV/dt")
     dvdt_dfs = []
     for file_ind, file_real in enumerate(file_array):
-      df_data = plot_langaus('dvdt', file_real, file_ind, tree_array[file_ind], config['channels'], 800, 0, 800, output_name_array[file_ind]+"_dvdt")
+      df_data = plot_langaus('dvdt', file_real, file_ind, tree_array[file_ind], config['channels'], 600, 0, 600, output_name_array[file_ind]+"_dvdt")
       dvdt_dfs.append(df_data)
     dvdt_data = pd.concat(dvdt_dfs, ignore_index=True)
     print(dvdt_data.sort_values(by=['Channel','Bias']))
@@ -192,12 +194,12 @@ def main():
     print(f"[BETA ANALYSIS]: [PLOTTER] And performing the same for the dV/dt_2080 branch")
     dvdt2080_dfs = []
     for file_ind, file_real in enumerate(file_array):
-      df_data = plot_langaus('dvdt_2080', file_real, file_ind, tree_array[file_ind], config['channels'], 800, 0, 800, output_name_array[file_ind]+"_dvdt2080")
+      df_data = plot_langaus('dvdt_2080', file_real, file_ind, tree_array[file_ind], config['channels'], 600, 0, 600, output_name_array[file_ind]+"_dvdt2080")
       dvdt2080_dfs.append(df_data)
     dvdt2080_data = pd.concat(dvdt2080_dfs, ignore_index=True)
     print(dvdt2080_data.sort_values(by=['Channel','Bias']))
     data_out.append(('dvdt_2080', dvdt2080_data.sort_values(by=['Channel','Bias'])))
-
+    '''
   if config.get('timeres', False) == True:
     print(f"[BETA ANALYSIS]: [TIME RESOLUTION] Performing Gaussian fit to DUT-MCP channels")
     time_res_dfs = []

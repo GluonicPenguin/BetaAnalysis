@@ -73,7 +73,6 @@ double Falling_Edge_CFD_Time_with_GausFit(const double fraction, const std::pair
 double Find_Rise_Time(const std::pair<double, unsigned int> Pmax, double bottom = 0.1, double top = 0.9);
 double Find_Rise_Time_with_GausFit(const std::pair<double, double> Pmax, unsigned int imax, double bottom = 0.1, double top = 0.9);
 double Find_Rise_Time_with_GausFit_LINFIT_Rob(const std::pair<double, double> Pmax, unsigned int imax, double bottom = 0.1, double top = 0.9);
-//double Find_Rise_Time_with_GausFit_RELUFIT_Rob(const std::pair<double, double> Pmax, unsigned int imax, double bottom = 0.1, double top = 0.9);
 double Find_Fall_Time_with_GausFit(const std::pair<double, double> Pmax, unsigned int imax, double bottom = 0.1, double top = 0.9);
 
 //==========================================================================

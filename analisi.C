@@ -170,6 +170,8 @@ void analisi(){
   std::vector<double> UArea1_new;
   std::vector<double> DC_Area1;
   std::vector<double> RiseTime1Fit;
+  std::vector<double> RiseTime1FitPLUSLINFIT;
+  //std::vector<double> RiseTime1FitPLUSRELUFIT;
   std::vector<double> FallTime1Fit;
   std::vector<double> dVdt1Fit;
   std::vector<double> dVdt1Fit_2080;
@@ -197,6 +199,8 @@ void analisi(){
   UArea1_new.reserve(20);
   DC_Area1.reserve(20);
   RiseTime1Fit.reserve(20);
+  RiseTime1FitPLUSLINFIT.reserve(20);
+  //RiseTime1FitPLUSRELUFIT.reserve(20);
   FallTime1Fit.reserve(20);
   dVdt1Fit.reserve(20);
   dVdt1Fit_2080.reserve(20);
@@ -229,6 +233,8 @@ void analisi(){
   OutTree->Branch("uarea_new", "std::vector<double>",&UArea1_new);
   OutTree->Branch("dc_area", "std::vector<double>",&DC_Area1);
   OutTree->Branch("risetime", "std::vector<double>",&RiseTime1Fit);
+  OutTree->Branch("risetime_linfit", "std::vector<double>",&RiseTime1FitPLUSLINFIT);
+  //OutTree->Branch("risetime_relufit", "std::vector<double>",&RiseTime1FitPLUSRELUFIT);
   OutTree->Branch("falltime", "std::vector<double>",&FallTime1Fit);
   OutTree->Branch("dvdt", "std::vector<double>",&dVdt1Fit);
   OutTree->Branch("dvdt_2080", "std::vector<double>",&dVdt1Fit_2080);
@@ -309,6 +315,8 @@ void analisi(){
     UArea1_new.clear();
     DC_Area1.clear();
     RiseTime1Fit.clear();
+    RiseTime1FitPLUSLINFIT.clear();
+    //RiseTime1FitPLUSRELUFIT.clear();
     FallTime1Fit.clear();
     dVdt1Fit.clear();
     dVdt1Fit_2080.clear();
@@ -406,8 +414,10 @@ void analisi(){
 		    Area1_new.push_back( a1->New_Pulse_Area(tp_pair1_fit,tp_pair1.second,"Simpson",search_range)*voltage_const*time_const ) ;//mV*ns  
 		    UArea1_new.push_back( a1->New_Undershoot_Area(tp_pair1_fit,neg_tp_pair1_fit, neg_tp_pair1.second,"Simpson",search_range)*voltage_const*time_const ) ;//mV*ns
 		    DC_Area1.push_back( a1->DC_Area(baseline_correction)*voltage_const*time_const ); //mV*ns
-        RiseTime1Fit.push_back( a1->Find_Rise_Time_with_GausFit(tp_pair1_fit, tp_pair1.second, 0.1, 0.9)*time_const ) ; //ns
-		    FallTime1Fit.push_back( a1->Find_Fall_Time_with_GausFit(tp_pair1_fit, tp_pair1.second, 0.1, 0.9)*time_const ) ; //ns
+                    RiseTime1Fit.push_back( a1->Find_Rise_Time_with_GausFit(tp_pair1_fit, tp_pair1.second, 0.1, 0.9)*time_const ) ; //ns
+                    RiseTime1FitPLUSLINFIT.push_back( a1->Find_Rise_Time_with_GausFit_LINFIT_Rob(tp_pair1_fit, tp_pair1.second, 0.2, 0.8)*time_const ) ; //ns
+		    //RiseTime1FitPLUSRELUFIT.push_back( a1->Find_Rise_Time_with_GausFit_RELUFIT_Rob(tp_pair1_fit, tp_pair1.second, 0.1, 0.9)*time_const ) ; //ns
+                    FallTime1Fit.push_back( a1->Find_Fall_Time_with_GausFit(tp_pair1_fit, tp_pair1.second, 0.1, 0.9)*time_const ) ; //ns
 		    dVdt1Fit.push_back( a1->Find_Dvdt_with_GausFit(20,0,tp_pair1_fit,tp_pair1.second)*(voltage_const/time_const) ) ;  //mV/ns
 		    dVdt1Fit_2080.push_back( a1->Find_Dvdt2080_with_GausFit(0,tp_pair1_fit,tp_pair1.second)*(voltage_const/time_const) );  //mV/ns
 		    t_thr1.push_back( a1->Find_Time_At_Threshold_with_GausFit(tot_levels[0],tp_pair1_fit,tp_pair1.second)*time_const ); //ns  

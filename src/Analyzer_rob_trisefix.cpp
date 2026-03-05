@@ -27,9 +27,7 @@
 #include <TStyle.h>
 #include <TImage.h>
 #include <TCanvas.h>
-//------ROOT::Minuit2-------//
-#include <Fit/Fitter.h>
-#include <Math/Functor.h>
+
 
 
 
@@ -878,7 +876,6 @@ double Analyzer::Find_Rise_Time_with_GausFit(const std::pair<double, double> Pma
 double rise = 0.0;
 
   //unsigned int itop = this->pvoltage.size()-2, ibottom = 0;
-  //unsigned int itop = 500, ibottom = 500;
   unsigned int itop = 400, ibottom = 400;
 
   bool ten = true, ninety = true;
@@ -926,78 +923,7 @@ double rise = 0.0;
 
 }
 
-
-//REMEMBERME
-
 double Analyzer::Find_Rise_Time_with_GausFit_LINFIT_Rob(const std::pair<double, double> Pmax, unsigned int imax, double bottom , double top){
-  double rise = 0.0;
-  //unsigned int itop = this->pvoltage.size()-2, ibottom = 0;
-  unsigned int itop = 2, ibottom = 0;
-
-  //unsigned int imax = Pmax.second;
-  double pmax = Pmax.first;
-
-  double lowerval = pmax * bottom;
-  double upperval = pmax * top;
-
-  for( int j = imax; j > 0; j--)
-  {
-    if(pvoltage.at(j) < upperval)
-    {
-      itop = j;
-      break;
-    }
-  }
-  //ibottom = itop - 1;
-  for (int j = itop - 1; j >= 0; j--) {
-    if(pvoltage.at(j) < lowerval)
-    {
-      //if(fabs(pvoltage.at(j) - lowerval) < fabs(pvoltage[ibottom] - lowerval))
-      ibottom = j;
-      break;
-    }
-  }
-  if(ibottom == this->pvoltage.size()-1){ibottom--;}
-  if(itop == this->pvoltage.size()-1){itop--;}
-  if (itop - ibottom + 1 < 2) ibottom = itop - 1;
-
-  const int N = (itop - ibottom + 1);
-  /*double Sx = 0.0, Sy = 0.0, Sxx = 0.0, Sxy = 0.0;
-
-  for (unsigned int i = ibottom; i <= itop; i++){
-    double t = ptime[i];
-    double v = pvoltage[i];
-
-    Sx  += t;
-    Sy  += v;
-    Sxx += t * t;
-    Sxy += t * v;
-  }
-
-  const double denom = (N * Sxx - Sx * Sx);
-  if (fabs(denom) < 1e-20)
-    return 0.0;
-  double b = (N * Sxy - Sx * Sy) / denom;
-  double a = (Sy - b * Sx) / N;
-  if (b <= 0) 
-    return 0.0;*/
-
-  static TF1 ff("ff_lin_rise_time_rob", "1++x");
-  TGraph g(N, ptime.data()+ibottom, pvoltage.data()+ibottom);
-  g.Fit(&ff, "QNC");
-  
-  double a = ff.GetParameter(0);
-  double b = ff.GetParameter(1);
-
-  double t10 = (lowerval  - a) / b;
-  double t90 = (upperval  - a) / b;
-  rise = t90 - t10;
-
-  return rise;
-}
-
-/*
-double Analyzer::Find_Rise_Time_with_GausFit_RELUFIT_Rob(const std::pair<double, double> Pmax, unsigned int imax, double bottom , double top){
   double rise = 0.0;
   //unsigned int itop = this->pvoltage.size()-2, ibottom = 0;
   unsigned int itop = 400, ibottom = 400;
@@ -1026,78 +952,34 @@ double Analyzer::Find_Rise_Time_with_GausFit_RELUFIT_Rob(const std::pair<double,
   if(ibottom == this->pvoltage.size()-1){ibottom--;}
   if(itop == this->pvoltage.size()-1){itop--;}
 
-  const int Nsel = (itop - ibottom + 1);
-  if (Nsel <= 5) return 0.0;
+  const int N = (itop - ibottom + 1);
+  double Sx = 0.0, Sy = 0.0, Sxx = 0.0, Sxy = 0.0;
 
-  std::vector<double> xtmp, ytmp;
-  xtmp.reserve(Nsel);
-  ytmp.reserve(Nsel);
-  for (unsigned int i = ibottom; i <= itop; i++) {
-    xtmp.push_back(ptime[i]);
-    ytmp.push_back(pvoltage[i]);
+  for (unsigned int i = ibottom; i <= itop; i++){
+    double t = ptime[i];
+    double v = pvoltage[i];
+
+    Sx  += t;
+    Sy  += v;
+    Sxx += t * t;
+    Sxy += t * v;
   }
 
-  auto relu_model = [](double t, const double* p) {
-    double a  = p[0];
-    double b  = p[1];
-    double x0 = p[2];
-    return a + b * std::max(0.0, t - x0);
-  };
-  struct ReLUChi2 {
-    const std::vector<double> &x;
-    const std::vector<double> &y;
-    ReLUChi2(const std::vector<double> &xx,
-             const std::vector<double> &yy)
-        : x(xx), y(yy) {}
+  const double denom = (N * Sxx - Sx * Sx);
+  if (fabs(denom) < 1e-20)
+    return 0.0;
+  double b = (N * Sxy - Sx * Sy) / denom;
+  double a = (Sy - b * Sx) / N;
+  if (b <= 0) 
+    return 0.0;
 
-    double operator()(const double *p)
-    {
-        double chi2 = 0.0;
-        for (size_t i = 0; i < x.size(); i++) {
-          double diff = y[i] - (p[0] + p[1] * std::max(0.0, x[i] - p[2]));
-          chi2 += diff * diff;
-        }
-        return chi2;
-    }
-  };
+  double t10 = (lowerval  - a) / b;
+  double t90 = (upperval  - a) / b;
+  rise = t90 - t10
 
-  ReLUChi2 chi2(xtmp, ytmp);
-  ROOT::Math::Functor fcn(chi2, 3);
-
-  int nleft = std::max(1, (int)xtmp.size() / 4);
-  double a_guess = 0.0;
-  {
-    std::vector<double> tmp(ytmp.begin(), ytmp.begin() + nleft);
-    std::nth_element(tmp.begin(), tmp.begin() + tmp.size() / 2, tmp.end());
-    a_guess = tmp[tmp.size() / 2];
-  }
-
-  double dx = xtmp.back() - xtmp.front();
-  double dy = ytmp.back()  - ytmp.front();
-  double b_guess = (dx != 0 ? dy / dx : 1e-3);
-  if (b_guess <= 0) b_guess = fabs(b_guess) + 1e-12;
-
-  double x0_guess = xtmp.front();
-  double p0[3] = { a_guess, b_guess, x0_guess };
-
-  ROOT::Fit::Fitter fitter;
-  fitter.SetFCN(fcn, p0, 3);
-  fitter.Config().ParSettings(1).SetLowerLimit(0.0);             // b >= 0
-  fitter.Config().ParSettings(2).SetLimits(xtmp.front(), xtmp.back()); // x0 inside range
-  bool ok = fitter.FitFCN();
-  if (!ok) return 0.0;
-  const ROOT::Fit::FitResult &res = fitter.Result();
-  double a_fit  = res.Parameter(0);
-  double b_fit  = res.Parameter(1);
-  double x0_fit = res.Parameter(2);
-  if (b_fit <= 0) return 0.0;
-
-  double t10 = x0_fit + (lowerval - a_fit) / b_fit;
-  double t90 = x0_fit + (upperval - a_fit) / b_fit;
-  rise = t90 - t10;
   return rise;
 }
-*/
+
 
 double Analyzer::Find_Fall_Time_with_GausFit(const std::pair<double, double> Pmax, unsigned int imax, double bottom , double top){
 
@@ -1105,7 +987,6 @@ double Analyzer::Find_Fall_Time_with_GausFit(const std::pair<double, double> Pma
 double rise = 0.0;
 
   //unsigned int itop = this->pvoltage.size()-2, ibottom = 0;
-  //unsigned int itop = 500, ibottom = 500;
   unsigned int itop = 400, ibottom = 400;
 
   bool ten = true, ninety = true;
@@ -1388,7 +1269,7 @@ double Analyzer::Falling_Edge_CFD_Time_with_GausFit(const double fraction, const
 
 double Analyzer::Find_Time_At_Threshold_with_GausFit(const double thresholdLevel, const std::pair<double,double> Pmax, unsigned int imax){
 
-  double thr = thresholdLevel;
+  double thr = thresholdLevel/1000;
 
   double timeAtThreshold = 0.0, timeBelowThreshold = 0.0;
 
@@ -1425,7 +1306,7 @@ double Analyzer::Find_Time_At_Threshold_with_GausFit(const double thresholdLevel
 
 double Analyzer::Find_Time_At_Threshold_Falling_Edge_with_GausFit(const double thresholdLevel, const std::pair<double,double> Pmax, unsigned int imax){
 
-  double thr = thresholdLevel;
+  double thr = thresholdLevel/1000;
 
   double timeAtThreshold = 0.0, timeBelowThreshold = 0.0;
 
@@ -1473,8 +1354,8 @@ double Analyzer::Find_Time_At_Threshold_Falling_Edge_with_GausFit(const double t
 //Self explainatory
 double Analyzer::Find_Time_Over_Threshold(const double first_thresholdLevel, const std::pair<double,unsigned int> Pmax, const double second_thresholdLevel){
 
-  double thr1 = first_thresholdLevel;
-  double thr2 = second_thresholdLevel;
+  double thr1 = first_thresholdLevel/1000;
+  double thr2 = second_thresholdLevel/1000;
 
   double timeAtThreshold1 = 0.0, timeBelowThreshold1 = 0.0;
   double timeAtThreshold2 = 0.0, timeBelowThreshold2 = 0.0;

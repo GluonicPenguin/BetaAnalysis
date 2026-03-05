@@ -30,8 +30,17 @@ from proc_tools import getBias
 def binned_fit_langauss(samples, bins, min_x_val, max_x_val, channel, nan='remove'):
   if nan == 'remove':
     samples = samples[~np.isnan(samples)]
-  #print(np.array(samples))
+    #samples = samples[~(np.isnan(samples) | np.isinf(samples))]
 
+  hist, bin_edges = np.histogram(samples, bins, range=(min_x_val, max_x_val), density=True)
+  bin_centres = bin_edges[:-1] + np.diff(bin_edges) / 2
+
+  mask = np.isfinite(hist) & np.isfinite(bin_centres)
+  hist = hist[mask]
+  bin_centres = bin_centres[mask]
+
+
+  '''
   hist, bin_edges = np.histogram(samples, bins, range=(min_x_val,max_x_val), density=True)
   bin_centres = bin_edges[:-1] + np.diff(bin_edges) / 2
 
@@ -42,6 +51,12 @@ def binned_fit_langauss(samples, bins, min_x_val, max_x_val, channel, nan='remov
 
   hist = hist[1:-1]
   bin_centres = bin_centres[1:-1]
+
+  mask = np.isfinite(hist) & np.isfinite(bin_centres)
+  hist = hist[mask]
+  bin_centres = bin_centres[mask]
+  '''
+
   landau_x_mpv_guess = bin_centres[np.argmax(hist)]
   landau_xi_guess = median_abs_deviation(samples) / 5
   gauss_sigma_guess = landau_xi_guess / 10

@@ -107,22 +107,25 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
       df_rms.loc[:, 'Sigma'] = df_rms['Sigma'].round(2)
       df_rms = df_rms.rename(columns={'Mean':'RMS Noise / mV', 'Sigma':'RMS Unc / mV'})
       dfs_to_concat.append(df_rms)
-    elif var == "dvdt": # dvdt between 20% and 100%
-      if first_df_found == False:
-        first_df_found = True
-        df_dvdt = df[['Channel','Bias','dvdt MPV']]
-      else:
-        df_dvdt = df[['dvdt MPV']]
-      df_dvdt = df_dvdt.rename(columns={'dvdt MPV':'dV/dt / mV/ps'})
-      dfs_to_concat.append(df_dvdt)
-    elif var == "dvdt_2080":
-      if first_df_found == False:
-        first_df_found = True
-        df_dvdt = df[['Channel','Bias','dvdt_2080 MPV']]
-      else:
-        df_dvdt = df[['dvdt_2080 MPV']]
-      df_dvdt = df_dvdt.rename(columns={'dvdt_2080 MPV':'dV/dt[20%:80%] / mV/ps'})
-      dfs_to_concat.append(df_dvdt)
+      '''
+      elif var == "dvdt": # dvdt between 20% and 100%
+        if first_df_found == False:
+          first_df_found = True
+          df_dvdt = df[['Channel','Bias','dvdt MPV']]
+        else:
+          df_dvdt = df[['dvdt MPV']]
+        df_dvdt = df_dvdt.rename(columns={'dvdt MPV':'dV/dt / mV/ps'})
+        dfs_to_concat.append(df_dvdt)
+      elif var == "dvdt_2080":
+        if first_df_found == False:
+          first_df_found = True
+          df_dvdt = df[['Channel','Bias','dvdt_2080 MPV']]
+        else:
+          df_dvdt = df[['dvdt_2080 MPV']]
+        df_dvdt = df_dvdt.rename(columns={'dvdt_2080 MPV':'dV/dt[20%:80%] / mV/ps'})
+        dfs_to_concat.append(df_dvdt)
+      '''
+    
     elif var == "timeres":
       if first_df_found == False:
         first_df_found = True
@@ -146,6 +149,7 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
     unc_cpt_ampl = 0 # idk the unc for a Langaus fit
     dfs_comb['Approx Jitter Unc / ps'] = dfs_comb['Approx Jitter / ps'] * np.sqrt(unc_cpt_rms**2 + unc_cpt_risetime**2 + unc_cpt_ampl**2)
     dfs_comb.loc[:, 'Approx Jitter Unc / ps'] = dfs_comb['Approx Jitter Unc / ps'].round(1)
+    '''
     dfs_comb['Jitter / ps'] = dfs_comb['RMS Noise / mV'] / dfs_comb['dV/dt / mV/ps']
     unc_cpt_rms = dfs_comb['RMS Unc / mV'] / dfs_comb['RMS Noise / mV']
     unc_cpt_dvdt = 0 # idk the unc for a Langaus fit
@@ -158,6 +162,7 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
     dfs_comb.loc[:, 'Jitter[20%:80%] Unc / ps'] = (1000*dfs_comb['Jitter[20%:80%] Unc / ps']).round(1)
     dfs_comb.loc[:, 'Jitter[20%:80%] / ps'] = (1000*dfs_comb['Jitter[20%:80%] / ps']).round(1)
     dfs_comb = dfs_comb.drop(columns=['dV/dt[20%:80%] / mV/ps'])
+    '''
     if 'TR @ 30% / ps' in dfs_comb.columns:
       # Fit between charge and time res calculation
       dfs_comb['Landau TR Cpt / ps'], dfs_comb['Landau TR Unc / ps'] = landau_tr_quad_fit(dfs_comb['Charge / fC'], dfs_comb['TR @ 30% / ps'], dfs_comb['TR Unc @ 30% / ps'])
