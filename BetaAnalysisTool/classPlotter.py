@@ -40,18 +40,18 @@ class plotVar:
     root.gErrorIgnoreLevel = root.kWarning
 
     result = []
-    for i, (_, _, (A, B, C, D, E)) in enumerate(channel_array):
+    for i, (_, _, (A, B)) in enumerate(channel_array):
       if (A == 0.0) or (A == []):
-        condition = f"pmax[{i}] > 0.0 && pmax[{i}] < {B} && negpmax[{i}] > {C} && tmax[{i}] > {D} && tmax[{i}] < {E}"
+        condition = f"pmax[{i}] > 0.0 && pmax[{i}] < {B}"
       else:
-        condition = f"pmax[{i}] > {A[file_index]} && pmax[{i}] < {B} && negpmax[{i}] > {C} && tmax[{i}] > {D} && tmax[{i}] < {E}"
+        condition = f"pmax[{i}] > {A[file_index]} && pmax[{i}] < {B}"
       result.append(condition)
 
     channel_of_dut = []
     for j in range(len(channel_array)):
       bias = getBias(str(file), j)
-      if (channel_array[j][0] == 1) or (channel_array[j][0] == 2):
-        if (channel_array[j][0] == 1): channel_of_dut.append(j)
+      if (channel_array[j][0] == 1):
+        channel_of_dut.append(j)
         thisHist = hist_tree_file_basics(tree, file, self.var, j, self.nBins, self.xLower, self.xUpper, bias, result[j], j)
         num_ev = thisHist.GetEntries()
       else:

@@ -111,9 +111,9 @@ def landau_tr_quad_fit(Q_df, tr_df, tre_df):
 def hist_tree_file_basics(tree,file,var,index,nBins,xLower,xUpper,biasVal,cut_cond,ch):
   if var == 'risetime':
     var = 'risetime_relu'
-  var_dict = {"tmax":"t_{max} / ns" , "pmax":"p_max / mV" , "negpmax":"-p_max / mV", "risetime":"Rise time / ns", "risetime_linfit":"Linfit rise time / ns", "risetime_relu":"RELU rise time / ns", "area_new":"Area / pWb" , "rms":"RMS / mV", "dvdt":"dV/dt / mV/ns", "dvdt_2080": "dV/dt[20%:80%] / mV/ns"}
+  var_dict = {"pmax":"p_max / mV", "area_new":"Area / pWb"}
   thisHist = root.TH1F("CH "+str(ch)+" "+biasVal, var+";"+var_dict[var]+";Events", nBins, xLower, xUpper)
-  if (var == "pmax") or (var == "negpmax") or (var == "tmax"):
+  if (var == "pmax"):
     tree.Draw(var+"["+str(ch)+"]>>CH "+str(ch)+" "+biasVal,"event>-1")
   else:
     tree.Draw(var+"["+str(ch)+"]>>CH "+str(ch)+" "+biasVal,cut_cond)

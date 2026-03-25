@@ -17,27 +17,15 @@ def read_text_card(file_path):
   channels = [[0, 1]] * 8
 
   plot_flags = {
-    "tmax": False,
     "pmax": False,
-    "negpmax": False,
     "amplitude": False,
-    "risetime": False,
     "charge": False,
-    "rms": False,
-    "timeres": False,
-    "discretisation": False,
-    "waveform": False,
-    "all_with_no_plots": False,
+    "gain": False,
   }
 
   plot_params = {
-    "tmax_params": None,
     "pmax_params": None,
-    "negpmax_params": None,
-    "risetime_params": None,
     "charge_params": None,
-    "rms_params": None,
-    "timeres_params": None
   }
 
   MCP_specs = None
@@ -76,7 +64,7 @@ def read_text_card(file_path):
           parts = [part.strip() for part in value.split(',')]
           type_str = parts[0]
           additional_str = parts[1] if len(parts) > 1 else ""
-          thickness_str = parts[2] if (len(parts) > 2) & (type_str.upper() != "MCP") else "nDUT"
+          thickness_str = parts[2] if (len(parts) > 2) & (type_str.upper() == "DUT") else "nDUT"
 
           channel_type = channel_type_mapping.get(type_str.upper(), 0)
           channel_value = channel_area_to_charge_mapping.get(additional_str, 1)
@@ -111,15 +99,15 @@ def read_text_card(file_path):
               )
 
           remaining_parts = remaining_values.split(",")
-          if len(remaining_parts) != 4:
-            raise ValueError(f"Invalid format for {key}: Must contain exactly 4 additional comma-separated values.")
+          if len(remaining_parts) != 1:
+            raise ValueError(f"Invalid format for {key}: Must contain exactly 1 additional comma-separated value for PMAX_upper.")
 
           try:
-            upper_bound, additional_condition, tlow, thigh = map(float, remaining_parts)
+            upper_bound = float(remaining_parts[0])
           except ValueError:
-            raise ValueError(f"Invalid format for {key}: The last 4 values must all be floats.")
+            raise ValueError(f"Invalid format for {key}: The last value must be a float.")
 
-          channels[channel_index][2] = (lower_bound, upper_bound, additional_condition, tlow, thigh)
+          channels[channel_index][2] = (lower_bound, upper_bound)
 
         elif key in plot_flags:  # Handle plot flags
           plot_flags[key] = value.lower() == "true"
