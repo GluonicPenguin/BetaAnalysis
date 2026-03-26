@@ -120,7 +120,7 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
   #thickness_col = thickness_col[-len(dfs_comb['Bias']):]
   dfs_comb['Thickness / um'] = thickness_col
   dfs_comb['E field / kV/cm'] = 10*(dfs_comb['Bias'] / dfs_comb['Thickness / um'])
-  dfs_comb.loc[:, 'E field / kV/cm'] = dfs_comb['E field / kV/cm'] // 1
+  dfs_comb.loc[:, 'E field / kV/cm'] = (10 * dfs_comb['E field / kV/cm'] // 1) / 10
   dfs_comb = dfs_comb.rename(columns={'NEvents':'N.Ev. [DUT]'})
 
   columns = dfs_comb.columns.tolist()
