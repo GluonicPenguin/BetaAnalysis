@@ -40,11 +40,11 @@ class plotVar:
     root.gErrorIgnoreLevel = root.kWarning
 
     result = []
-    for i, (_, _, (A, B, C, D, E)) in enumerate(channel_array):
+    for i, (_, _, (A, B, C, D, E, F)) in enumerate(channel_array):
       if (A == 0.0) or (A == []):
-        condition = f"pmax[{i}] > 0.0 && pmax[{i}] < {B} && negpmax[{i}] > {C} && tmax[{i}] > {D} && tmax[{i}] < {E}"
+        condition = f"area_new[{i}] > 0.0 && area_new[{i}] < {B} && pmax[{i}] > {C} && pmax[{i}] < {D} && tmax[{i}] > {E} && tmax[{i}] < {F}"
       else:
-        condition = f"pmax[{i}] > {A[file_index]} && pmax[{i}] < {B} && negpmax[{i}] > {C} && tmax[{i}] > {D} && tmax[{i}] < {E}"
+        condition = f"area_new[{i}] > {A[file_index]} && area_new[{i}] < {B} && pmax[{i}] > {C} && pmax[{i}] < {D} && tmax[{i}] > {E} && tmax[{i}] < {F}"
       result.append(condition)
 
     channel_of_dut = []

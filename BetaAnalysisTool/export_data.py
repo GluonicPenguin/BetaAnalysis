@@ -28,14 +28,14 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
   # thickness less 2 um to get active thickness vs nominal thickness of substrate
   thickness_col = np.repeat(np.array(thickness_info) - 2, number_of_bias_pts)
 
-  pmax_low = []
-  pmax_high = []
+  area_low = []
+  area_high = []
   nmax_low = []
   tmax_low = []
   tmax_high = []
 
-  pmax_low_mcp = []
-  pmax_high_mcp = []
+  area_low_mcp = []
+  area_high_mcp = []
   nmax_low_mcp = []
   tmax_low_mcp = []
   tmax_high_mcp = []
@@ -44,23 +44,23 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
   for i, (T, _, (A, B, C, D, E)) in enumerate(channel_configs):
     if T == 1 or T == 2:
       if (A == 0.0) or (A == []):
-        pmax_low_col_ch_i = np.full(number_of_bias_pts, 0.0, dtype=float)
+        area_low_col_ch_i = np.full(number_of_bias_pts, 0.0, dtype=float)
       else:
-        pmax_low_col_ch_i = A
-      pmax_high_col_ch_i = np.full(number_of_bias_pts, B, dtype=float)
+        area_low_col_ch_i = A
+      area_high_col_ch_i = np.full(number_of_bias_pts, B, dtype=float)
       nmax_low_col_ch_i = np.full(number_of_bias_pts, C, dtype=float)
       tmax_low_col_ch_i = np.full(number_of_bias_pts, D, dtype=float)
       tmax_high_col_ch_i = np.full(number_of_bias_pts, E, dtype=float)
       if T == 1:
-        pmax_low.append(pmax_low_col_ch_i)
-        pmax_high.append(pmax_high_col_ch_i)
+        area_low.append(area_low_col_ch_i)
+        area_high.append(area_high_col_ch_i)
         nmax_low.append(nmax_low_col_ch_i)
         tmax_low.append(tmax_low_col_ch_i)
         tmax_high.append(tmax_high_col_ch_i)
       if T == 2:
         mcp_channel = True
-        pmax_low_mcp = pmax_low_col_ch_i
-        pmax_high_mcp = pmax_high_col_ch_i
+        area_low_mcp = area_low_col_ch_i
+        area_high_mcp = area_high_col_ch_i
         nmax_low_mcp = nmax_low_col_ch_i
         tmax_low_mcp = tmax_low_col_ch_i
         tmax_high_mcp = tmax_high_col_ch_i
@@ -107,24 +107,6 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
       df_rms.loc[:, 'Sigma'] = df_rms['Sigma'].round(2)
       df_rms = df_rms.rename(columns={'Mean':'RMS Noise / mV', 'Sigma':'RMS Unc / mV'})
       dfs_to_concat.append(df_rms)
-      '''
-      elif var == "dvdt": # dvdt between 20% and 100%
-        if first_df_found == False:
-          first_df_found = True
-          df_dvdt = df[['Channel','Bias','dvdt MPV']]
-        else:
-          df_dvdt = df[['dvdt MPV']]
-        df_dvdt = df_dvdt.rename(columns={'dvdt MPV':'dV/dt / mV/ps'})
-        dfs_to_concat.append(df_dvdt)
-      elif var == "dvdt_2080":
-        if first_df_found == False:
-          first_df_found = True
-          df_dvdt = df[['Channel','Bias','dvdt_2080 MPV']]
-        else:
-          df_dvdt = df[['dvdt_2080 MPV']]
-        df_dvdt = df_dvdt.rename(columns={'dvdt_2080 MPV':'dV/dt[20%:80%] / mV/ps'})
-        dfs_to_concat.append(df_dvdt)
-      '''
     
     elif var == "timeres":
       if first_df_found == False:
@@ -142,27 +124,13 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
   dfs_comb.loc[:, 'E field / V/cm'] = dfs_comb['E field / V/cm'] // 1
   dfs_comb = dfs_comb.rename(columns={'NEvents':'N.Ev. [DUT]'})
   if ('Rise time / ps' in dfs_comb.columns) and ('Amplitude / mV' in dfs_comb.columns) and ('RMS Noise / mV' in dfs_comb.columns):
-    dfs_comb['Approx Jitter / ps'] = dfs_comb['RMS Noise / mV'] / (dfs_comb['Amplitude / mV'] / dfs_comb['Rise time / ps'])
-    dfs_comb.loc[:, 'Approx Jitter / ps'] = dfs_comb['Approx Jitter / ps'].round(1)
+    dfs_comb['Jitter / ps'] = dfs_comb['RMS Noise / mV'] / (dfs_comb['Amplitude / mV'] / dfs_comb['Rise time / ps'])
+    dfs_comb.loc[:, 'Jitter / ps'] = dfs_comb['Jitter / ps'].round(1)
     unc_cpt_rms = dfs_comb['RMS Unc / mV'] / dfs_comb['RMS Noise / mV']
     unc_cpt_risetime = dfs_comb['Rise time Unc / ps'] / dfs_comb['Rise time / ps']
     unc_cpt_ampl = 0 # idk the unc for a Langaus fit
-    dfs_comb['Approx Jitter Unc / ps'] = dfs_comb['Approx Jitter / ps'] * np.sqrt(unc_cpt_rms**2 + unc_cpt_risetime**2 + unc_cpt_ampl**2)
-    dfs_comb.loc[:, 'Approx Jitter Unc / ps'] = dfs_comb['Approx Jitter Unc / ps'].round(1)
-    '''
-    dfs_comb['Jitter / ps'] = dfs_comb['RMS Noise / mV'] / dfs_comb['dV/dt / mV/ps']
-    unc_cpt_rms = dfs_comb['RMS Unc / mV'] / dfs_comb['RMS Noise / mV']
-    unc_cpt_dvdt = 0 # idk the unc for a Langaus fit
-    dfs_comb['Jitter Unc / ps'] = dfs_comb['Jitter / ps'] * np.sqrt(unc_cpt_rms**2 + unc_cpt_dvdt**2)
-    dfs_comb.loc[:, 'Jitter Unc / ps'] = (1000*dfs_comb['Jitter Unc / ps']).round(1)
-    dfs_comb.loc[:, 'Jitter / ps'] = (1000*dfs_comb['Jitter / ps']).round(1)
-    dfs_comb = dfs_comb.drop(columns=['dV/dt / mV/ps'])
-    dfs_comb['Jitter[20%:80%] / ps'] = dfs_comb['RMS Noise / mV'] / dfs_comb['dV/dt[20%:80%] / mV/ps']
-    dfs_comb['Jitter[20%:80%] Unc / ps'] = dfs_comb['Jitter[20%:80%] / ps'] * np.sqrt(unc_cpt_rms**2 + unc_cpt_dvdt**2)
-    dfs_comb.loc[:, 'Jitter[20%:80%] Unc / ps'] = (1000*dfs_comb['Jitter[20%:80%] Unc / ps']).round(1)
-    dfs_comb.loc[:, 'Jitter[20%:80%] / ps'] = (1000*dfs_comb['Jitter[20%:80%] / ps']).round(1)
-    dfs_comb = dfs_comb.drop(columns=['dV/dt[20%:80%] / mV/ps'])
-    '''
+    dfs_comb['Jitter Unc / ps'] = dfs_comb['Jitter / ps'] * np.sqrt(unc_cpt_rms**2 + unc_cpt_risetime**2 + unc_cpt_ampl**2)
+    dfs_comb.loc[:, 'Jitter Unc / ps'] = dfs_comb['Jitter Unc / ps'].round(1)
     if 'TR @ 30% / ps' in dfs_comb.columns:
       # Fit between charge and time res calculation
       dfs_comb['Landau TR Cpt / ps'], dfs_comb['Landau TR Unc / ps'] = landau_tr_quad_fit(dfs_comb['Charge / fC'], dfs_comb['TR @ 30% / ps'], dfs_comb['TR Unc @ 30% / ps'])
@@ -187,15 +155,15 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
   dfs_comb['Bias'] = pd.to_numeric(dfs_comb['Bias'], errors='coerce')
   dfs_comb = dfs_comb.sort_values(by=['Channel','Bias'])
 
-  dfs_comb['PMAX low / mV'] = np.ravel(pmax_low)
-  dfs_comb['PMAX high / mV'] = np.ravel(pmax_high)
+  dfs_comb['AREA low / mV'] = np.ravel(area_low)
+  dfs_comb['AREA high / mV'] = np.ravel(area_high)
   dfs_comb['NMAX low / mV'] = np.ravel(nmax_low)
   dfs_comb['TMAX low / ns'] = np.ravel(tmax_low)
   dfs_comb['TMAX high / ns'] = np.ravel(tmax_high)
 
   if mcp_channel == True:
-    dfs_comb['MCP PMAX low / mV'] = np.tile(pmax_low_mcp, number_of_duts)
-    dfs_comb['MCP PMAX high / mV'] = np.tile(pmax_high_mcp, number_of_duts)
+    dfs_comb['MCP AREA low / mV'] = np.tile(area_low_mcp, number_of_duts)
+    dfs_comb['MCP AREA high / mV'] = np.tile(area_high_mcp, number_of_duts)
     dfs_comb['MCP NMAX low / mV'] = np.tile(nmax_low_mcp, number_of_duts)
     dfs_comb['MCP TMAX low / ns'] = np.tile(tmax_low_mcp, number_of_duts)
     dfs_comb['MCP TMAX high / ns'] = np.tile(tmax_high_mcp, number_of_duts)

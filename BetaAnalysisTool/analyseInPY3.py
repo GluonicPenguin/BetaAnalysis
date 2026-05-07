@@ -39,10 +39,12 @@ def main():
 
   if config.get('tmax', False):
     tmax_params = config.get('tmax_params', None)
-  if (config.get('pmax', False)) or (config.get('amplitude', False)):
+  if (config.get('area_new', False)):
+    area_params = config.get('area_params', None)
+  if config.get('pmax', False):
     pmax_params = config.get('pmax_params', None)
-  if config.get('negpmax', False):
-    negpmax_params = config.get('negpmax_params', None)
+  if config.get('amplitude', False):
+    amplitude_params = config.get('amplitude_params', None)
   if config.get('risetime', False):
     risetime_params = config.get('risetime_params', None)
   if config.get('charge', False):
@@ -60,7 +62,7 @@ def main():
   
   for ch in config['channels']:
     if ch[0] == 0: ch[1] = 0
-  modified_channels = [[ch[0], ch[1], (ch[2][0], 1000 if ch[2][1] == 0 else ch[2][1], -100 if ch[2][2] >= 0 else ch[2][2], -50 if ch[2][3] == 0 else ch[2][3], 50 if ch[2][4] == 0 else ch[2][4])] for ch in config['channels']] # set +ve negpmax lower bounds to -100 mV if they are +ve or 0 in the textCard (and tmax cuts on full range if specified as 0,0)
+  modified_channels = [[ch[0], ch[1], (ch[2][0], 1000 if ch[2][1] == 0 else ch[2][1], ch[2][2], 1000 if ch[2][3] == 0 else ch[2][3], -50 if ch[2][4] == 0 else ch[2][4], 50 if ch[2][5] == 0 else ch[2][5])] for ch in config['channels']] # set +ve negpmax lower bounds to -100 mV if they are +ve or 0 in the textCard (and tmax cuts on full range if specified as 0,0)
   config['channels'] = modified_channels
 
   channel_mapping = {
@@ -95,8 +97,16 @@ def main():
         output_name_w_bias = ""
         for ch_ind, ch_val in enumerate(config['channels']):
           if ch_val[0] == 1:
-            bias_after_channel = re.search(rf"Ch{ch_ind}-(\d+)V_", pattern)
-            output_name_w_bias = output_name_w_bias + f"_Ch{ch_ind}-" + bias_after_channel.group(1) +"V"
+            if ch_ind == 0:
+              bias_after_channel = re.search(r"Ch0-(\d+)V_", pattern)
+              if bias_after_channel is None:
+                bias_after_channel = re.search(r"trig(\d+)V", pattern)
+            else:
+              bias_after_channel = re.search(rf"Ch{ch_ind}-(\d+)V_", pattern)
+            if bias_after_channel:
+              output_name_w_bias += f"_Ch{ch_ind}-{bias_after_channel.group(1)}V"
+            #bias_after_channel = re.search(rf"Ch{ch_ind}-(\d+)V_", pattern)
+            #output_name_w_bias = output_name_w_bias + f"_Ch{ch_ind}-" + bias_after_channel.group(1) +"V"
         output_name_const = "hist_" + output_name_const + output_name_w_bias
         output_name_array.append(output_name_const)
       except Exception as e:
@@ -108,7 +118,7 @@ def main():
   else:
     print(f"[BETA ANALYSIS] : [FILE READER] Total {len(file_array)} input ROOT files read.")
 
-  plot_variables = [var for var, flag in config.items() if var in ['tmax', 'pmax', 'negpmax', 'amplitude', 'risetime', 'charge', 'rms', 'timeres', 'discretisation', 'waveform'] and flag]  
+  plot_variables = [var for var, flag in config.items() if var in ['tmax', 'area_new', 'pmax', 'amplitude', 'risetime', 'charge', 'rms', 'timeres'] and flag]  
 
   if plot_variables:
     sentence = "will plot " + ", ".join(plot_variables)
@@ -132,16 +142,16 @@ def main():
     for file_ind, file_real in enumerate(file_array):
       plot_tmax = plotVar("tmax", tmax_params[0], tmax_params[1], tmax_params[2], True, output_name_array[file_ind]+"_tmax.png", fit=None)
       plot_tmax.run(file_real, file_ind, tree_array[file_ind], config['channels'])
+  if config.get('area_new', False) == True:
+    print(f"[BETA ANALYSIS]: [PLOTTER] Plotting AREA distribution (note that for AREA no selections are applied to the phase space)")
+    for file_ind, file_real in enumerate(file_array):
+      plot_area = plotVar("area_new", area_params[0], area_params[1], area_params[2], True, output_name_array[file_ind]+"_area.png", fit=None)
+      plot_area.run(file_real, file_ind, tree_array[file_ind], config['channels'])
   if config.get('pmax', False) == True:
     print(f"[BETA ANALYSIS]: [PLOTTER] Plotting PMAX distribution (note that for PMAX no selections are applied to the phase space)")
     for file_ind, file_real in enumerate(file_array):
       plot_pmax = plotVar("pmax", pmax_params[0], pmax_params[1], pmax_params[2], True, output_name_array[file_ind]+"_pmax.png", fit=None)
       plot_pmax.run(file_real, file_ind, tree_array[file_ind], config['channels'])
-  if config.get('negpmax', False) == True:
-    print(f"[BETA ANALYSIS]: [PLOTTER] Plotting NEGPMAX distribution (note that for NEGPMAX no selections are applied to the phase space)")
-    for file_ind, file_real in enumerate(file_array):
-      plot_negpmax = plotVar("negpmax", negpmax_params[0], negpmax_params[1], negpmax_params[2], True, output_name_array[file_ind]+"_negpmax.png", fit=None)
-      plot_negpmax.run(file_real, file_ind, tree_array[file_ind], config['channels'])
   if config.get('amplitude', False) == True:
     amplitude_dfs = []
     for file_ind, file_real in enumerate(file_array):
@@ -212,9 +222,6 @@ def main():
     data_out.append(('timeres', time_res_data.sort_values(by=['Channel','Bias'])))
 
   if len(data_out) > 1: direct_to_table(data_out, config['channels'], output_name, thicknesses)
-
-  #if args.doDiscretisation: risingEdgeDiscretisation.run(file_array,tree_array,args.ch-1,total_number_channels)
-  #if args.doWaveform: plot_waveform.run(file_array,tree_array,args.ch-1,total_number_channels)
 
 if __name__ == "__main__":
     main()

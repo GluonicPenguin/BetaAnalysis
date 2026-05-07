@@ -89,7 +89,7 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
 
   dict_of_vars = {"amplitude": "Amplitude / mV", "charge": "Charge / fC", "dvdt": "dV/dt / mV/ps", "dvdt_2080": "dV/dt[20%:80%] / mV/ps"}
   for ch_ind, ch_val in enumerate(channel_array):
-    pmax_list = []
+    area_list = []
     area_list = []
     dvdt_list = []
     dvdt_2080_list = []
@@ -107,16 +107,16 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
       if E == 0: E = 50
       bias_of_channel = getBias(str(file), ch_ind)
       for entry in tree:
-        pmax_sig = entry.pmax[ch_ind]
+        area_sig = entry.area_new[ch_ind]
         negpmax_sig = entry.negpmax[ch_ind]
         tmax_sig = entry.tmax[ch_ind]
-        if (pmax_sig < A) or (pmax_sig > B) or (negpmax_sig < C) or (tmax_sig < D) or (tmax_sig > E):
+        if (area_sig < A) or (area_sig > B) or (negpmax_sig < C) or (tmax_sig < D) or (tmax_sig > E):
           #print(f"BAD EVENTS {A} {B} {C} {D} {E}")
           continue
         else:
-          #if (pmax_sig > A) and (pmax_sig < B) and (negpmax_sig > C) and (tmax_sig > D) and (tmax_sig < E):
+          #if (area_sig > A) and (area_sig < B) and (negpmax_sig > C) and (tmax_sig > D) and (tmax_sig < E):
           #area_sig = entry.area_new[ch_ind]
-          area_sig = entry.area[ch_ind]
+          pmax_sig = entry.pmax[ch_ind]
           dvdt_sig = entry.dvdt[ch_ind]
           dvdt_2080_sig = entry.dvdt_2080[ch_ind]
           pmax_list.append(pmax_sig)

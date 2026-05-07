@@ -18,22 +18,19 @@ def read_text_card(file_path):
 
   plot_flags = {
     "tmax": False,
+    "area_new": False,
     "pmax": False,
-    "negpmax": False,
     "amplitude": False,
     "risetime": False,
     "charge": False,
     "rms": False,
     "timeres": False,
-    "discretisation": False,
-    "waveform": False,
-    "all_with_no_plots": False,
   }
 
   plot_params = {
     "tmax_params": None,
+    "area_params": None,
     "pmax_params": None,
-    "negpmax_params": None,
     "risetime_params": None,
     "charge_params": None,
     "rms_params": None,
@@ -111,21 +108,25 @@ def read_text_card(file_path):
               )
 
           remaining_parts = remaining_values.split(",")
-          if len(remaining_parts) != 4:
-            raise ValueError(f"Invalid format for {key}: Must contain exactly 4 additional comma-separated values.")
+          if len(remaining_parts) != 5:
+            raise ValueError(f"Invalid format for {key}: Must contain exactly 5 additional comma-separated values.")
 
           try:
-            upper_bound, additional_condition, tlow, thigh = map(float, remaining_parts)
+            upper_bound, plow, phigh, tlow, thigh = map(float, remaining_parts)
           except ValueError:
-            raise ValueError(f"Invalid format for {key}: The last 4 values must all be floats.")
+            raise ValueError(f"Invalid format for {key}: The last 5 values must all be floats.")
 
-          channels[channel_index][2] = (lower_bound, upper_bound, additional_condition, tlow, thigh)
+          channels[channel_index][2] = (lower_bound, upper_bound, plow, phigh, tlow, thigh)
 
         elif key in plot_flags:  # Handle plot flags
           plot_flags[key] = value.lower() == "true"
         elif key.endswith("_nB_xL_xU"):  # Handle plot parameters
           param_key = key.split("_nB_xL_xU")[0]
-          if plot_flags.get(param_key, False) == True:  # Check if this plot is enabled
+          if param_key == "area":
+            temp_param_key = "area_new"
+          else:
+            temp_param_key = param_key
+          if plot_flags.get(temp_param_key, False) == True:  # Check if this plot is enabled
             nBins, xLower, xUpper = map(float, value.split(","))
             plot_params[param_key+"_params"] = (int(nBins), xLower, xUpper)
           elif (plot_flags.get("amplitude", False)) and (param_key == "pmax"):
