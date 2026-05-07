@@ -57,6 +57,8 @@ def get_true_mpv_from_grid(popt, x_grid):
 
 def estimate_mpv_and_fraction_uncertainty(data_var, popt, pcov, x_grid, n_toys=200):
     mpv_samples = []
+    xi_samples = []
+    sigma_samples = []
     frac_mpv_samples = []
     frac_maxbin_samples = []
     ratio_samples = []
@@ -76,6 +78,8 @@ def estimate_mpv_and_fraction_uncertainty(data_var, popt, pcov, x_grid, n_toys=2
         # --- true MPV ---
         mpv_true = get_true_mpv_from_grid(sampled_params, x_grid)
         mpv_samples.append(mpv_true)
+        xi_samples.append(xi_s)
+        sigma_samples.append(sigma_s)
 
         # --- ratio ---
         if mpv_true != 0:
@@ -96,6 +100,8 @@ def estimate_mpv_and_fraction_uncertainty(data_var, popt, pcov, x_grid, n_toys=2
     return {
         "mpv_mean": np.mean(mpv_samples),
         "mpv_std": np.std(mpv_samples),
+        "xi_std": np.std(xi_samples),
+        "sigma_std": np.std(sigma_samples),
         "frac_mpv_std": np.std(frac_mpv_samples),
         "frac_maxbin_std": np.std(frac_maxbin_samples),
         "ratio_mean": np.mean(ratio_samples),
@@ -132,6 +138,18 @@ def round_to_sig_figs(x, sig):
     return 0
   else:
     return round(x, sig - int(math.floor(math.log10(abs(x)))) - 1)
+
+def fmt_val_unc(val, unc, sig_figs_val=3):
+  if val == 0:
+    val_rounded = 0
+    decimals = 0
+  else:
+    order = int(np.floor(np.log10(abs(val))))
+    decimals = max(sig_figs_val - 1 - order, 0)
+    val_rounded = round(val, decimals)
+  unc_rounded = round(unc, decimals)
+  fmt_str = f"{{:.{decimals}f}} ± {{:.{decimals}f}}"
+  return fmt_str.format(val_rounded, unc_rounded)
 
 def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpper, savename, thickness):
 
@@ -203,8 +221,17 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
     bin_width = bins[1] - bins[0]
     bin_centres = bins[:-1] + np.diff(bins) / 2
 
+    if (var == "charge") & (int(bias_of_channel.rstrip("V")) >= 300):
+      X_cut = 11
+      mask_cut = bin_centres >= X_cut
+      histo_masked = histo.copy()
+      histo_masked[~mask_cut] = 0
+
     popt, pcov, fitted_hist, bin_centres = binned_fit_langauss(data_var, nBins, xLower, xUpper, ch_ind)
-    counts = fitted_hist * len(data_var) * bin_width
+    if (var == "charge") & (int(bias_of_channel.rstrip("V")) >= 300):
+      counts = histo_masked
+    else:
+      counts = fitted_hist * len(data_var) * bin_width
     arr_of_ch.append("Ch"+str(ch_ind))
     arr_of_biases.append(bias_of_channel)
 
@@ -237,6 +264,9 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
     arr_ratio_unc.append(ratio_unc)
     
     mpv_unc = unc_dict["mpv_std"]
+    xi_unc = unc_dict["xi_std"]
+    sigma_unc = unc_dict["sigma_std"]
+    mpv_val, xi_val, sigma_val = popt
     arr_of_MPV_unc.append(mpv_unc)
     frac_mpv_unc_syst = unc_dict["frac_mpv_std"]
     frac_maxbin_unc_syst = unc_dict["frac_maxbin_std"]
@@ -276,45 +306,74 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
     x_axis_add.append(x_axis)
     y_fit_counts_add.append(y_fit_counts)
 
+    legend_fontsize=42
+    bias_of_channel_spaced = bias_of_channel[:-1] + " " + bias_of_channel[-1]
+
     fig = go.Figure()
     fig.update_layout(
       width=1600,
       height=1000,
       font=dict(
         family="Arial",
-        size=24,
+        size=legend_fontsize,
         color="black"
       ),
+      legend=dict(font=dict(size=legend_fontsize+4),
+        x=1,
+        y=1,
+        xanchor='right',
+        yanchor='top',
+        bgcolor='white',
+        bordercolor='lightgray',
+        borderwidth=2,
+        itemwidth=80
+        ),
       xaxis_title=dict_of_vars[var],
       yaxis_title='Number of events',
     )
-    fig.add_trace(
-      go.Scatter(
-        x=bin_centres,
-        y=counts,
-        mode='markers',
-        name='Histogram',
-        marker=dict(color='black', size=8),
-        error_y=dict(type='data', array=np.sqrt(histo))
+    if (var == "charge") & (int(bias_of_channel.rstrip("V")) >= 300):
+      fig.add_trace(
+        go.Scatter(
+          x=bin_centres,
+          y=counts,
+          mode='markers',
+          name=f"{thickness} μm, V<sub>bias</sub> = {bias_of_channel_spaced}",
+          marker=dict(color='black', size=15),
+          error_y=dict(type='data', array=np.sqrt(histo_masked))
+        )
       )
-    )
+    else:
+      fig.add_trace(
+        go.Scatter(
+          x=bin_centres,
+          y=counts,
+          mode='markers',
+          name=f"{thickness} μm, V<sub>bias</sub> = {bias_of_channel_spaced}",
+          marker=dict(color='black', size=15),
+          error_y=dict(type='data', array=np.sqrt(histo))
+        )
+      )
     x_axis = np.linspace(xLower, xUpper, 999)
     fig.add_trace(
-      go.Scatter(
+    go.Scatter(
         x=x_axis,
         y=y_fit_counts,
-        name=f'Langauss Fit<br>MPV={popt[0]:.3g}<br>ξ={popt[1]:.3g}<br>σ={popt[2]:.3g}',
+        name=(
+             f"<i>Q</i>~<b>θ</b>(<i>Q</i><sub>MPV</sub> = {fmt_val_unc(mpv_true, mpv_unc)},<br>"
+             f"          ξ = {fmt_val_unc(xi_val, xi_unc)},<br>"
+             f"          σ = {fmt_val_unc(sigma_val, sigma_unc)})"
+            ),
         mode='lines',
-        line=dict(color='red', width=4)
-      )
+        line=dict(color='red', width=10)
+        )
     )
     fig.add_trace(
       go.Scatter(
         x=x_axis,
         y=y_landau_counts,
         mode='lines',
-        name=f'Landau Contribution',
-        line=dict(color='blue', width=4, dash='dash')
+        name=f'  Landau contribution',
+        line=dict(color='blue', width=10, dash='dash')
       )
     )
 
@@ -329,7 +388,8 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
       yaxis=dict(
         showgrid=True,
         gridcolor="lightgray",
-        zeroline=False
+        zeroline=False,
+        range=[0, 1.2*max(counts)]
       )
     )
 

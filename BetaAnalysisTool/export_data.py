@@ -90,7 +90,7 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
         first_df_found = True
         df_charge = df[['Channel','Bias','Charge','Charge Unc','Landau width','Gaussian sigma','LTF','LTF Unc','LTF from area','LTFmax','LTFmax Unc','Landau Frac','Landau Frac Unc']]
       else:
-        df_charge = df[['Charge','Charge Unc','Landau width','Gaussian sigma','LTF','LTF Unc','LTFmax','LTFmax Unc','Landau Frac','Landau Frac Unc']]
+        df_charge = df[['Charge','Charge Unc','Landau width','Gaussian sigma','LTF','LTF Unc','LTF from area','LTFmax','LTFmax Unc','Landau Frac','Landau Frac Unc']]
       #df_charge.loc[:, 'Charge'] = df_charge['Charge'].round(1)
       #df_charge.loc[:, 'Landau width'] = df_charge['Landau width'].round(3)
       #df_charge.loc[:, 'Gaussian sigma'] = df_charge['Gaussian sigma'].round(3)
