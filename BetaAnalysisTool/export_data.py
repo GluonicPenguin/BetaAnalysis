@@ -30,38 +30,43 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
 
   area_low = []
   area_high = []
-  nmax_low = []
+  pmax_low = []
+  pmax_high = []
   tmax_low = []
   tmax_high = []
 
   area_low_mcp = []
   area_high_mcp = []
-  nmax_low_mcp = []
+  pmax_low_mcp = []
+  pmax_high_mcp = []
   tmax_low_mcp = []
   tmax_high_mcp = []
 
   mcp_channel = False
-  for i, (T, _, (A, B, C, D, E)) in enumerate(channel_configs):
+  for i, (T, _, (A, B, C, D, E, F)) in enumerate(channel_configs):
     if T == 1 or T == 2:
       if (A == 0.0) or (A == []):
         area_low_col_ch_i = np.full(number_of_bias_pts, 0.0, dtype=float)
       else:
         area_low_col_ch_i = A
       area_high_col_ch_i = np.full(number_of_bias_pts, B, dtype=float)
-      nmax_low_col_ch_i = np.full(number_of_bias_pts, C, dtype=float)
-      tmax_low_col_ch_i = np.full(number_of_bias_pts, D, dtype=float)
-      tmax_high_col_ch_i = np.full(number_of_bias_pts, E, dtype=float)
+      pmax_low_col_ch_i = np.full(number_of_bias_pts, C, dtype=float)
+      pmax_high_col_ch_i = np.full(number_of_bias_pts, D, dtype=float)
+      tmax_low_col_ch_i = np.full(number_of_bias_pts, E, dtype=float)
+      tmax_high_col_ch_i = np.full(number_of_bias_pts, F, dtype=float)
       if T == 1:
         area_low.append(area_low_col_ch_i)
         area_high.append(area_high_col_ch_i)
-        nmax_low.append(nmax_low_col_ch_i)
+        pmax_low.append(pmax_low_col_ch_i)
+        pmax_high.append(pmax_high_col_ch_i)
         tmax_low.append(tmax_low_col_ch_i)
         tmax_high.append(tmax_high_col_ch_i)
       if T == 2:
         mcp_channel = True
         area_low_mcp = area_low_col_ch_i
         area_high_mcp = area_high_col_ch_i
-        nmax_low_mcp = nmax_low_col_ch_i
+        pmax_low_mcp = pmax_low_col_ch_i
+        pmax_high_mcp = pmax_high_col_ch_i
         tmax_low_mcp = tmax_low_col_ch_i
         tmax_high_mcp = tmax_high_col_ch_i
 
@@ -157,14 +162,16 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
 
   dfs_comb['AREA low / mV'] = np.ravel(area_low)
   dfs_comb['AREA high / mV'] = np.ravel(area_high)
-  dfs_comb['NMAX low / mV'] = np.ravel(nmax_low)
+  dfs_comb['PMAX low / mV'] = np.ravel(pmax_low)
+  dfs_comb['PMAX high / mV'] = np.ravel(pmax_high)
   dfs_comb['TMAX low / ns'] = np.ravel(tmax_low)
   dfs_comb['TMAX high / ns'] = np.ravel(tmax_high)
 
   if mcp_channel == True:
     dfs_comb['MCP AREA low / mV'] = np.tile(area_low_mcp, number_of_duts)
     dfs_comb['MCP AREA high / mV'] = np.tile(area_high_mcp, number_of_duts)
-    dfs_comb['MCP NMAX low / mV'] = np.tile(nmax_low_mcp, number_of_duts)
+    dfs_comb['MCP PMAX low / mV'] = np.tile(pmax_low_mcp, number_of_duts)
+    dfs_comb['MCP PMAX high / mV'] = np.tile(pmax_high_mcp, number_of_duts)
     dfs_comb['MCP TMAX low / ns'] = np.tile(tmax_low_mcp, number_of_duts)
     dfs_comb['MCP TMAX high / ns'] = np.tile(tmax_high_mcp, number_of_duts)
 

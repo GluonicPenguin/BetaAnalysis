@@ -113,8 +113,10 @@ def hist_tree_file_basics(tree,file,var,index,nBins,xLower,xUpper,biasVal,cut_co
   #  var = 'risetime_relu'
   var_dict = {"tmax":"t_{max} / ns" , "pmax":"p_max / mV" , "risetime":"Rise time / ns", "risetime_linfit":"Linfit rise time / ns", "risetime_relu":"RELU rise time / ns", "area_new":"Area / pWb" , "rms":"RMS / mV", "dvdt":"dV/dt / mV/ns", "dvdt_2080": "dV/dt[20%:80%] / mV/ns"}
   thisHist = root.TH1F("CH "+str(ch)+" "+biasVal, var+";"+var_dict[var]+";Events", nBins, xLower, xUpper)
-  if (var == "area_new") or (var == "pmax") or (var == "tmax"):
+  if (var == "tmax"):
     tree.Draw(var+"["+str(ch)+"]>>CH "+str(ch)+" "+biasVal,"event>-1")
+  elif (var == "area_new") or (var == "pmax"):
+    tree.Draw(var+"["+str(ch)+"]>>CH "+str(ch)+" "+biasVal," && ".join(part.strip() for part in cut_cond.split("&&")[-2:]))
   else:
     tree.Draw(var+"["+str(ch)+"]>>CH "+str(ch)+" "+biasVal,cut_cond)
   thisHist.SetLineWidth(2)

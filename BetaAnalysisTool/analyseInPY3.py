@@ -62,7 +62,7 @@ def main():
   
   for ch in config['channels']:
     if ch[0] == 0: ch[1] = 0
-  modified_channels = [[ch[0], ch[1], (ch[2][0], 1000 if ch[2][1] == 0 else ch[2][1], ch[2][2], 1000 if ch[2][3] == 0 else ch[2][3], -50 if ch[2][4] == 0 else ch[2][4], 50 if ch[2][5] == 0 else ch[2][5])] for ch in config['channels']] # set +ve negpmax lower bounds to -100 mV if they are +ve or 0 in the textCard (and tmax cuts on full range if specified as 0,0)
+  modified_channels = [[ch[0], ch[1], (ch[2][0], 1600 if ch[2][1] == 0 else ch[2][1], ch[2][2], 1600 if ch[2][3] == 0 else ch[2][3], -50 if ch[2][4] == 0 else ch[2][4], 50 if ch[2][5] == 0 else ch[2][5])] for ch in config['channels']] # set +ve negpmax lower bounds to -100 mV if they are +ve or 0 in the textCard (and tmax cuts on full range if specified as 0,0)
   config['channels'] = modified_channels
 
   channel_mapping = {
@@ -143,19 +143,19 @@ def main():
       plot_tmax = plotVar("tmax", tmax_params[0], tmax_params[1], tmax_params[2], True, output_name_array[file_ind]+"_tmax.png", fit=None)
       plot_tmax.run(file_real, file_ind, tree_array[file_ind], config['channels'])
   if config.get('area_new', False) == True:
-    print(f"[BETA ANALYSIS]: [PLOTTER] Plotting AREA distribution (note that for AREA no selections are applied to the phase space)")
+    print(f"[BETA ANALYSIS]: [PLOTTER] Plotting AREA distribution (note that for AREA TMAX selections are already applied to the phase space)")
     for file_ind, file_real in enumerate(file_array):
       plot_area = plotVar("area_new", area_params[0], area_params[1], area_params[2], True, output_name_array[file_ind]+"_area.png", fit=None)
       plot_area.run(file_real, file_ind, tree_array[file_ind], config['channels'])
   if config.get('pmax', False) == True:
-    print(f"[BETA ANALYSIS]: [PLOTTER] Plotting PMAX distribution (note that for PMAX no selections are applied to the phase space)")
+    print(f"[BETA ANALYSIS]: [PLOTTER] Plotting PMAX distribution (note that for PMAX TMAX selections are already applied to the phase space)")
     for file_ind, file_real in enumerate(file_array):
       plot_pmax = plotVar("pmax", pmax_params[0], pmax_params[1], pmax_params[2], True, output_name_array[file_ind]+"_pmax.png", fit=None)
       plot_pmax.run(file_real, file_ind, tree_array[file_ind], config['channels'])
   if config.get('amplitude', False) == True:
     amplitude_dfs = []
     for file_ind, file_real in enumerate(file_array):
-      df_data = plot_langaus('amplitude', file_real, file_ind, tree_array[file_ind], config['channels'], pmax_params[0], pmax_params[1], pmax_params[2], output_name_array[file_ind]+"_amplitude")
+      df_data = plot_langaus('amplitude', file_real, file_ind, tree_array[file_ind], config['channels'], amplitude_params[0], amplitude_params[1], amplitude_params[2], output_name_array[file_ind]+"_amplitude")
       amplitude_dfs.append(df_data)
     amplitude_data = pd.concat(amplitude_dfs, ignore_index=True)
     print(amplitude_data.sort_values(by=['Channel','Bias']))
