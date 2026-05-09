@@ -232,10 +232,9 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
     "Landau width": arr_of_width,
     "Gaussian sigma": arr_of_sigma,
     "Frac above 1p5 MPV": arr_mpv_frac,
-    "Frac above 1p5 Max Bin": arr_maxbin_frac,
     "SSE score": arr_of_sse,
     "Red. Chi2": arr_of_rchi2,
   })
-  if var != "Area_fitted":
-    df_of_results = df_of_results.drop(columns=['Frac above 1p5 Max Bin'])
+  #if var != "Area_fitted":
+  #  df_of_results = df_of_results.drop(columns=['Frac above 1p5 Max Bin'])
   return df_of_results

@@ -82,8 +82,7 @@ def main():
   if safemode:
     root.gROOT.SetBatch(True)
 
-  area_charge_mapped_vals = [AtQfactor[1] for AtQfactor in config['channels'] if (AtQfactor[0] != 1)]
-  print(area_charge_mapped_vals)
+  area_charge_mapped_vals = [AtQfactor[1] for AtQfactor in config['channels'] if (AtQfactor[0] == 1)]
 
   file_array = []
   tree_array = []

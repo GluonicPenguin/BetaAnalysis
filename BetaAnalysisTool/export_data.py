@@ -51,10 +51,19 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
       else:
         area_low_col_ch_i = A
       area_high_col_ch_i = np.full(number_of_bias_pts, B, dtype=float)
-      pmax_low_col_ch_i = np.full(number_of_bias_pts, C, dtype=float)
+      if (C == 0.0) or (C == []):
+        pmax_low_col_ch_i = np.full(number_of_bias_pts, 0.0, dtype=float)
+      else:
+        pmax_low_col_ch_i = C
       pmax_high_col_ch_i = np.full(number_of_bias_pts, D, dtype=float)
-      tmax_low_col_ch_i = np.full(number_of_bias_pts, E, dtype=float)
-      tmax_high_col_ch_i = np.full(number_of_bias_pts, F, dtype=float)
+      if (E == 0.0) or (E == []):
+        tmax_low_col_ch_i = np.full(number_of_bias_pts, -50.0, dtype=float)
+      else:
+        tmax_low_col_ch_i = E
+      if (F == 0.0) or (F == []):
+        tmax_high_col_ch_i = np.full(number_of_bias_pts, 50.0, dtype=float)
+      else:
+        tmax_high_col_ch_i = F
       if T == 1:
         area_low.append(area_low_col_ch_i)
         area_high.append(area_high_col_ch_i)
@@ -73,6 +82,7 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
 
   dfs_to_concat = []
   first_df_found = False
+  print(var)
   for index, (var, df) in enumerate(name_and_df_couples):
     if var == "amplitude":
       df_ampl = df[['Channel','Bias','Amplitude MPV']]
@@ -90,18 +100,17 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
       df_rt.loc[:, 'Sigma'] = (1000*df_rt['Sigma']).round(0)
       df_rt = df_rt.rename(columns={'Mean':'Rise time / ps','Sigma':'Rise time Unc / ps'})
       dfs_to_concat.append(df_rt)
-    elif var == "area_fitted":
+    elif var == "area":
       if first_df_found == False:
         first_df_found = True
-        df_area_fitted = df[['Channel','Bias','Area MPV','Landau width','Gaussian sigma','Frac above 1p5 MPV', 'Frac above 1p5 Max Bin']]
+        df_area_fitted = df[['Channel','Bias','Area MPV','Landau width','Gaussian sigma','Frac above 1p5 MPV']]
       else:
-        df_area_fitted = df[['Area MPV','Landau width','Gaussian sigma','Frac above 1p5 MPV', 'Frac above 1p5 Max Bin']]
+        df_area_fitted = df[['Area MPV','Landau width','Gaussian sigma','Frac above 1p5 MPV']]
       df_area_fitted.loc[:, 'Area MPV'] = df_area_fitted['Area MPV'].round(3)
       df_area_fitted.loc[:, 'Landau width'] = df_area_fitted['Landau width'].round(3)
       df_area_fitted.loc[:, 'Gaussian sigma'] = df_area_fitted['Gaussian sigma'].round(3)
       df_area_fitted.loc[:, 'Frac above 1p5 MPV'] = df_area_fitted['Frac above 1p5 MPV'].round(3)
-      df_area_fitted.loc[:, 'Frac above 1p5 Max Bin'] = df_area_fitted['Frac above 1p5 Max Bin'].round(3)
-      df_area_fitted = df_area_fitted.rename(columns={'Area MPV':'Area / pWb','Landau width':'Landau Cpt Charge','Gaussian sigma':'Gaussian Cpt Charge','Frac above 1p5 MPV':'Frac Charge >1.5xMPV','Frac above 1p5 Max Bin':'Frac Charge >1.5xQmax'})
+      df_area_fitted = df_area_fitted.rename(columns={'Area MPV':'Area / pWb','Landau width':'Landau Cpt Charge','Gaussian sigma':'Gaussian Cpt Charge','Frac above 1p5 MPV':'Frac Charge >1.5xMPV'})
       df_area_fitted['Charge / fC'] = (df_area_fitted['Area / pWb']/atq_col).round(3)
       df_area_fitted['Gain'] = 100*(df_area_fitted['Charge / fC'] / thickness_col).round(3)
       dfs_to_concat.append(df_area_fitted)
