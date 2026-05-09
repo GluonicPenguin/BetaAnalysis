@@ -10,9 +10,10 @@ def read_text_card(file_path):
       "MCP": 2,
       "REF": 3
   }
-  channel_area_to_charge_mapping = {
+  channel_area_to_area_fitted_mapping = {
         "SC": 4.7,
-        "Mig": 5
+        "Mig": 5,
+        "None": 1
   }
   channels = [[0, 1]] * 8
 
@@ -22,7 +23,7 @@ def read_text_card(file_path):
     "pmax": False,
     "amplitude": False,
     "risetime": False,
-    "charge": False,
+    "area_fitted": False,
     "rms": False,
     "timeres": False,
   }
@@ -32,7 +33,7 @@ def read_text_card(file_path):
     "area_params": None,
     "pmax_params": None,
     "risetime_params": None,
-    "charge_params": None,
+    "area_fitted_params": None,
     "rms_params": None,
     "timeres_params": None
   }
@@ -76,7 +77,7 @@ def read_text_card(file_path):
           thickness_str = parts[2] if (len(parts) > 2) & (type_str.upper() != "MCP") else "nDUT"
 
           channel_type = channel_type_mapping.get(type_str.upper(), 0)
-          channel_value = channel_area_to_charge_mapping.get(additional_str, 1)
+          channel_value = channel_area_to_area_fitted_mapping.get(additional_str, 1)
           thickness_info.append(thickness_str)
 
           if (type_str.upper() == "MCP"):
@@ -89,32 +90,30 @@ def read_text_card(file_path):
 
         elif key.startswith("CH") and key.endswith("_cut"):
           channel_index = int(key[2]) - 1
+          match = re.match(r"^\s*(\[\s*(?:-?\d+(?:\.\d+)?\s*,\s*)*-?\d+(?:\.\d+)?\s*\]|\[\s*\]|0)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(\[\s*(?:-?\d+(?:\.\d+)?\s*,\s*)*-?\d+(?:\.\d+)?\s*\]|\[\s*\]|0)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(\[\s*(?:-?\d+(?:\.\d+)?\s*,\s*)*-?\d+(?:\.\d+)?\s*\]|\[\s*\]|0)\s*,\s*(\[\s*(?:-?\d+(?:\.\d+)?\s*,\s*)*-?\d+(?:\.\d+)?\s*\]|\[\s*\]|0)\s*$", value)
 
-          match = re.match(r"^\s*(\[\s*(?:-?\d+(?:\.\d+)?\s*,\s*)*-?\d+(?:\.\d+)?\s*\]|\[\s*\]|0)\s*,\s*(.*)$", value)
           if not match:
-            raise ValueError(f"Invalid format for {key}: Must start with an array '[x,y,...]', '[]', or '0'.")
+            raise ValueError(f"Invalid format for {key}: Must be '[...],0,[...],0,[...],[...]' where arrays are '[x,y,...]', '[]', or '0'.")
 
           raw_lower_bound = match.group(1).strip()
-          remaining_values = match.group(2).strip()
+          upper_bound = float(match.group(2).strip())
+          raw_plow = match.group(3).strip()
+          phigh = float(match.group(4).strip())
+          raw_tlow = match.group(5).strip()
+          raw_thigh = match.group(6).strip()
 
-          if raw_lower_bound == "[]" or raw_lower_bound == "0":
-            lower_bound = []
-          else:
-            lower_bound = list(map(float, raw_lower_bound.strip("[]").split(",")))
+          def parse_array(raw_value, field_name):
+            if raw_value == "[]" or raw_value == "0":
+              return []
+            arr = list(map(float, raw_value.strip("[]").split(",")))
+            if len(arr) != len(config.get('files', [])):
+              raise ValueError(f"Invalid length for {field_name} in {key}: Must match the number of files ({len(config['files'])}).")
+            return arr
 
-            if len(lower_bound) != len(config.get('files', [])):
-              raise ValueError(
-                  f"Invalid length for lower_bound in {key}: Must match the number of files ({len(config['files'])})."
-              )
-
-          remaining_parts = remaining_values.split(",")
-          if len(remaining_parts) != 5:
-            raise ValueError(f"Invalid format for {key}: Must contain exactly 5 additional comma-separated values.")
-
-          try:
-            upper_bound, plow, phigh, tlow, thigh = map(float, remaining_parts)
-          except ValueError:
-            raise ValueError(f"Invalid format for {key}: The last 5 values must all be floats.")
+          lower_bound = parse_array(raw_lower_bound, "lower_bound")
+          plow = parse_array(raw_plow, "plow")
+          tlow = parse_array(raw_tlow, "tlow")
+          thigh = parse_array(raw_thigh, "thigh")
 
           channels[channel_index][2] = (lower_bound, upper_bound, plow, phigh, tlow, thigh)
 

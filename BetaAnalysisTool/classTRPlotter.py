@@ -42,9 +42,23 @@ class plotTRVar:
     result = []
     for i, (_, _, (A, B, C, D, E, F)) in enumerate(channel_array):
       if (A == 0.0) or (A == []):
-        condition = f"area_new[{i}] > 0.0 && area_new[{i}] < {B} && pmax[{i}] > {C} && pmax[{i}] < {D} && tmax[{i}] > {E} && tmax[{i}] < {F}"
+        A_string = "0.0"
       else:
-        condition = f"area_new[{i}] > {A[file_index]} && area_new[{i}] < {B} && pmax[{i}] > {C} && pmax[{i}] < {D} && tmax[{i}] > {E} && tmax[{i}] < {F}"
+        A_string = f"{A[file_index]}"
+      if (C == 0.0) or (C == []):
+        C_string = "0.0"
+      else:
+        C_string = f"{C[file_index]}"
+      if (E == 0.0) or (E == []):
+        E_string = "0.0"
+      else:
+        E_string = f"{E[file_index]}"
+      if (F == 0.0) or (F == []):
+        F_string = "0.0"
+      else:
+        F_string = f"{F[file_index]}"
+
+      condition = f"area_new[{i}] > "+A_string+f" && area_new[{i}] < {B} && pmax[{i}] > "+C_string+f" && pmax[{i}] < {D} && tmax[{i}] > "+E_string+f" && tmax[{i}] < "+F_string
       result.append(condition)
 
     duts_to_analyse = []

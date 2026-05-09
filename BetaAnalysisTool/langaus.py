@@ -87,7 +87,7 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
   arr_of_sse = []
   arr_of_rchi2 = []
 
-  dict_of_vars = {"amplitude": "Amplitude / mV", "charge": "Charge / fC", "dvdt": "dV/dt / mV/ps", "dvdt_2080": "dV/dt[20%:80%] / mV/ps"}
+  dict_of_vars = {"amplitude": "Amplitude / mV", "area_fitted": "Area / pWb", "dvdt": "dV/dt / mV/ps", "dvdt_2080": "dV/dt[20%:80%] / mV/ps"}
   for ch_ind, ch_val in enumerate(channel_array):
     area_list = []
     pmax_list = []
@@ -103,10 +103,19 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
       else:
         A = A[file_index]
       if B == 0: B = 1600
-      if C == 0: C = 0
+      if (C == 0.0) or (C == []):
+        C = 0.0
+      else:
+        C = C[file_index]
       if D == 0: D = 1600
-      if E == 0: E = -50
-      if F == 0: F = 50
+      if (E == 0.0) or (E == []):
+        E = -50
+      else:
+        E = E[file_index]
+      if (F == 0.0) or (F == []):
+        F = 50
+      else:
+        F = F[file_index]
       bias_of_channel = getBias(str(file), ch_ind)
       for entry in tree:
         area_sig = entry.area_new[ch_ind]
@@ -127,9 +136,9 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
       continue
 
     plt.figure(figsize=(10, 6))
-    if var == "charge":
+    if var == "area_fitted":
       area = np.array(area_list)
-      area = area/AtQfactor
+      #area = area/AtQfactor
       data_var = area[(area>=xLower) & (area<=xUpper)]
     elif var == "dvdt":
       dvdt = np.array(dvdt_list)
@@ -214,6 +223,7 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
     print("[BETA ANALYSIS]: [LANGAUS PLOTTER] Saved file "+var+"/"+savename+"_Ch"+str(ch_ind)+".png")
 
   if (var != "dvdt") & (var != "dvdt_2080"): var = var.capitalize()
+  if var == "Area_fitted": var = "Area"
 
   df_of_results = pd.DataFrame({
     "Channel": arr_of_ch,
@@ -226,6 +236,6 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
     "SSE score": arr_of_sse,
     "Red. Chi2": arr_of_rchi2,
   })
-  if var != "Charge":
+  if var != "Area_fitted":
     df_of_results = df_of_results.drop(columns=['Frac above 1p5 Max Bin'])
   return df_of_results

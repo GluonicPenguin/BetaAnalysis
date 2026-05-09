@@ -42,9 +42,23 @@ class plotVar:
     result = []
     for i, (_, _, (A, B, C, D, E, F)) in enumerate(channel_array):
       if (A == 0.0) or (A == []):
-        condition = f"area_new[{i}] > 0.0 && area_new[{i}] < {B} && pmax[{i}] > {C} && pmax[{i}] < {D} && tmax[{i}] > {E} && tmax[{i}] < {F}"
+        A_string = "0.0"
       else:
-        condition = f"area_new[{i}] > {A[file_index]} && area_new[{i}] < {B} && pmax[{i}] > {C} && pmax[{i}] < {D} && tmax[{i}] > {E} && tmax[{i}] < {F}"
+        A_string = f"{A[file_index]}"
+      if (C == 0.0) or (C == []):
+        C_string = "0.0"
+      else:
+        C_string = f"{C[file_index]}"
+      if (E == 0.0) or (E == []):
+        E_string = "0.0"
+      else:
+        E_string = f"{E[file_index]}"
+      if (F == 0.0) or (F == []):
+        F_string = "0.0"
+      else:
+        F_string = f"{F[file_index]}"
+
+      condition = f"area_new[{i}] > "+A_string+f" && area_new[{i}] < {B} && pmax[{i}] > "+C_string+f" && pmax[{i}] < {D} && tmax[{i}] > "+E_string+f" && tmax[{i}] < "+F_string
       result.append(condition)
 
     channel_of_dut = []
@@ -62,13 +76,19 @@ class plotVar:
       arr_of_nevents.append(num_ev)
 
     c1 = root.TCanvas("c1", f"Distribution {self.var}", 800, 600)
-    if self.log_scale:
+    if self.var == "tmax":
+      self.log_scale = False
+    if (self.log_scale):
       c1.SetLogy()
 
     valid_hists = [hist for hist in arr_of_hists if hist is not None]
     arr_of_biases = [bias for bias in arr_of_biases if bias is not None]
 
-    max_y = max(hist.GetMaximum() for hist in valid_hists) * 1.05
+    if self.var == "tmax":
+      max_y = 0.05 * max(hist.GetMaximum() for hist in valid_hists) * 1.05
+    else:
+      max_y = max(hist.GetMaximum() for hist in valid_hists) * 1.05
+    
     valid_hists[0].GetYaxis().SetRangeUser(1 if self.log_scale else 0, max_y)
     valid_hists[0].SetTitle(f"Distribution {self.var}")
     valid_hists[0].Draw()

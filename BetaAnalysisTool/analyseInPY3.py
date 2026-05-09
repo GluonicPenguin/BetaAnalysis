@@ -47,8 +47,8 @@ def main():
     amplitude_params = config.get('amplitude_params', None)
   if config.get('risetime', False):
     risetime_params = config.get('risetime_params', None)
-  if config.get('charge', False):
-    charge_params = config.get('charge_params', None)
+  if config.get('area_fitted', False):
+    area_fitted_params = config.get('area_fitted_params', None)
   if config.get('rms', False):
     rms_params = config.get('rms_params', None)
   if config.get('timeres', False):
@@ -81,6 +81,9 @@ def main():
 
   if safemode:
     root.gROOT.SetBatch(True)
+
+  area_charge_mapped_vals = [AtQfactor[1] for AtQfactor in config['channels'] if (AtQfactor[0] != 1)]
+  print(area_charge_mapped_vals)
 
   file_array = []
   tree_array = []
@@ -118,7 +121,7 @@ def main():
   else:
     print(f"[BETA ANALYSIS] : [FILE READER] Total {len(file_array)} input ROOT files read.")
 
-  plot_variables = [var for var, flag in config.items() if var in ['tmax', 'area_new', 'pmax', 'amplitude', 'risetime', 'charge', 'rms', 'timeres'] and flag]  
+  plot_variables = [var for var, flag in config.items() if var in ['tmax', 'area_new', 'pmax', 'amplitude', 'risetime', 'area_fitted', 'rms', 'timeres'] and flag]  
 
   if plot_variables:
     sentence = "will plot " + ", ".join(plot_variables)
@@ -171,14 +174,14 @@ def main():
     print(risetime_data.sort_values(by=['Channel','Bias']))
     data_out.append(('risetime', risetime_data.sort_values(by=['Channel','Bias'])))
 
-  if config.get('charge', False) == True:
-    charge_dfs = []
+  if config.get('area_fitted', False) == True:
+    area_fitted_dfs = []
     for file_ind, file_real in enumerate(file_array):
-      df_data = plot_langaus('charge', file_real, file_ind, tree_array[file_ind], config['channels'], charge_params[0], charge_params[1], charge_params[2], output_name_array[file_ind]+"_charge")
-      charge_dfs.append(df_data)
-    charge_data = pd.concat(charge_dfs, ignore_index=True)
-    print(charge_data.sort_values(by=['Channel','Bias']))
-    data_out.append(('charge', charge_data.sort_values(by=['Channel','Bias'])))
+      df_data = plot_langaus('area_fitted', file_real, file_ind, tree_array[file_ind], config['channels'], area_fitted_params[0], area_fitted_params[1], area_fitted_params[2], output_name_array[file_ind]+"_area_fitted")
+      area_fitted_dfs.append(df_data)
+    area_fitted_data = pd.concat(area_fitted_dfs, ignore_index=True)
+    print(area_fitted_data.sort_values(by=['Channel','Bias']))
+    data_out.append(('area_fitted', area_fitted_data.sort_values(by=['Channel','Bias'])))
   if config.get('rms', False) == True:
     print(f"[BETA ANALYSIS]: [PLOTTER] Performing Gaussian fit to DUT channels")
     rms_dfs = []
@@ -221,7 +224,7 @@ def main():
     print(time_res_data.sort_values(by=['Channel','Bias']))
     data_out.append(('timeres', time_res_data.sort_values(by=['Channel','Bias'])))
 
-  if len(data_out) > 1: direct_to_table(data_out, config['channels'], output_name, thicknesses)
+  if len(data_out) > 1: direct_to_table(data_out, config['channels'], output_name, thicknesses, area_charge_mapped_vals)
 
 if __name__ == "__main__":
     main()

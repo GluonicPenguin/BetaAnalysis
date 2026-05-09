@@ -20,13 +20,14 @@ import sys
 
 from proc_tools import getBias, landau_tr_quad_fit
 
-def direct_to_table(name_and_df_couples, channel_configs, output_savename, thickness_info):
+def direct_to_table(name_and_df_couples, channel_configs, output_savename, thickness_info, atq_info):
 
   number_of_duts = sum(1 for element in channel_configs if element[0] == 1)
   number_of_bias_pts = int(len(name_and_df_couples[0][1]) / number_of_duts)
   thickness_info = list(map(int, thickness_info))
   # thickness less 2 um to get active thickness vs nominal thickness of substrate
-  thickness_col = np.repeat(np.array(thickness_info) - 2, number_of_bias_pts)
+  thickness_col = np.repeat(np.array(thickness_info), number_of_bias_pts)
+  atq_col = np.repeat(np.array(atq_info), number_of_bias_pts)
 
   area_low = []
   area_high = []
@@ -89,20 +90,21 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
       df_rt.loc[:, 'Sigma'] = (1000*df_rt['Sigma']).round(0)
       df_rt = df_rt.rename(columns={'Mean':'Rise time / ps','Sigma':'Rise time Unc / ps'})
       dfs_to_concat.append(df_rt)
-    elif var == "charge":
+    elif var == "area_fitted":
       if first_df_found == False:
         first_df_found = True
-        df_charge = df[['Channel','Bias','Charge MPV','Landau width','Gaussian sigma','Frac above 1p5 MPV', 'Frac above 1p5 Max Bin']]
+        df_area_fitted = df[['Channel','Bias','Area MPV','Landau width','Gaussian sigma','Frac above 1p5 MPV', 'Frac above 1p5 Max Bin']]
       else:
-        df_charge = df[['Charge MPV','Landau width','Gaussian sigma','Frac above 1p5 MPV', 'Frac above 1p5 Max Bin']]
-      df_charge.loc[:, 'Charge MPV'] = df_charge['Charge MPV'].round(1)
-      df_charge.loc[:, 'Landau width'] = df_charge['Landau width'].round(3)
-      df_charge.loc[:, 'Gaussian sigma'] = df_charge['Gaussian sigma'].round(3)
-      df_charge.loc[:, 'Frac above 1p5 MPV'] = df_charge['Frac above 1p5 MPV'].round(3)
-      df_charge.loc[:, 'Frac above 1p5 Max Bin'] = df_charge['Frac above 1p5 Max Bin'].round(3)
-      df_charge = df_charge.rename(columns={'Charge MPV':'Charge / fC','Landau width':'Landau Cpt Charge','Gaussian sigma':'Gaussian Cpt Charge','Frac above 1p5 MPV':'Frac Charge >1.5xMPV','Frac above 1p5 Max Bin':'Frac Charge >1.5xQmax'})
-      df_charge['Gain'] = 100*(df_charge['Charge / fC'] / thickness_col).round(2)
-      dfs_to_concat.append(df_charge)
+        df_area_fitted = df[['Area MPV','Landau width','Gaussian sigma','Frac above 1p5 MPV', 'Frac above 1p5 Max Bin']]
+      df_area_fitted.loc[:, 'Area MPV'] = df_area_fitted['Area MPV'].round(3)
+      df_area_fitted.loc[:, 'Landau width'] = df_area_fitted['Landau width'].round(3)
+      df_area_fitted.loc[:, 'Gaussian sigma'] = df_area_fitted['Gaussian sigma'].round(3)
+      df_area_fitted.loc[:, 'Frac above 1p5 MPV'] = df_area_fitted['Frac above 1p5 MPV'].round(3)
+      df_area_fitted.loc[:, 'Frac above 1p5 Max Bin'] = df_area_fitted['Frac above 1p5 Max Bin'].round(3)
+      df_area_fitted = df_area_fitted.rename(columns={'Area MPV':'Area / pWb','Landau width':'Landau Cpt Charge','Gaussian sigma':'Gaussian Cpt Charge','Frac above 1p5 MPV':'Frac Charge >1.5xMPV','Frac above 1p5 Max Bin':'Frac Charge >1.5xQmax'})
+      df_area_fitted['Charge / fC'] = (df_area_fitted['Area / pWb']/atq_col).round(3)
+      df_area_fitted['Gain'] = 100*(df_area_fitted['Charge / fC'] / thickness_col).round(3)
+      dfs_to_concat.append(df_area_fitted)
     elif var == "rms":
       if first_df_found == False:
         first_df_found = True
