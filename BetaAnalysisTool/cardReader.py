@@ -21,6 +21,7 @@ def read_text_card(file_path):
     "tmax": False,
     "area_new": False,
     "pmax": False,
+    "negpmax": False,
     "amplitude": False,
     "risetime": False,
     "area_fitted": False,
@@ -32,6 +33,7 @@ def read_text_card(file_path):
     "tmax_params": None,
     "area_params": None,
     "pmax_params": None,
+    "negpmax_params": None,
     "risetime_params": None,
     "area_fitted_params": None,
     "rms_params": None,
@@ -90,10 +92,11 @@ def read_text_card(file_path):
 
         elif key.startswith("CH") and key.endswith("_cut"):
           channel_index = int(key[2]) - 1
-          match = re.match(r"^\s*(\[\s*(?:-?\d+(?:\.\d+)?\s*,\s*)*-?\d+(?:\.\d+)?\s*\]|\[\s*\]|0)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(\[\s*(?:-?\d+(?:\.\d+)?\s*,\s*)*-?\d+(?:\.\d+)?\s*\]|\[\s*\]|0)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(\[\s*(?:-?\d+(?:\.\d+)?\s*,\s*)*-?\d+(?:\.\d+)?\s*\]|\[\s*\]|0)\s*,\s*(\[\s*(?:-?\d+(?:\.\d+)?\s*,\s*)*-?\d+(?:\.\d+)?\s*\]|\[\s*\]|0)\s*$", value)
+
+          match = re.match(r"^\s*(\[\s*(?:-?\d+(?:\.\d+)?\s*,\s*)*-?\d+(?:\.\d+)?\s*\]|\[\s*\]|0)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(\[\s*(?:-?\d+(?:\.\d+)?\s*,\s*)*-?\d+(?:\.\d+)?\s*\]|\[\s*\]|0)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(\[\s*(?:-?\d+(?:\.\d+)?\s*,\s*)*-?\d+(?:\.\d+)?\s*\]|\[\s*\]|0)\s*,\s*(\[\s*(?:-?\d+(?:\.\d+)?\s*,\s*)*-?\d+(?:\.\d+)?\s*\]|\[\s*\]|0)\s*,\s*(-?\d+(?:\.\d+)?)\s*$", value)
 
           if not match:
-            raise ValueError(f"Invalid format for {key}: Must be '[...],0,[...],0,[...],[...]' where arrays are '[x,y,...]', '[]', or '0'.")
+            raise ValueError(f"Invalid format for {key}: Must be '[...],0,[...],0,[...],[...],0' where arrays are '[x,y,...]', '[]', or '0'.")
 
           raw_lower_bound = match.group(1).strip()
           upper_bound = float(match.group(2).strip())
@@ -101,6 +104,7 @@ def read_text_card(file_path):
           phigh = float(match.group(4).strip())
           raw_tlow = match.group(5).strip()
           raw_thigh = match.group(6).strip()
+          npmax = float(match.group(7).strip())
 
           def parse_array(raw_value, field_name):
             if raw_value == "[]" or raw_value == "0":
@@ -115,7 +119,7 @@ def read_text_card(file_path):
           tlow = parse_array(raw_tlow, "tlow")
           thigh = parse_array(raw_thigh, "thigh")
 
-          channels[channel_index][2] = (lower_bound, upper_bound, plow, phigh, tlow, thigh)
+          channels[channel_index][2] = (lower_bound, upper_bound, plow, phigh, tlow, thigh, npmax)
 
         elif key in plot_flags:  # Handle plot flags
           plot_flags[key] = value.lower() == "true"

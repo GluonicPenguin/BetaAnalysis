@@ -3,14 +3,10 @@
 
 # Specify the list of files to read and analyse here, in comma-separated format string
 
-files = "../../../../DESY_TB_Dec_25/stats_win5_to_analyse/Run9/stats_Sr_Run9_Ch1-150V_Ch2-145V_Ch3-2750V_trig230V.root,
-../../../../DESY_TB_Dec_25/stats_win5_to_analyse/Run9/stats_Sr_Run9_Ch1-155V_Ch2-150V_Ch3-2750V_trig230V.root,
-../../../../DESY_TB_Dec_25/stats_win5_to_analyse/Run9/stats_Sr_Run9_Ch1-160V_Ch2-155V_Ch3-2750V_trig230V.root,
-../../../../DESY_TB_Dec_25/stats_win5_to_analyse/Run9/stats_Sr_Run9_Ch1-165V_Ch2-160V_Ch3-2750V_trig230V.root,
-../../../../DESY_TB_Dec_25/stats_win5_to_analyse/Run9/stats_Sr_Run9_Ch1-170V_Ch2-165V_Ch3-2750V_trig230V.root,
-../../../../DESY_TB_Dec_25/stats_win5_to_analyse/Run9/stats_Sr_Run9_Ch1-175V_Ch2-170V_Ch3-2750V_trig230V.root,
-../../../../DESY_TB_Dec_25/stats_win5_to_analyse/Run9/stats_Sr_Run9_Ch1-180V_Ch2-175V_Ch3-2750V_trig230V.root,
-../../../../DESY_TB_Dec_25/stats_win5_to_analyse/Run9/stats_Sr_Run9_Ch1-185V_Ch2-180V_Ch3-2750V_trig230V.root"
+files = "../../../../DESY_TB_Dec_25/stats_win5_to_analyse/Run4/stats_Sr_Run4_Ch1-65V_Ch2-55V_Ch3-2750V_trig230V.root,
+../../../../DESY_TB_Dec_25/stats_win5_to_analyse/Run4/stats_Sr_Run4_Ch1-70V_Ch2-60V_Ch3-2750V_trig230V.root,
+../../../../DESY_TB_Dec_25/stats_win5_to_analyse/Run4/stats_Sr_Run4_Ch1-75V_Ch2-65V_Ch3-2750V_trig230V.root,
+../../../../DESY_TB_Dec_25/stats_win5_to_analyse/Run4/stats_Sr_Run4_Ch1-80V_Ch2-70V_Ch3-2750V_trig230V.root"
 
 run_safe_mode = True
 
@@ -18,7 +14,7 @@ run_safe_mode = True
 # For DUT, a fit will be performed.
 # For MCP, time resolution will be extracted from the DUT temporally to this.
 # For REF, the channel will be shown in plotting but not fitted or used for time resolution
-# Specify channel with the board type, e.g. "DUT, SC" so during analysis the area can be accurately converted to charge
+# Specify channel with the board type, e.g. "DUT, SC" so during analysis the area can be accurately converted to area_fitted
 # Also specify the thickness of the sensor, in microns
 
 CH_1 = "REF, SC"
@@ -32,25 +28,27 @@ CH_8 = 0
 
 # Specify what results and fits are to be performed
 
-tmax = False
-area_new = False
-pmax = False
+tmax = True
+area_new = True
+pmax = True
+negpmax = True
 amplitude = True
-risetime = True
-charge = True
+risetime = False
+area_fitted = False
 rms = True
-timeres = True
+timeres = False
 
-# For charge, RMS, and time resolution, specify the number of bins, lower bound, and upper bound to plot
+# For area_fitted, RMS, and time resolution, specify the number of bins, lower bound, and upper bound to plot - optimise time res for 500 bins / ns
 
 tmax_nB_xL_xU = 500,-2.5,2.5
 area_nB_xL_xU = 100,0,100
 pmax_nB_xL_xU = 400,0,400
+negpmax_nB_xL_xU = 200,-100,100
 amplitude_nB_xL_xU = 250,0,250
 risetime_nB_xL_xU = 200,0.0,2.0
-charge_nB_xL_xU = 250,0,50
+area_fitted_nB_xL_xU = 250,0,50
 rms_nB_xL_xU = 50,0,5
-timeres_nB_xL_xU = 400,-2.0,2.0
+timeres_nB_xL_xU = 2000,-2.0,2.0
 
 # Specify which selections should be applied to which channel (these are not applied simultaneously unless calculating time resolution
 # For time resolution, the MCP channel selection is applied with the corresponding DUT.
@@ -59,11 +57,11 @@ timeres_nB_xL_xU = 400,-2.0,2.0
 # PMAX_LOWER has to be an array of comma-separated values of length equal to the number of files.
 # If the value is 0 (or [] or 0 for PMAX_LOWER), no cut will be performed.
 
-CH1_cut = 0,0,0,0,0,0
-CH2_cut = [8,8,10,11,12,14,20,24],0,0,370,-1.0,2.0
-CH3_cut = [8,9,10,11,15,16,20,32],0,0,370,-1.0,2.0
-CH4_cut = [],0,50,0,-1.5,1.0
-CH5_cut = 0,0,0,0,0,0
-CH6_cut = 0,0,0,0,0,0
-CH7_cut = 0,0,0,0,0,0
-CH8_cut = 0,0,0,0,0,0
+CH1_cut = 0,0,0,0,0,0,0
+CH2_cut = [8,8,10,11],0,[],370,[-1.0,-1.0,-1.0,-1.0],[2.0,2.0,2.0,2.0],-50
+CH3_cut = [8,9,10,11],0,[],370,[-1.0,-1.0,-1.0,-1.0],[2.0,2.0,2.0,2.0],0
+CH4_cut = [],0,[65,65,65,65],0,[-1.2,-1.2,-1.2,-1.2],[0.5,0.5,0.5,0.5],-10
+CH5_cut = 0,0,0,0,0,0,0
+CH6_cut = 0,0,0,0,0,0,0
+CH7_cut = 0,0,0,0,0,0,0
+CH8_cut = 0,0,0,0,0,0,0

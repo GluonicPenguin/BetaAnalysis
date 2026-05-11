@@ -43,6 +43,8 @@ def main():
     area_params = config.get('area_params', None)
   if config.get('pmax', False):
     pmax_params = config.get('pmax_params', None)
+  if config.get('negpmax', False):
+    negpmax_params = config.get('negpmax_params', None)
   if config.get('amplitude', False):
     amplitude_params = config.get('amplitude_params', None)
   if config.get('risetime', False):
@@ -62,7 +64,7 @@ def main():
   
   for ch in config['channels']:
     if ch[0] == 0: ch[1] = 0
-  modified_channels = [[ch[0], ch[1], (ch[2][0], 1600 if ch[2][1] == 0 else ch[2][1], ch[2][2], 1600 if ch[2][3] == 0 else ch[2][3], -50 if ch[2][4] == 0 else ch[2][4], 50 if ch[2][5] == 0 else ch[2][5])] for ch in config['channels']] # set +ve negpmax lower bounds to -100 mV if they are +ve or 0 in the textCard (and tmax cuts on full range if specified as 0,0)
+  modified_channels = [[ch[0], ch[1], (ch[2][0], 1600 if ch[2][1] == 0 else ch[2][1], ch[2][2], 1600 if ch[2][3] == 0 else ch[2][3], -50 if ch[2][4] == 0 else ch[2][4], 50 if ch[2][5] == 0 else ch[2][5], -100 if ch[2][6] == 0 else ch[2][6])] for ch in config['channels']] # set +ve negpmax lower bounds to -100 mV if they are +ve or 0 in the textCard (and tmax cuts on full range if specified as 0,0)
   config['channels'] = modified_channels
 
   channel_mapping = {
@@ -120,7 +122,7 @@ def main():
   else:
     print(f"[BETA ANALYSIS] : [FILE READER] Total {len(file_array)} input ROOT files read.")
 
-  plot_variables = [var for var, flag in config.items() if var in ['tmax', 'area_new', 'pmax', 'amplitude', 'risetime', 'area_fitted', 'rms', 'timeres'] and flag]  
+  plot_variables = [var for var, flag in config.items() if var in ['tmax', 'area_new', 'pmax', 'negpmax', 'amplitude', 'risetime', 'area_fitted', 'rms', 'timeres'] and flag]  
 
   if plot_variables:
     sentence = "will plot " + ", ".join(plot_variables)
@@ -154,6 +156,11 @@ def main():
     for file_ind, file_real in enumerate(file_array):
       plot_pmax = plotVar("pmax", pmax_params[0], pmax_params[1], pmax_params[2], True, output_name_array[file_ind]+"_pmax.png", fit=None)
       plot_pmax.run(file_real, file_ind, tree_array[file_ind], config['channels'])
+  if config.get('negpmax', False) == True:
+    print(f"[BETA ANALYSIS]: [PLOTTER] Plotting NEGPMAX distribution (note that for NEGPMAX TMAX selections are already applied to the phase space)")
+    for file_ind, file_real in enumerate(file_array):
+      plot_negpmax = plotVar("negpmax", negpmax_params[0], negpmax_params[1], negpmax_params[2], True, output_name_array[file_ind]+"_negpmax.png", fit=None)
+      plot_negpmax.run(file_real, file_ind, tree_array[file_ind], config['channels'])
   if config.get('amplitude', False) == True:
     amplitude_dfs = []
     for file_ind, file_real in enumerate(file_array):

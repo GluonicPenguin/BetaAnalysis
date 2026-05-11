@@ -91,10 +91,11 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
   for ch_ind, ch_val in enumerate(channel_array):
     area_list = []
     pmax_list = []
+    negpmax_list = []
     dvdt_list = []
     dvdt_2080_list = []
 
-    sensorType, AtQfactor, (A, B, C, D, E, F) = ch_val
+    sensorType, AtQfactor, (A, B, C, D, E, F, G) = ch_val
     if AtQfactor == 0:
       AtQfactor = 1
     if sensorType == 1:
@@ -116,12 +117,15 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
         F = 50
       else:
         F = F[file_index]
+      if G == 0:
+        G = -100
       bias_of_channel = getBias(str(file), ch_ind)
       for entry in tree:
         area_sig = entry.area_new[ch_ind]
         pmax_sig = entry.pmax[ch_ind]
         tmax_sig = entry.tmax[ch_ind]
-        if (area_sig < A) or (area_sig > B) or (pmax_sig < C) or (pmax_sig > D) or (tmax_sig < E) or (tmax_sig > F):
+        negpmax_sig = entry.negpmax[ch_ind]
+        if (area_sig < A) or (area_sig > B) or (pmax_sig < C) or (pmax_sig > D) or (tmax_sig < E) or (tmax_sig > F) or (negpmax_sig < G):
           #print(f"BAD EVENTS {A} {B} {C} {D} {E} {F}")
           continue
         else:
@@ -130,6 +134,7 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
           #dvdt_2080_sig = entry.dvdt_2080[ch_ind]
           pmax_list.append(pmax_sig)
           area_list.append(area_sig)
+          negpmax_list.append(negpmax_sig)
           #dvdt_list.append(dvdt_sig)
           #dvdt_2080_list.append(dvdt_2080_sig)
     else:

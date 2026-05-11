@@ -40,7 +40,7 @@ class plotTRVar:
     root.gErrorIgnoreLevel = root.kWarning
 
     result = []
-    for i, (_, _, (A, B, C, D, E, F)) in enumerate(channel_array):
+    for i, (_, _, (A, B, C, D, E, F, G)) in enumerate(channel_array):
       if (A == 0.0) or (A == []):
         A_string = "0.0"
       else:
@@ -57,8 +57,12 @@ class plotTRVar:
         F_string = "0.0"
       else:
         F_string = f"{F[file_index]}"
+      if G == 0.0:
+        G_string = "-100"
+      else:
+        G_string = f"{G}"
 
-      condition = f"area_new[{i}] > "+A_string+f" && area_new[{i}] < {B} && pmax[{i}] > "+C_string+f" && pmax[{i}] < {D} && tmax[{i}] > "+E_string+f" && tmax[{i}] < "+F_string
+      condition = f"area_new[{i}] > "+A_string+f" && area_new[{i}] < {B} && pmax[{i}] > "+C_string+f" && pmax[{i}] < {D} && tmax[{i}] > "+E_string+f" && tmax[{i}] < "+F_string+f" && negpmax[{i}] > "+G_string
       result.append(condition)
 
     duts_to_analyse = []

@@ -35,6 +35,7 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
   pmax_high = []
   tmax_low = []
   tmax_high = []
+  nmax_low = []
 
   area_low_mcp = []
   area_high_mcp = []
@@ -42,9 +43,10 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
   pmax_high_mcp = []
   tmax_low_mcp = []
   tmax_high_mcp = []
+  nmax_low_mcp = []
 
   mcp_channel = False
-  for i, (T, _, (A, B, C, D, E, F)) in enumerate(channel_configs):
+  for i, (T, _, (A, B, C, D, E, F, G)) in enumerate(channel_configs):
     if T == 1 or T == 2:
       if (A == 0.0) or (A == []):
         area_low_col_ch_i = np.full(number_of_bias_pts, 0.0, dtype=float)
@@ -64,6 +66,10 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
         tmax_high_col_ch_i = np.full(number_of_bias_pts, 50.0, dtype=float)
       else:
         tmax_high_col_ch_i = F
+      if G == 0.0:
+        nmax_low_col_ch_i = np.full(number_of_bias_pts, -100.0, dtype=float)
+      else:
+        nmax_low_col_ch_i = np.full(number_of_bias_pts, G, dtype=float)
       if T == 1:
         area_low.append(area_low_col_ch_i)
         area_high.append(area_high_col_ch_i)
@@ -71,6 +77,7 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
         pmax_high.append(pmax_high_col_ch_i)
         tmax_low.append(tmax_low_col_ch_i)
         tmax_high.append(tmax_high_col_ch_i)
+        nmax_low.append(nmax_low_col_ch_i)
       if T == 2:
         mcp_channel = True
         area_low_mcp = area_low_col_ch_i
@@ -79,10 +86,10 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
         pmax_high_mcp = pmax_high_col_ch_i
         tmax_low_mcp = tmax_low_col_ch_i
         tmax_high_mcp = tmax_high_col_ch_i
+        nmax_low_mcp = nmax_low_col_ch_i
 
   dfs_to_concat = []
   first_df_found = False
-  print(var)
   for index, (var, df) in enumerate(name_and_df_couples):
     if var == "amplitude":
       df_ampl = df[['Channel','Bias','Amplitude MPV']]
@@ -100,7 +107,7 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
       df_rt.loc[:, 'Sigma'] = (1000*df_rt['Sigma']).round(0)
       df_rt = df_rt.rename(columns={'Mean':'Rise time / ps','Sigma':'Rise time Unc / ps'})
       dfs_to_concat.append(df_rt)
-    elif var == "area":
+    elif var == "area_fitted":
       if first_df_found == False:
         first_df_found = True
         df_area_fitted = df[['Channel','Bias','Area MPV','Landau width','Gaussian sigma','Frac above 1p5 MPV']]
@@ -177,6 +184,7 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
   dfs_comb['PMAX high / mV'] = np.ravel(pmax_high)
   dfs_comb['TMAX low / ns'] = np.ravel(tmax_low)
   dfs_comb['TMAX high / ns'] = np.ravel(tmax_high)
+  dfs_comb['NMAX low / ns'] = np.ravel(nmax_low)
 
   if mcp_channel == True:
     dfs_comb['MCP AREA low / mV'] = np.tile(area_low_mcp, number_of_duts)
@@ -185,6 +193,7 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
     dfs_comb['MCP PMAX high / mV'] = np.tile(pmax_high_mcp, number_of_duts)
     dfs_comb['MCP TMAX low / ns'] = np.tile(tmax_low_mcp, number_of_duts)
     dfs_comb['MCP TMAX high / ns'] = np.tile(tmax_high_mcp, number_of_duts)
+    dfs_comb['MCP NMAX low / ns'] = np.tile(nmax_low_mcp, number_of_duts)
 
 
   print(f"[BETA ANALYSIS] : [DATA COLLATOR] Writing data to {output_savename}.csv.")
