@@ -20,7 +20,7 @@ from classPlotter import plotVar
 from classTRPlotter import plotTRVar
 from cardReader import read_text_card
 from langaus import plot_langaus
-from export_data import direct_to_table
+from export_data import direct_to_table, convert_and_save_csv
 
 def main():
   parser = argparse.ArgumentParser(description='Read a text card containing information and location of ROOT analysis files and plot distributions of corresponding variables.')
@@ -41,6 +41,7 @@ def main():
     tmax_params = config.get('tmax_params', None)
   if (config.get('area_new', False)):
     area_params = config.get('area_params', None)
+  #if (config.get('pmax', False)) or (config.get('amplitude', False)):
   if config.get('pmax', False):
     pmax_params = config.get('pmax_params', None)
   if config.get('negpmax', False):
@@ -51,6 +52,8 @@ def main():
     risetime_params = config.get('risetime_params', None)
   if config.get('area_fitted', False):
     area_fitted_params = config.get('area_fitted_params', None)
+  #if config.get('charge', False):
+  #  charge_params = config.get('charge_params', None)
   if config.get('rms', False):
     rms_params = config.get('rms_params', None)
   if config.get('timeres', False):
@@ -109,8 +112,8 @@ def main():
               bias_after_channel = re.search(rf"Ch{ch_ind}-(\d+)V_", pattern)
             if bias_after_channel:
               output_name_w_bias += f"_Ch{ch_ind}-{bias_after_channel.group(1)}V"
-            #bias_after_channel = re.search(rf"Ch{ch_ind}-(\d+)V_", pattern)
-            #output_name_w_bias = output_name_w_bias + f"_Ch{ch_ind}-" + bias_after_channel.group(1) +"V"
+            bias_after_channel = re.search(rf"Ch{ch_ind}-(\d+)V_", pattern)
+            output_name_w_bias = output_name_w_bias + f"_Ch{ch_ind}-" + bias_after_channel.group(1) +"V"
         output_name_const = "hist_" + output_name_const + output_name_w_bias
         output_name_array.append(output_name_const)
       except Exception as e:
@@ -122,7 +125,7 @@ def main():
   else:
     print(f"[BETA ANALYSIS] : [FILE READER] Total {len(file_array)} input ROOT files read.")
 
-  plot_variables = [var for var, flag in config.items() if var in ['tmax', 'area_new', 'pmax', 'negpmax', 'amplitude', 'risetime', 'area_fitted', 'rms', 'timeres'] and flag]  
+  plot_variables = [var for var, flag in config.items() if var in ['tmax', 'area_new', 'pmax', 'negpmax', 'charge', 'amplitude', 'risetime', 'area_fitted', 'rms', 'timeres'] and flag]  
 
   if plot_variables:
     sentence = "will plot " + ", ".join(plot_variables)
@@ -141,6 +144,7 @@ def main():
     input("Press any key to continue")
 
   data_out = []
+  data_langaus_out = []
   if config.get('tmax', False) == True:
     print(f"[BETA ANALYSIS]: [PLOTTER] Plotting TMAX distribution (note that for TMAX no selections are applied to the phase space)")
     for file_ind, file_real in enumerate(file_array):
@@ -163,12 +167,16 @@ def main():
       plot_negpmax.run(file_real, file_ind, tree_array[file_ind], config['channels'])
   if config.get('amplitude', False) == True:
     amplitude_dfs = []
+    ampl_langaus_dfs = []
     for file_ind, file_real in enumerate(file_array):
-      df_data = plot_langaus('amplitude', file_real, file_ind, tree_array[file_ind], config['channels'], amplitude_params[0], amplitude_params[1], amplitude_params[2], output_name_array[file_ind]+"_amplitude")
+      df_data, df_langaus_data = plot_langaus('amplitude', file_real, file_ind, tree_array[file_ind], config['channels'], pmax_params[0], pmax_params[1], pmax_params[2], output_name_array[file_ind]+"_amplitude", int(thicknesses[0]))
       amplitude_dfs.append(df_data)
+      ampl_langaus_dfs.append(df_langaus_data)
     amplitude_data = pd.concat(amplitude_dfs, ignore_index=True)
+    ampl_langaus_dfs = pd.concat(ampl_langaus_dfs, ignore_index=True)
     print(amplitude_data.sort_values(by=['Channel','Bias']))
     data_out.append(('amplitude', amplitude_data.sort_values(by=['Channel','Bias'])))
+    data_langaus_out.append(ampl_langaus_dfs)
   if config.get('risetime', False) == True:
     print(f"[BETA ANALYSIS]: [PLOTTER] Performing Gaussian fit to RISETIME distribution")
     risetime_dfs = []
@@ -179,15 +187,42 @@ def main():
     risetime_data = pd.concat(risetime_dfs, ignore_index=True)
     print(risetime_data.sort_values(by=['Channel','Bias']))
     data_out.append(('risetime', risetime_data.sort_values(by=['Channel','Bias'])))
-
   if config.get('area_fitted', False) == True:
     area_fitted_dfs = []
+    area_fitted_langaus_dfs = []
     for file_ind, file_real in enumerate(file_array):
-      df_data = plot_langaus('area_fitted', file_real, file_ind, tree_array[file_ind], config['channels'], area_fitted_params[0], area_fitted_params[1], area_fitted_params[2], output_name_array[file_ind]+"_area_fitted")
+      df_data, df_langaus_data = plot_langaus('area_fitted', file_real, file_ind, tree_array[file_ind], config['channels'], area_fitted_params[0], area_fitted_params[1], area_fitted_params[2], output_name_array[file_ind]+"_area_fitted", int(thicknesses[0]))
       area_fitted_dfs.append(df_data)
+      area_fitted_langaus_dfs.append(df_langaus_data)
     area_fitted_data = pd.concat(area_fitted_dfs, ignore_index=True)
+    area_fitted_langaus_dfs = pd.concat(area_fitted_langaus_dfs, ignore_index=True)
     print(area_fitted_data.sort_values(by=['Channel','Bias']))
     data_out.append(('area_fitted', area_fitted_data.sort_values(by=['Channel','Bias'])))
+    data_langaus_out.append(area_fitted_langaus_dfs)
+  if config.get('charge', False) == True:
+    charge_dfs = []
+    charge_langaus_dfs = []
+    for file_ind, file_real in enumerate(file_array):
+      df_data, df_langaus_data = plot_langaus('charge', file_real, file_ind, tree_array[file_ind], config['channels'], charge_params[0], charge_params[1], charge_params[2], output_name_array[file_ind]+"_charge", int(thicknesses[0]))
+      charge_dfs.append(df_data)
+      charge_langaus_dfs.append(df_langaus_data)
+    charge_data = pd.concat(charge_dfs, ignore_index=True)
+    charge_langaus_dfs = pd.concat(charge_langaus_dfs, ignore_index=True)
+    print(charge_data.sort_values(by=['Channel','Bias']))
+    data_out.append(('charge', charge_data.sort_values(by=['Channel','Bias'])))
+    data_langaus_out.append(charge_langaus_dfs)
+  if config.get('gain', False) == True:
+    gain_dfs = []
+    gain_langaus_dfs = []
+    for file_ind, file_real in enumerate(file_array):
+      df_data, df_langaus_data = plot_langaus('gain', file_real, file_ind, tree_array[file_ind], config['channels'], charge_params[0], charge_params[1], charge_params[2], output_name_array[file_ind]+"_gain", int(thicknesses[0]))
+      gain_dfs.append(df_data)
+      gain_langaus_dfs.append(df_langaus_data)
+    gain_data = pd.concat(gain_dfs, ignore_index=True)
+    gain_langaus_dfs = pd.concat(gain_langaus_dfs, ignore_index=True)
+    print(gain_data.sort_values(by=['Channel','Bias']))
+    data_out.append(('gain', gain_data.sort_values(by=['Channel','Bias'])))
+    data_langaus_out.append(gain_langaus_dfs)
   if config.get('rms', False) == True:
     print(f"[BETA ANALYSIS]: [PLOTTER] Performing Gaussian fit to DUT channels")
     rms_dfs = []
@@ -230,7 +265,9 @@ def main():
     print(time_res_data.sort_values(by=['Channel','Bias']))
     data_out.append(('timeres', time_res_data.sort_values(by=['Channel','Bias'])))
 
-  if len(data_out) > 1: direct_to_table(data_out, config['channels'], output_name, thicknesses, area_charge_mapped_vals)
+  convert_and_save_csv(data_langaus_out, 'data_langaus_'+output_name+'.csv')
+  if len(data_out) > 1:
+    direct_to_table(data_out, config['channels'], output_name, thicknesses, area_charge_mapped_vals)
 
 if __name__ == "__main__":
     main()

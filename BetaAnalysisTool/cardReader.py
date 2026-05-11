@@ -25,6 +25,7 @@ def read_text_card(file_path):
     "amplitude": False,
     "risetime": False,
     "area_fitted": False,
+    "charge": False,
     "rms": False,
     "timeres": False,
   }
@@ -36,6 +37,7 @@ def read_text_card(file_path):
     "negpmax_params": None,
     "risetime_params": None,
     "area_fitted_params": None,
+    "charge_params": None,
     "rms_params": None,
     "timeres_params": None
   }

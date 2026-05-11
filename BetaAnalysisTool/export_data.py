@@ -20,6 +20,26 @@ import sys
 
 from proc_tools import getBias, landau_tr_quad_fit
 
+def convert_and_save_csv(data, savename):
+  flat_dict = {}
+  for df in data:
+        var_cols = [c for c in df.columns if c not in ["BIAS"]]
+        x_cols = [c for c in var_cols if not c.endswith("_EVENTS")]
+        if not x_cols:
+            continue
+        var = x_cols[0]
+        y_col = f"{var}_EVENTS"
+
+        if var not in flat_dict:
+            flat_dict[var] = list(df.iloc[0][var])
+        for _, row in df.iterrows():
+            bias = row["BIAS"]
+            col_name = f"{y_col}_{bias}"
+            flat_dict[col_name] = list(row[y_col])
+
+  flat_df = pd.DataFrame(flat_dict)
+  flat_df.to_csv(savename, index=False)
+
 def direct_to_table(name_and_df_couples, channel_configs, output_savename, thickness_info, atq_info):
 
   number_of_duts = sum(1 for element in channel_configs if element[0] == 1)
@@ -92,10 +112,10 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
   first_df_found = False
   for index, (var, df) in enumerate(name_and_df_couples):
     if var == "amplitude":
-      df_ampl = df[['Channel','Bias','Amplitude MPV']]
+      df_ampl = df[['Channel','Bias','Amplitude MPV','Amplitude Unc','Landau width','Gaussian sigma','LTF','LTF Unc','LTF from area','LTFmax','LTFmax Unc','Landau Frac','Landau Frac Unc']]
       first_df_found = True
-      df_ampl.loc[:, 'Amplitude MPV'] = df_ampl['Amplitude MPV'].round(1)
-      df_ampl = df_ampl.rename(columns={'Amplitude MPV':'Amplitude / mV'})
+      df_ampl = df_ampl.rename(columns={'Amplitude':'Amplitude / mV','Amplitude Unc': 'A_Unc','Landau width':'A_Landau','Gaussian sigma':'A_Gaus','LTF':'A_LTF','LTF Unc':'A_LTF_unc',
+                                        'LTF from area':'A_LTF_area','LTFmax':'A_LTF_max','LTFmax Unc':'A_LTF_max_unc','Landau Frac':'A_xiompv','Landau Frac Unc':'A_xiompv_unc'})
       dfs_to_concat.append(df_ampl)
     elif var == "risetime": # risetime between 10% and 90%
       if first_df_found == False:
@@ -110,16 +130,15 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
     elif var == "area_fitted":
       if first_df_found == False:
         first_df_found = True
-        df_area_fitted = df[['Channel','Bias','Area MPV','Landau width','Gaussian sigma','Frac above 1p5 MPV']]
+        df_area_fitted = df[['Channel','Bias','Area MPV','Area Unc','Landau width','Gaussian sigma','LTF','LTF Unc','LTF from area','LTFmax','LTFmax Unc','Landau Frac','Landau Frac Unc']]
       else:
-        df_area_fitted = df[['Area MPV','Landau width','Gaussian sigma','Frac above 1p5 MPV']]
-      df_area_fitted.loc[:, 'Area MPV'] = df_area_fitted['Area MPV'].round(3)
-      df_area_fitted.loc[:, 'Landau width'] = df_area_fitted['Landau width'].round(3)
-      df_area_fitted.loc[:, 'Gaussian sigma'] = df_area_fitted['Gaussian sigma'].round(3)
-      df_area_fitted.loc[:, 'Frac above 1p5 MPV'] = df_area_fitted['Frac above 1p5 MPV'].round(3)
-      df_area_fitted = df_area_fitted.rename(columns={'Area MPV':'Area / pWb','Landau width':'Landau Cpt Charge','Gaussian sigma':'Gaussian Cpt Charge','Frac above 1p5 MPV':'Frac Charge >1.5xMPV'})
-      df_area_fitted['Charge / fC'] = (df_area_fitted['Area / pWb']/atq_col).round(3)
-      df_area_fitted['Gain'] = 100*(df_area_fitted['Charge / fC'] / thickness_col).round(3)
+        df_area_fitted = df[['Area MPV','Area Unc','Landau width','Gaussian sigma','LTF','LTF Unc','LTF from area','LTFmax','LTFmax Unc','Landau Frac','Landau Frac Unc']]
+      df_area_fitted = df_area_fitted.rename(columns={'Area MPV':'Area / pWb','Area Unc':'Area_Unc','Landau width':'Area_Landau','Gaussian sigma':'Area_Gaus','LTF':'Area_LTF','LTF Unc':'Area_LTF_unc',
+                                             'LTF from area':'Area_LTF_area','LTFmax':'Area_LTF_max','LTFmax Unc':'Area_LTF_max_unc','Landau Frac':'Area_xiompv','Landau Frac Unc':'Area_xiompv_unc'})
+      df_area_fitted['Charge / fC'] = (df_area_fitted['Area / pWb']/atq_col)
+      df_area_fitted['Charge Unc'] = df_area_fitted['Area_Unc']/atq_col
+      df_area_fitted['Gain'] = 100*(df_area_fitted['Charge / fC'] / thickness_col)
+      df_area_fitted['Gain Unc'] = 100*(df_area_fitted['Charge Unc'] / thickness_col)
       dfs_to_concat.append(df_area_fitted)
     elif var == "rms":
       if first_df_found == False:
@@ -144,7 +163,7 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
   dfs_comb.loc[:, 'Bias'] = dfs_comb['Bias'].str[:-1].astype(int)
   dfs_comb['Thickness / um'] = thickness_col
   dfs_comb['E field / V/cm'] = 10000*(dfs_comb['Bias'] / dfs_comb['Thickness / um'])
-  dfs_comb.loc[:, 'E field / V/cm'] = dfs_comb['E field / V/cm'] // 1
+  dfs_comb.loc[:, 'E field / kV/cm'] = (10 * dfs_comb['E field / kV/cm'] // 1) / 10
   dfs_comb = dfs_comb.rename(columns={'NEvents':'N.Ev. [DUT]'})
   if ('Rise time / ps' in dfs_comb.columns) and ('Amplitude / mV' in dfs_comb.columns) and ('RMS Noise / mV' in dfs_comb.columns):
     dfs_comb['Jitter / ps'] = dfs_comb['RMS Noise / mV'] / (dfs_comb['Amplitude / mV'] / dfs_comb['Rise time / ps'])
@@ -170,9 +189,9 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
       dfs_comb.loc[:, 'WF6 Param Unc / ps/um'] = dfs_comb['WF6 Param Unc / ps/um'].round(2)
 
   columns = dfs_comb.columns.tolist()
-  for col_to_move in ['Thickness / um','E field / V/cm']:
+  for col_to_move in ['Thickness / um','E field / kV/cm']:
     columns.remove(col_to_move)
-  columns[2:2] = ['Thickness / um','E field / V/cm']
+  columns[2:2] = ['Thickness / um','E field / kV/cm']
   dfs_comb = dfs_comb[columns]
 
   dfs_comb['Bias'] = pd.to_numeric(dfs_comb['Bias'], errors='coerce')
