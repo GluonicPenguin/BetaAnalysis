@@ -169,7 +169,7 @@ def main():
     amplitude_dfs = []
     ampl_langaus_dfs = []
     for file_ind, file_real in enumerate(file_array):
-      df_data, df_langaus_data = plot_langaus('amplitude', file_real, file_ind, tree_array[file_ind], config['channels'], pmax_params[0], pmax_params[1], pmax_params[2], output_name_array[file_ind]+"_amplitude", int(thicknesses[0]))
+      df_data, df_langaus_data = plot_langaus('amplitude', file_real, file_ind, tree_array[file_ind], config['channels'], amplitude_params[0], amplitude_params[1], amplitude_params[2], output_name_array[file_ind]+"_amplitude", int(thicknesses[0]))
       amplitude_dfs.append(df_data)
       ampl_langaus_dfs.append(df_langaus_data)
     amplitude_data = pd.concat(amplitude_dfs, ignore_index=True)

@@ -28,15 +28,15 @@ CH_8 = 0
 
 # Specify what results and fits are to be performed
 
-tmax = True
-area_new = True
-pmax = True
-negpmax = True
-amplitude = True
+tmax = False
+area_new = False
+pmax = False
+negpmax = False
+amplitude = False
 risetime = False
 area_fitted = False
-rms = True
-timeres = False
+rms = False
+timeres = True
 
 # For area_fitted, RMS, and time resolution, specify the number of bins, lower bound, and upper bound to plot - optimise time res for 500 bins / ns
 
@@ -46,9 +46,9 @@ pmax_nB_xL_xU = 400,0,400
 negpmax_nB_xL_xU = 200,-100,100
 amplitude_nB_xL_xU = 250,0,250
 risetime_nB_xL_xU = 200,0.0,2.0
-area_fitted_nB_xL_xU = 250,0,50
+area_fitted_nB_xL_xU = 300,0,300
 rms_nB_xL_xU = 50,0,5
-timeres_nB_xL_xU = 2000,-2.0,2.0
+timeres_nB_xL_xU = 2000,-3.0,3.0
 
 # Specify which selections should be applied to which channel (these are not applied simultaneously unless calculating time resolution
 # For time resolution, the MCP channel selection is applied with the corresponding DUT.
@@ -60,7 +60,7 @@ timeres_nB_xL_xU = 2000,-2.0,2.0
 CH1_cut = 0,0,0,0,0,0,0
 CH2_cut = [8,8,10,11],0,[],370,[-1.0,-1.0,-1.0,-1.0],[2.0,2.0,2.0,2.0],-50
 CH3_cut = [8,9,10,11],0,[],370,[-1.0,-1.0,-1.0,-1.0],[2.0,2.0,2.0,2.0],0
-CH4_cut = [],0,[65,65,65,65],0,[-1.2,-1.2,-1.2,-1.2],[0.5,0.5,0.5,0.5],-10
+CH4_cut = [],0,[65,65,65,65],0,[-1.2,-1.2,-1.2,-1.2],[0.5,0.5,0.5,0.5],-100
 CH5_cut = 0,0,0,0,0,0,0
 CH6_cut = 0,0,0,0,0,0,0
 CH7_cut = 0,0,0,0,0,0,0

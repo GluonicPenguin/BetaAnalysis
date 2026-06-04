@@ -18,7 +18,7 @@ import csv
 import math
 import sys
 
-from proc_tools_TR import get_fit_results_TR, hist_tree_file_timeres, plot_fit_curves, compute_sigma_uncertainty
+from proc_tools_TR import get_fit_results_TR, hist_tree_file_timeres, plot_fit_curves, bootstrap_sigma_uncertainty
 from proc_tools import getBias
 
 class plotTRVar:
@@ -73,10 +73,10 @@ class plotTRVar:
       if (channel_array[j][0] == 1):
         bias = getBias(str(file), j)
         arr_of_biases.append(bias)
-        duts_to_analyse.append([["cfd["+str(j)+"][2]-cfd[","cfd["+str(j)+"][0]-cfd[","cfd["+str(j)+"][4]-cfd["], result[j], j])
+        duts_to_analyse.append([["cfd["+str(j)+"][2]-cfd[","cfd["+str(j)+"][4]-cfd["], result[j], j])
         channel_of_dut.append(j)
       elif (channel_array[j][0] == 2):
-        mcp_channel = [[str(j)+"][2]",str(j)+"][0]",str(j)+"][4]"], result[j]]
+        mcp_channel = [[str(j)+"][2]",str(j)+"][4]"], result[j]]
         mcp_exists = True
 
     duts_vars_cuts = []
@@ -121,7 +121,7 @@ class plotTRVar:
         hist_to_draw.Draw("SAME")
 
     for i, thisHist in enumerate(hists_to_plot):
-      thisFit = plot_fit_curves(self.xLower, self.xUpper, "gaus", hists_to_plot[i], channel_of_dut[i], arr_of_biases[i])
+      thisFit, _ = plot_fit_curves(self.xLower, self.xUpper, "gaus", hists_to_plot[i], channel_of_dut[i], arr_of_biases[i])
       thisFit.Draw("SAME")
 
     legend = root.TLegend(0.7, 0.7, 0.9, 0.9)
@@ -139,11 +139,36 @@ class plotTRVar:
     for i, nom_up_down_hists in enumerate(arr_of_hists):
       fit_down_up_dev = []
       fit_down_up_uncs = []
+      print(len(arr_of_hists))
       for j, toa_thresh_hist in enumerate(nom_up_down_hists):
-        thisFit = plot_fit_curves(self.xLower, self.xUpper, "gaus", toa_thresh_hist, channel_of_dut[i], arr_of_biases[i])
+        thisFit, fit_cov_info = plot_fit_curves(self.xLower, self.xUpper, "gaus", toa_thresh_hist, channel_of_dut[i], arr_of_biases[i])
         fit_down_up_dev.append(thisFit)
-        sigma_unc_half_range = compute_sigma_uncertainty(self.xLower, self.xUpper, "gaus", toa_thresh_hist, channel_of_dut[i], arr_of_biases[i])
-        fit_down_up_uncs.append(sigma_unc_half_range)
+        #sigma_unc_half_range = compute_sigma_uncertainty(self.xLower, self.xUpper, "gaus", toa_thresh_hist, channel_of_dut[i], arr_of_biases[i])
+        #sigma_unc_bootstrap = bootstrap_sigma_uncertainty(toa_thresh_hist, thisFit, fit_cov_info, n_toys=500)
+        cov = fit_cov_info.GetCovarianceMatrix()
+        sigma_samples = []
+        n_toys = 1000
+        print(f"[BETA ANALYSIS]: [TIME RESOLUTION] Simulating {n_toys} toys via bootstrap to the time resolution distributions")
+        for k in range(n_toys):
+          toy_hist = toa_thresh_hist.Clone()
+          toy_hist.SetDirectory(0)
+          toy_hist.Sumw2()
+          for b in range(1, toa_thresh_hist.GetNbinsX() + 1):
+            nominal = max(toa_thresh_hist.GetBinContent(b), 0.0)
+            toy_hist.SetBinContent(b, np.random.poisson(nominal))
+            toy_hist.SetBinError(b, np.sqrt(toy_hist.GetBinContent(b)))
+          try:
+            toy_fit, _ = plot_fit_curves(self.xLower, self.xUpper, "gaus", toy_hist, channel_of_dut[i], arr_of_biases[i])
+            sigma_samples.append(toy_fit.GetParameter(2))
+          except Exception:
+            #print(f"[TOY FIT FAILED] k={k}")
+            continue
+
+        if len(sigma_samples) > 2:
+          sigma_unc_bootstrap = np.std(sigma_samples)
+        else:
+          sigma_unc_bootstrap = 0.0
+        fit_down_up_uncs.append(sigma_unc_bootstrap)
       arr_of_fits.append(fit_down_up_dev)
       arr_sigma_uncs_half_range.append(fit_down_up_uncs)
 

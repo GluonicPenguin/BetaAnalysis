@@ -50,8 +50,8 @@ def get_fit_results_TR(arr_of_fits, arr_of_biases, arr_of_nevents, dut_channels,
     mean = fit_func[0].GetParameter(1)
     sigma = fit_func[0].GetParameter(2) # 30% CFD
     unc_sig = fit_func[0].GetParError(2) # Unc 30% CFD
-    var_up = fit_func[2].GetParameter(2) # 50% CFD
-    var_up_err = fit_func[2].GetParError(2) # Unc 50% CFD
+    var_up = fit_func[1].GetParameter(2) # 50% CFD
+    var_up_err = fit_func[1].GetParError(2) # Unc 50% CFD
     amplitude = fit_func[0].GetParameter(0)  # Amplitude of the gauss distribution
     chi2 = fit_func[0].GetChisquare()  # Chi-squared value of the fit
     ndf = fit_func[0].GetNDF()  # Number of degrees of freedom
@@ -59,7 +59,7 @@ def get_fit_results_TR(arr_of_fits, arr_of_biases, arr_of_nevents, dut_channels,
     arr_of_sigma.append(sigma)
     arr_of_unc_sig.append(arr_sigma_uncs_half_range[channel_i][0])
     arr_up_var.append(var_up)
-    arr_up_var_unc.append(arr_sigma_uncs_half_range[channel_i][2])
+    arr_up_var_unc.append(arr_sigma_uncs_half_range[channel_i][1])
     arr_of_ampl.append(round_to_sig_figs(amplitude,3))
     arr_of_ch.append("Ch" + str(dut_channels[channel_i]))
     arr_of_biases_fitted.append(arr_of_biases[channel_i])
@@ -146,12 +146,48 @@ def hist_tree_file_timeres(tree,file,var,ch,nBins,xLower,xUpper,biasVal,cut_cond
 
 def plot_fit_curves(xLower,xUpper,fit_type,hist_to_fit,channel_index,biasVal):
   thisFit = TF1(fit_type+"_hist"+biasVal+" CH "+str(channel_index+1), fit_type, xLower, xUpper)
-  hist_to_fit.Fit(thisFit, "Q")
+  fit_result = hist_to_fit.Fit(thisFit, "QS")
+  #print("Fit status:", fit_result)
   thisFit.SetLineWidth(3)
   thisFit.SetLineColor(channel_index+1)
   #thisFit.SetLineStyle(2)
-  return thisFit
+  return thisFit, fit_result
 
+# NEW METHOD: BOOTSTRAPPING
+# Use random resample generation based on original data to more reliably compute the sigma_unc
+def bootstrap_sigma_uncertainty(hist_to_fit, fit_func, covariance_info, n_toys=500):
+  #p0 = fit_func.GetParameter(0)
+  #p1 = fit_func.GetParameter(1)
+  #p2 = fit_func.GetParameter(2)
+  cov = covariance_info.GetCovarianceMatrix()
+
+  sigma_samples = []
+  for k in range(n_toys):
+    toy_hist = hist_to_fit.Clone(f"toy_{k}")
+    toy_hist.Reset()
+
+    for b in range(1, hist_to_fit.GetNbinsX() + 1):
+      nominal = hist_to_fit.GetBinContent(b)
+      toy_hist.SetBinContent(b, np.random.poisson(nominal))
+
+    try:
+      toy_fit = plot_fit_curves(self.xLower, self.xUpper, "gaus", toy_hist, channel_of_dut[i], arr_of_biases[i])
+      print(self.xLower)
+      print(self.xUpper)
+      
+      sigma_samples.append(toy_fit.GetParameter(2))
+    except Exception:
+      print(f"[TOY FIT FAILED] k={k}, error={e}")
+      continue
+
+  print(sigma_samples)
+  if len(sigma_samples) > 2:
+      sigma_unc_toy = np.std(sigma_samples)
+  else:
+      sigma_unc_toy = 0.0
+  return sigma_unc_toy
+
+# OLD METHOD (not suitable for poor fits, highly variable uncertainty values when distribution is non-Gaussian):
 # calculating uncertainty as half the range between the max and min sigma values were the set of events
 # used to define nominal time res split into three unique sets of events then fitted for sigma
 def compute_sigma_uncertainty(xLower,xUpper,fit_type,hist_to_fit,channel_index,biasVal):
