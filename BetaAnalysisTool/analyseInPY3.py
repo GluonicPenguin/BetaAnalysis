@@ -56,6 +56,8 @@ def main():
   #  charge_params = config.get('charge_params', None)
   if config.get('rms', False):
     rms_params = config.get('rms_params', None)
+  if config.get('width', False):
+    width_params = config.get('width_params', None)
   if config.get('timeres', False):
     timeres_params = config.get('timeres_params', None)
 
@@ -125,7 +127,7 @@ def main():
   else:
     print(f"[BETA ANALYSIS] : [FILE READER] Total {len(file_array)} input ROOT files read.")
 
-  plot_variables = [var for var, flag in config.items() if var in ['tmax', 'area_new', 'pmax', 'negpmax', 'charge', 'amplitude', 'risetime', 'area_fitted', 'rms', 'timeres'] and flag]  
+  plot_variables = [var for var, flag in config.items() if var in ['tmax', 'area_new', 'pmax', 'negpmax', 'charge', 'amplitude', 'risetime', 'area_fitted', 'rms', 'width', 'timeres'] and flag]  
 
   if plot_variables:
     sentence = "will plot " + ", ".join(plot_variables)
@@ -233,8 +235,25 @@ def main():
     rms_data = pd.concat(rms_dfs, ignore_index=True)
     print(rms_data.sort_values(by=['Channel','Bias']))
     data_out.append(('rms', rms_data.sort_values(by=['Channel','Bias'])))
+  if config.get('width', False) == True:
+    print(f"[BETA ANALYSIS]: [PLOTTER] Performing Gaussian fit to DUT channels")
+    width30_dfs = []
+    for file_ind, file_real in enumerate(file_array):
+      plot_width30 = plotVar("width30", width_params[0], width_params[1], width_params[2], True, output_name_array[file_ind]+"_width30.png", fit="gaus")
+      df_data = plot_width30.run(file_real, file_ind, tree_array[file_ind], config['channels'])
+      width30_dfs.append(df_data)
+    width30_data = pd.concat(width30_dfs, ignore_index=True)
+    print(width30_data.sort_values(by=['Channel','Bias']))
+    data_out.append(('width30', width30_data.sort_values(by=['Channel','Bias'])))
+    width50_dfs = []
+    for file_ind, file_real in enumerate(file_array):
+      plot_width50 = plotVar("width50", width_params[0], width_params[1], width_params[2], True, output_name_array[file_ind]+"_width50.png", fit="gaus")
+      df_data = plot_width50.run(file_real, file_ind, tree_array[file_ind], config['channels'])
+      width50_dfs.append(df_data)
+    width50_data = pd.concat(width50_dfs, ignore_index=True)
+    print(width50_data.sort_values(by=['Channel','Bias']))
+    data_out.append(('width50', width50_data.sort_values(by=['Channel','Bias'])))
 
-    # ADD IN JITTER CPT MEASUREMENTS, NEED TO GET dvdt BRANCH AND FIT A GAUSSIAN TO MEASURE N_RMS / dV/dt
     '''
     print(f"[BETA ANALYSIS]: [PLOTTER] Additionally performing Langaus fit to dV/dt")
     dvdt_dfs = []

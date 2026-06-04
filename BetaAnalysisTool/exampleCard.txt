@@ -32,11 +32,12 @@ tmax = False
 area_new = False
 pmax = False
 negpmax = False
-amplitude = False
-risetime = False
+amplitude = True
+risetime = True
 area_fitted = False
 rms = False
-timeres = True
+width = True
+timeres = False
 
 # For area_fitted, RMS, and time resolution, specify the number of bins, lower bound, and upper bound to plot - optimise time res for 500 bins / ns
 
@@ -45,9 +46,10 @@ area_nB_xL_xU = 100,0,100
 pmax_nB_xL_xU = 400,0,400
 negpmax_nB_xL_xU = 200,-100,100
 amplitude_nB_xL_xU = 250,0,250
-risetime_nB_xL_xU = 200,0.0,2.0
+risetime_nB_xL_xU = 500,0.0,5.0
 area_fitted_nB_xL_xU = 300,0,300
 rms_nB_xL_xU = 50,0,5
+width_nB_xL_xU = 1000,0,10
 timeres_nB_xL_xU = 2000,-3.0,3.0
 
 # Specify which selections should be applied to which channel (these are not applied simultaneously unless calculating time resolution

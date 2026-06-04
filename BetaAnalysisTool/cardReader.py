@@ -27,6 +27,7 @@ def read_text_card(file_path):
     "area_fitted": False,
     "charge": False,
     "rms": False,
+    "width": False,
     "timeres": False,
   }
 
@@ -39,6 +40,7 @@ def read_text_card(file_path):
     "area_fitted_params": None,
     "charge_params": None,
     "rms_params": None,
+    "width_params": None,
     "timeres_params": None
   }
 

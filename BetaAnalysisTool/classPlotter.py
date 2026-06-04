@@ -117,6 +117,18 @@ class plotVar:
     legend.Draw()
     if not os.path.exists(self.var):
       os.makedirs(self.var)
+
+    # saving as ROOT TCanvas and png
+    root_file = root.TFile(f"{self.var}/{self.save_name.replace('.png', '.root')}", "RECREATE")
+    c1.Write("canvas")
+    for i, h in enumerate(valid_hists):
+      h.SetName(f"hist_{self.var}_{i}")
+      h.Write()
+    if (self.fit) is not None:
+      for i, f in enumerate(arr_of_fits):
+        if f is not None:
+          f.Write(f"fit_{self.var}_{i}")
+    root_file.Close()
     c1.SaveAs(self.var+"/"+self.save_name)
     print(f"[BETA ANALYSIS]: [PLOTTER] Saved {self.var} as {self.var}/"+self.save_name)
 
