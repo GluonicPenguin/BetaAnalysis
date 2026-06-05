@@ -18,6 +18,7 @@ import sys
 
 from classPlotter import plotVar
 from classTRPlotter import plotTRVar
+from class2DPlotter import plotHeatMap
 from cardReader import read_text_card
 from langaus import plot_langaus
 from export_data import direct_to_table, convert_and_save_csv
@@ -162,6 +163,11 @@ def main():
     for file_ind, file_real in enumerate(file_array):
       plot_pmax = plotVar("pmax", pmax_params[0], pmax_params[1], pmax_params[2], True, output_name_array[file_ind]+"_pmax.png", fit=None)
       plot_pmax.run(file_real, file_ind, tree_array[file_ind], config['channels'])
+  if (config.get('pmax', False) == True) & (config.get('area_new', False) == True):
+    print(f"[BETA ANALYSIS]: [PLOTTER] Plotting PMAX vs AREA maps (TMAX selections are already applied to the phase space)")
+    for file_ind, file_real in enumerate(file_array):
+      plot_area_v_pmax = plotHeatMap('area_new', 'pmax', area_params, pmax_params, output_name_array[file_ind]+"_pmax_v_area")
+      plot_area_v_pmax.run(file_real, file_ind, tree_array[file_ind], config['channels'])
   if config.get('negpmax', False) == True:
     print(f"[BETA ANALYSIS]: [PLOTTER] Plotting NEGPMAX distribution (note that for NEGPMAX TMAX selections are already applied to the phase space)")
     for file_ind, file_real in enumerate(file_array):
