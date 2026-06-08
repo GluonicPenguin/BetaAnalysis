@@ -72,6 +72,7 @@ def estimate_mpv_and_fraction_uncertainty(data_var, popt, pcov, x_grid, n_toys=2
     except np.linalg.LinAlgError:
       continue
 
+    print(f"[BETA ANALYSIS]: [LANGAUS PLOTTER] Estimating the uncertainty in Langaus fit parameters and variables of interest from {n_toys} toys")
     mpv_s, xi_s, sigma_s = sampled_params
     # --- true MPV ---
     mpv_true = get_true_mpv_from_grid(sampled_params, x_grid)
