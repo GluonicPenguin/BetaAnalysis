@@ -72,7 +72,6 @@ def estimate_mpv_and_fraction_uncertainty(data_var, popt, pcov, x_grid, n_toys=2
     except np.linalg.LinAlgError:
       continue
 
-    print(f"[BETA ANALYSIS]: [LANGAUS PLOTTER] Estimating the uncertainty in Langaus fit parameters and variables of interest from {n_toys} toys")
     mpv_s, xi_s, sigma_s = sampled_params
     # --- true MPV ---
     mpv_true = get_true_mpv_from_grid(sampled_params, x_grid)
@@ -275,7 +274,9 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
     frac_maxbin = count_1p5max_bin / count_max_bin if count_max_bin > 0 else 0
     arr_maxbin_frac.append(frac_maxbin)
 
-    unc_dict = estimate_mpv_and_fraction_uncertainty(data_var, popt, pcov, x_grid)
+    n_toys = 200
+    print(f"[BETA ANALYSIS]: [LANGAUS PLOTTER] Estimating the uncertainty in Langaus fit parameters and variables of interest from {n_toys} toys")
+    unc_dict = estimate_mpv_and_fraction_uncertainty(data_var, popt, pcov, x_grid, n_toys)
     ratio_val = popt[1] / mpv_true
     ratio_unc = unc_dict["ratio_std"]
     #ratio_val = unc_dict["ratio_mean"]
