@@ -29,15 +29,15 @@ CH_8 = 0
 # Specify what results and fits are to be performed
 
 tmax = False
-area_new = True
-pmax = True
+area_new = False
+pmax = False
 negpmax = False
 amplitude = False
 risetime = False
 area_fitted = False
 rms = False
 width = False
-timeres = False
+timeres = True
 
 # For area_fitted, RMS, and time resolution, specify the number of bins, lower bound, and upper bound to plot - optimise time res for 500 bins / ns
 

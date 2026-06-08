@@ -34,6 +34,7 @@ class plotTRVar:
   def run(self, file, file_index, tree, channel_array, mcp_tr):
 
     arr_of_hists = []
+    arr_of_inital_fits = []
     arr_of_biases = []
     arr_of_nevents = []
 
@@ -50,11 +51,11 @@ class plotTRVar:
       else:
         C_string = f"{C[file_index]}"
       if (E == 0.0) or (E == []):
-        E_string = "0.0"
+        E_string = "-20"
       else:
         E_string = f"{E[file_index]}"
       if (F == 0.0) or (F == []):
-        F_string = "0.0"
+        F_string = "20"
       else:
         F_string = f"{F[file_index]}"
       if G == 0.0:
@@ -122,6 +123,7 @@ class plotTRVar:
 
     for i, thisHist in enumerate(hists_to_plot):
       thisFit, _ = plot_fit_curves(self.xLower, self.xUpper, "gaus", hists_to_plot[i], channel_of_dut[i], arr_of_biases[i])
+      arr_of_inital_fits.append(thisFit)
       thisFit.Draw("SAME")
 
     legend = root.TLegend(0.7, 0.7, 0.9, 0.9)
@@ -135,13 +137,12 @@ class plotTRVar:
     # saving as ROOT TCanvas and png
     root_file = root.TFile(f"{self.var}/{self.save_name.replace('.png', '.root')}", "RECREATE")
     c1.Write("canvas")
-    for i, h in enumerate(valid_hists):
+    for i, h in enumerate(hists_to_plot):
       h.SetName(f"hist_{self.var}_{i}")
       h.Write()
-    if (self.fit) is not None:
-      for i, f in enumerate(arr_of_fits):
-        if f is not None:
-          f.Write(f"fit_{self.var}_{i}")
+    for i, f in enumerate(arr_of_inital_fits):
+      if f is not None:
+        f.Write(f"fit_{self.var}_{i}")
     root_file.Close()
     c1.SaveAs("timeres/"+self.save_name)
     print(f"[BETA ANALYSIS]: [TIME RESOLUTION] Saved time resolution as timeres/"+self.save_name)

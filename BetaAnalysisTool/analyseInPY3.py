@@ -289,6 +289,15 @@ def main():
     time_res_data = pd.concat(time_res_dfs, ignore_index=True)
     print(time_res_data.sort_values(by=['Channel','Bias']))
     data_out.append(('timeres', time_res_data.sort_values(by=['Channel','Bias'])))
+    has_mcp = (time_res_data["Bias"] == "MCP").any()
+    if has_mcp: 
+      mask = time_res_data["Bias"] == "MCP"
+      values = time_res_data.loc[mask, "Resolution @ 30%"].to_numpy()
+      uncs = time_res_data.loc[mask, "Uncertainty @ 30%"].to_numpy()
+      weights = 1 / uncs**2
+      weighted_mean = np.sum(weights * values) / np.sum(weights)
+      weighted_mean_unc = np.sqrt(1 / np.sum(weights))
+      print(f"[BETA ANALYSIS]: [TIME RESOLUTION] MCP time resolution = {weighted_mean:.6g} "+r"$\pm$"+f" {weighted_mean_unc:.6g} ps")
 
   convert_and_save_csv(data_langaus_out, 'data_langaus_'+output_name+'.csv')
   if len(data_out) > 1:
