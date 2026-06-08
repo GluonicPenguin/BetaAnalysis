@@ -151,7 +151,7 @@ def plot_fit_curves(xLower,xUpper,fit_type,hist_to_fit,channel_index,biasVal):
   thisFit.SetLineWidth(3)
   thisFit.SetLineColor(channel_index+1)
   #thisFit.SetLineStyle(2)
-  return thisFit, fit_result
+  return thisFit
 
 # NEW METHOD: BOOTSTRAPPING
 # Use random resample generation based on original data to more reliably compute the sigma_unc

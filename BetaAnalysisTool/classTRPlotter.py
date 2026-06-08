@@ -122,7 +122,7 @@ class plotTRVar:
         hist_to_draw.Draw("SAME")
 
     for i, thisHist in enumerate(hists_to_plot):
-      thisFit, _ = plot_fit_curves(self.xLower, self.xUpper, "gaus", hists_to_plot[i], channel_of_dut[i], arr_of_biases[i])
+      thisFit = plot_fit_curves(self.xLower, self.xUpper, "gaus", hists_to_plot[i], channel_of_dut[i], arr_of_biases[i])
       arr_of_inital_fits.append(thisFit)
       thisFit.Draw("SAME")
 
@@ -154,14 +154,14 @@ class plotTRVar:
       fit_down_up_uncs = []
       print(len(arr_of_hists))
       for j, toa_thresh_hist in enumerate(nom_up_down_hists):
-        thisFit, fit_cov_info = plot_fit_curves(self.xLower, self.xUpper, "gaus", toa_thresh_hist, channel_of_dut[i], arr_of_biases[i])
+        thisFit = plot_fit_curves(self.xLower, self.xUpper, "gaus", toa_thresh_hist, channel_of_dut[i], arr_of_biases[i])
         fit_down_up_dev.append(thisFit)
         #sigma_unc_half_range = compute_sigma_uncertainty(self.xLower, self.xUpper, "gaus", toa_thresh_hist, channel_of_dut[i], arr_of_biases[i])
         #sigma_unc_bootstrap = bootstrap_sigma_uncertainty(toa_thresh_hist, thisFit, fit_cov_info, n_toys=500)
-        cov = fit_cov_info.GetCovarianceMatrix()
+        #cov = fit_cov_info.GetCovarianceMatrix()
         sigma_samples = []
         n_toys = 1000
-        print(f"[BETA ANALYSIS]: [TIME RESOLUTION] Simulating {n_toys} toys via bootstrap to the time resolution distributions")
+        print(f"[BETA ANALYSIS]: [TIME RESOLUTION] Bootstrapping with {n_toys} Poisson-fluctuated CFD distributions to estimate the time resolution uncertainty")
         for k in range(n_toys):
           toy_hist = toa_thresh_hist.Clone()
           toy_hist.SetDirectory(0)
@@ -171,7 +171,7 @@ class plotTRVar:
             toy_hist.SetBinContent(b, np.random.poisson(nominal))
             toy_hist.SetBinError(b, np.sqrt(toy_hist.GetBinContent(b)))
           try:
-            toy_fit, _ = plot_fit_curves(self.xLower, self.xUpper, "gaus", toy_hist, channel_of_dut[i], arr_of_biases[i])
+            toy_fit = plot_fit_curves(self.xLower, self.xUpper, "gaus", toy_hist, channel_of_dut[i], arr_of_biases[i])
             sigma_samples.append(toy_fit.GetParameter(2))
           except Exception:
             #print(f"[TOY FIT FAILED] k={k}")
