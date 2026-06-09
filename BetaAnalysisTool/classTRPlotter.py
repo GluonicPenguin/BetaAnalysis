@@ -152,7 +152,6 @@ class plotTRVar:
     for i, nom_up_down_hists in enumerate(arr_of_hists):
       fit_down_up_dev = []
       fit_down_up_uncs = []
-      print(len(arr_of_hists))
       for j, toa_thresh_hist in enumerate(nom_up_down_hists):
         thisFit = plot_fit_curves(self.xLower, self.xUpper, "gaus", toa_thresh_hist, channel_of_dut[i], arr_of_biases[i])
         fit_down_up_dev.append(thisFit)
