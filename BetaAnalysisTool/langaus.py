@@ -32,21 +32,27 @@ def binned_fit_langauss(samples, bins, min_x_val, max_x_val, channel, nan='remov
     samples = samples[~np.isnan(samples)]
     #samples = samples[~(np.isnan(samples) | np.isinf(samples))]
 
-  hist, bin_edges = np.histogram(samples, bins, range=(min_x_val, max_x_val), density=True)
+  hist, bin_edges = np.histogram(samples, bins, range=(min_x_val, max_x_val), density=False)
+  bin_width = bin_edges[1] - bin_edges[0]
+  #sigma_hist = np.sqrt(hist)
+  sigma_hist = np.sqrt(np.maximum(hist, 1)) 
+  
   bin_centres = bin_edges[:-1] + np.diff(bin_edges) / 2
-
-  mask = np.isfinite(hist) & np.isfinite(bin_centres)
-  hist = hist[mask]
-  bin_centres = bin_centres[mask]
-
+  #mask = np.isfinite(hist) & np.isfinite(bin_centres) & (hist > 0)
+  #hist = hist[mask]
+  #bin_centres = bin_centres[mask]
+  #sigma_hist = sigma_hist[mask]
   landau_x_mpv_guess = bin_centres[np.argmax(hist)]
   landau_xi_guess = median_abs_deviation(samples) / 5
-  gauss_sigma_guess = landau_xi_guess / 10
+  gauss_sigma_guess = landau_xi_guess
+  N = len(samples)
 
   popt, pcov = curve_fit(
-    lambda x, mpv, xi, sigma: langauss.pdf(x, mpv, xi, sigma),
+    lambda x, mpv, xi, sigma: langauss.pdf(x, mpv, xi, sigma) * N * bin_width,
     xdata=bin_centres,
     ydata=hist,
+    sigma=sigma_hist,
+    absolute_sigma=True,
     p0=[landau_x_mpv_guess, landau_xi_guess, gauss_sigma_guess],
   )
   return popt, pcov, hist, bin_centres #hist, bin_centres
@@ -234,7 +240,8 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
       pmax = np.array(pmax_list)
       data_var = pmax[(pmax>=xLower) & (pmax<=xUpper)]
 
-    histo, bins, _ = plt.hist(data_var, bins=nBins, range=(xLower, xUpper), color='white', edgecolor='black', alpha=0.6, density=True)
+
+    histo, bins, _ = plt.hist(data_var, bins=nBins, range=(xLower, xUpper), color='white', edgecolor='black', alpha=0.6, density=False)
     bin_width = bins[1] - bins[0]
     bin_centres = bins[:-1] + np.diff(bins) / 2
 
@@ -248,7 +255,8 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
     if (var == "area_fitted") & (int(bias_of_channel.rstrip("V")) >= 300):
       counts = histo_masked
     else:
-      counts = fitted_hist * len(data_var) * bin_width
+      #counts = fitted_hist * len(data_var) * bin_width
+      counts = fitted_hist
     arr_of_ch.append("Ch"+str(ch_ind))
     arr_of_biases.append(bias_of_channel)
 
@@ -303,13 +311,16 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
     y_fit = y_fit_pdf * len(data_var) * bin_width
     x_axis = np.linspace(xLower, xUpper, 999)
     y_fit_counts = langauss.pdf(x_axis, *popt) * len(data_var) * bin_width
+    #histo = histo[histo > 0]
     residuals = histo - y_fit
 
     SSE = np.sum(residuals**2)
     normSSE = SSE / len(data_var)
     arr_of_sse.append(SSE)
-    sigma = np.sqrt(histo)
-    sigma[sigma == 0] = 1
+    #sigma = np.sqrt(histo)
+    #sigma[sigma == 0] = 1
+    sigma = np.sqrt(np.maximum(histo, 1))
+
     chi2 = np.sum((residuals / sigma) ** 2)
 
     N = len(histo)
