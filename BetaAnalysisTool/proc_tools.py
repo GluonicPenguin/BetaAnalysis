@@ -118,7 +118,8 @@ def hist_tree_file_basics(tree,file,var,index,nBins,xLower,xUpper,biasVal,cut_co
   if (var == "tmax"):
     tree.Draw(var+"["+str(ch)+"]>>CH "+str(ch)+" "+biasVal,"event>-1")
   elif (var == "area_new") or (var == "pmax") or (var == "negpmax"):
-    tree.Draw(var+"["+str(ch)+"]>>CH "+str(ch)+" "+biasVal," && ".join(part.strip() for part in cut_cond.split("&&")[-2:]))
+    #tree.Draw(var+"["+str(ch)+"]>>CH "+str(ch)+" "+biasVal," && ".join(part.strip() for part in cut_cond.split("&&")[-2:]))
+    tree.Draw(var+"["+str(ch)+"]>>CH "+str(ch)+" "+biasVal,cut_cond)
   elif (var == "width50"):
     tree.Draw("width["+str(ch)+"][4]>>CH "+str(ch)+" "+biasVal,cut_cond)
   elif (var == "width30"):

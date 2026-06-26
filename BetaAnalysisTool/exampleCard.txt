@@ -34,10 +34,10 @@ pmax = False
 negpmax = False
 amplitude = False
 risetime = False
-area_fitted = False
+area_fitted = True
 rms = False
 width = False
-timeres = True
+timeres = False
 
 # For area_fitted, RMS, and time resolution, specify the number of bins, lower bound, and upper bound to plot - optimise time res for 500 bins / ns
 
