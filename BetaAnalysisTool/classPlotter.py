@@ -89,7 +89,8 @@ class plotVar:
     arr_of_biases = [bias for bias in arr_of_biases if bias is not None]
 
     if self.var == "tmax":
-      max_y = 0.05 * max(hist.GetMaximum() for hist in valid_hists) * 1.05
+      #max_y = 0.05 * max(hist.GetMaximum() for hist in valid_hists) * 1.05
+      max_y = max(hist.GetMaximum() for hist in valid_hists) * 1.05
     else:
       max_y = max(hist.GetMaximum() for hist in valid_hists) * 1.05
     

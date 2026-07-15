@@ -151,7 +151,7 @@ def main():
   if config.get('tmax', False) == True:
     print(f"[BETA ANALYSIS]: [PLOTTER] Plotting TMAX distribution (note that for TMAX no selections are applied to the phase space)")
     for file_ind, file_real in enumerate(file_array):
-      plot_tmax = plotVar("tmax", tmax_params[0], tmax_params[1], tmax_params[2], True, output_name_array[file_ind]+"_tmax.png", fit=None)
+      plot_tmax = plotVar("tmax", tmax_params[0], tmax_params[1], tmax_params[2], True, output_name_array[file_ind]+"_"+str(file_ind)+"_tmax.png", fit=None)
       plot_tmax.run(file_real, file_ind, tree_array[file_ind], config['channels'])
   if config.get('area_new', False) == True:
     print(f"[BETA ANALYSIS]: [PLOTTER] Plotting AREA distribution (note that for AREA TMAX selections are already applied to the phase space)")
@@ -166,18 +166,18 @@ def main():
   if (config.get('pmax', False) == True) & (config.get('area_new', False) == True):
     print(f"[BETA ANALYSIS]: [PLOTTER] Plotting PMAX vs AREA maps (TMAX selections are already applied to the phase space)")
     for file_ind, file_real in enumerate(file_array):
-      plot_area_v_pmax = plotHeatMap('area_new', 'pmax', area_params, pmax_params, output_name_array[file_ind]+"_pmax_v_area")
+      plot_area_v_pmax = plotHeatMap('area_new', 'pmax', area_params, pmax_params, output_name_array[file_ind]+"_pmax_v_area_"+str(file_ind))
       plot_area_v_pmax.run(file_real, file_ind, tree_array[file_ind], config['channels'])
   if config.get('negpmax', False) == True:
     print(f"[BETA ANALYSIS]: [PLOTTER] Plotting NEGPMAX distribution (note that for NEGPMAX TMAX selections are already applied to the phase space)")
     for file_ind, file_real in enumerate(file_array):
-      plot_negpmax = plotVar("negpmax", negpmax_params[0], negpmax_params[1], negpmax_params[2], True, output_name_array[file_ind]+"_negpmax.png", fit=None)
+      plot_negpmax = plotVar("negpmax", negpmax_params[0], negpmax_params[1], negpmax_params[2], True, output_name_array[file_ind]+"_"+str(file_ind)+"_negpmax.png", fit=None)
       plot_negpmax.run(file_real, file_ind, tree_array[file_ind], config['channels'])
   if config.get('amplitude', False) == True:
     amplitude_dfs = []
     ampl_langaus_dfs = []
     for file_ind, file_real in enumerate(file_array):
-      df_data, df_langaus_data = plot_langaus('amplitude', file_real, file_ind, tree_array[file_ind], config['channels'], amplitude_params[0], amplitude_params[1], amplitude_params[2], output_name_array[file_ind]+"_amplitude", int(thicknesses[0]))
+      df_data, df_langaus_data = plot_langaus('amplitude', file_real, file_ind, tree_array[file_ind], config['channels'], amplitude_params[0], amplitude_params[1], amplitude_params[2], output_name_array[file_ind]+"_amplitude_"+str(file_ind), int(thicknesses[0]))
       amplitude_dfs.append(df_data)
       ampl_langaus_dfs.append(df_langaus_data)
     amplitude_data = pd.concat(amplitude_dfs, ignore_index=True)
@@ -189,7 +189,7 @@ def main():
     print(f"[BETA ANALYSIS]: [PLOTTER] Performing Gaussian fit to RISETIME distribution")
     risetime_dfs = []
     for file_ind, file_real in enumerate(file_array):
-      plot_risetime = plotVar("risetime", risetime_params[0], risetime_params[1], risetime_params[2], True, output_name_array[file_ind]+"_risetime_relu.png", fit="gaus")
+      plot_risetime = plotVar("risetime", risetime_params[0], risetime_params[1], risetime_params[2], True, output_name_array[file_ind]+"_"+str(file_ind)+"_risetime_relu.png", fit="gaus")
       df_data = plot_risetime.run(file_real, file_ind, tree_array[file_ind], config['channels'])
       risetime_dfs.append(df_data)
     risetime_data = pd.concat(risetime_dfs, ignore_index=True)
@@ -199,7 +199,7 @@ def main():
     area_fitted_dfs = []
     area_fitted_langaus_dfs = []
     for file_ind, file_real in enumerate(file_array):
-      df_data, df_langaus_data = plot_langaus('area_fitted', file_real, file_ind, tree_array[file_ind], config['channels'], area_fitted_params[0], area_fitted_params[1], area_fitted_params[2], output_name_array[file_ind]+"_area_fitted", int(thicknesses[0]))
+      df_data, df_langaus_data = plot_langaus('area_fitted', file_real, file_ind, tree_array[file_ind], config['channels'], area_fitted_params[0], area_fitted_params[1], area_fitted_params[2], output_name_array[file_ind]+"_area_fitted_"+str(file_ind), int(thicknesses[0]))
       area_fitted_dfs.append(df_data)
       area_fitted_langaus_dfs.append(df_langaus_data)
     area_fitted_data = pd.concat(area_fitted_dfs, ignore_index=True)
@@ -211,7 +211,7 @@ def main():
     charge_dfs = []
     charge_langaus_dfs = []
     for file_ind, file_real in enumerate(file_array):
-      df_data, df_langaus_data = plot_langaus('charge', file_real, file_ind, tree_array[file_ind], config['channels'], charge_params[0], charge_params[1], charge_params[2], output_name_array[file_ind]+"_charge", int(thicknesses[0]))
+      df_data, df_langaus_data = plot_langaus('charge', file_real, file_ind, tree_array[file_ind], config['channels'], charge_params[0], charge_params[1], charge_params[2], output_name_array[file_ind]+"_charge_"+str(file_ind), int(thicknesses[0]))
       charge_dfs.append(df_data)
       charge_langaus_dfs.append(df_langaus_data)
     charge_data = pd.concat(charge_dfs, ignore_index=True)
@@ -235,7 +235,7 @@ def main():
     print(f"[BETA ANALYSIS]: [PLOTTER] Performing Gaussian fit to DUT channels")
     rms_dfs = []
     for file_ind, file_real in enumerate(file_array):
-      plot_rms = plotVar("rms", rms_params[0], rms_params[1], rms_params[2], True, output_name_array[file_ind]+"_rms.png", fit="gaus")
+      plot_rms = plotVar("rms", rms_params[0], rms_params[1], rms_params[2], True, output_name_array[file_ind]+"_"+str(file_ind)+"_rms.png", fit="gaus")
       df_data = plot_rms.run(file_real, file_ind, tree_array[file_ind], config['channels'])
       rms_dfs.append(df_data)
     rms_data = pd.concat(rms_dfs, ignore_index=True)
@@ -245,7 +245,7 @@ def main():
     print(f"[BETA ANALYSIS]: [PLOTTER] Performing Gaussian fit to DUT channels")
     width30_dfs = []
     for file_ind, file_real in enumerate(file_array):
-      plot_width30 = plotVar("width30", width_params[0], width_params[1], width_params[2], True, output_name_array[file_ind]+"_width30.png", fit="gaus")
+      plot_width30 = plotVar("width30", width_params[0], width_params[1], width_params[2], True, output_name_array[file_ind]+"_"+str(file_ind)+"_width30.png", fit="gaus")
       df_data = plot_width30.run(file_real, file_ind, tree_array[file_ind], config['channels'])
       width30_dfs.append(df_data)
     width30_data = pd.concat(width30_dfs, ignore_index=True)
@@ -253,7 +253,7 @@ def main():
     data_out.append(('width30', width30_data.sort_values(by=['Channel','Bias'])))
     width50_dfs = []
     for file_ind, file_real in enumerate(file_array):
-      plot_width50 = plotVar("width50", width_params[0], width_params[1], width_params[2], True, output_name_array[file_ind]+"_width50.png", fit="gaus")
+      plot_width50 = plotVar("width50", width_params[0], width_params[1], width_params[2], True, output_name_array[file_ind]+"_"+str(file_ind)+"_width50.png", fit="gaus")
       df_data = plot_width50.run(file_real, file_ind, tree_array[file_ind], config['channels'])
       width50_dfs.append(df_data)
     width50_data = pd.concat(width50_dfs, ignore_index=True)
@@ -283,7 +283,7 @@ def main():
     print(f"[BETA ANALYSIS]: [TIME RESOLUTION] Performing Gaussian fit to DUT-MCP channels")
     time_res_dfs = []
     for file_ind, file_real in enumerate(file_array):
-      plot_timeres = plotTRVar("timeres", timeres_params[0], timeres_params[1], timeres_params[2], True, output_name_array[file_ind]+"_timeres.png")
+      plot_timeres = plotTRVar("timeres", timeres_params[0], timeres_params[1], timeres_params[2], True, output_name_array[file_ind]+"_"+str(file_ind)+"_timeres.png")
       df_data = plot_timeres.run(file_real, file_ind, tree_array[file_ind], config['channels'], mcp_specs)
       time_res_dfs.append(df_data)
     time_res_data = pd.concat(time_res_dfs, ignore_index=True)

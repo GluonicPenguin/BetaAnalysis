@@ -103,10 +103,14 @@ def landau_tr_quad_fit(Q_df, tr_df, tre_df):
     return A**2 + (B/Q)**2
   tr2 = tr**2
   tre2 = 2 * tr * tre
-  popt, pcov = curve_fit(model, Q, tr2, sigma=tre2, absolute_sigma=True)
-  A_fit, B_fit = popt
-  A_unc, B_unc = np.sqrt(np.diag(pcov))
-  return A_fit, A_unc
+  try:
+    popt, pcov = curve_fit(model, Q, tr2, sigma=tre2, absolute_sigma=True)
+    A_fit, B_fit = popt
+    A_unc, B_unc = np.sqrt(np.diag(pcov))
+    return A_fit, A_unc
+
+  except ValueError:
+    return 0, 0
 
 def hist_tree_file_basics(tree,file,var,index,nBins,xLower,xUpper,biasVal,cut_cond,ch):
   #if var == 'risetime':

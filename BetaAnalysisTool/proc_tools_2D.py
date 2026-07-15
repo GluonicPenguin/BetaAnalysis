@@ -57,7 +57,7 @@ def hist_tree_file_2D(tree,file,var_x,var_y,ch,params_x,params_y,save_name,tmax_
   c1 = root.TCanvas(f"c1_{ch}", "c1", 800, 700)
   hname1 = "CH "+str(ch)+" "+str(bias)
   h1 = root.TH2F(hname1,var_y+"["+str(ch)+"] vs "+var_x+"["+str(ch)+"];"+var_dict[var_x]+";"+var_dict[var_y], 
-                 int(10*(params_x[2]-params_x[1])), params_x[1], params_x[2], int(10*(params_y[2]-params_y[1])), params_y[1], params_y[2])
+                 int(2*(params_x[2]-params_x[1])), params_x[1], params_x[2], int(2*(params_y[2]-params_y[1])), params_y[1], params_y[2])
   draw_expr_1 = var_y+"["+str(ch)+"]:"+var_x+"["+str(ch)+"]>>"+hname1
   tree.Draw(draw_expr_1, tmax_cut_cond, "COLZ")
 
