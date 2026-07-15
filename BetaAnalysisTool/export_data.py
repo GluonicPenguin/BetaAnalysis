@@ -112,19 +112,16 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
   first_df_found = False
   for index, (var, df) in enumerate(name_and_df_couples):
     if var == "amplitude":
-      df_ampl = df[['Channel','Bias','Amplitude','Amplitude Unc','Landau width','Gaussian sigma','LTF','LTF Unc','LTF from area','LTFmax','LTFmax Unc','Landau Frac','Landau Frac Unc']]
+      df_ampl = df[['Channel','Bias','Amplitude','Amplitude Unc','Landau width','Gaussian sigma','LTF','LTF Unc','Landau Frac','Landau Frac Unc']]
       first_df_found = True
       df_ampl = df_ampl.rename(columns={'Amplitude':'Amplitude / mV','Amplitude Unc': 'A_Unc','Landau width':'A_Landau','Gaussian sigma':'A_Gaus','LTF':'A_LTF','LTF Unc':'A_LTF_unc',
-                                        'LTF from area':'A_LTF_area','LTFmax':'A_LTF_max','LTFmax Unc':'A_LTF_max_unc','Landau Frac':'A_xiompv','Landau Frac Unc':'A_xiompv_unc'})
+                                        'Landau Frac':'A_xiompv','Landau Frac Unc':'A_xiompv_unc'})
       df_ampl.loc[:, 'Amplitude / mV'] = df_ampl['Amplitude / mV'].round(3)
       df_ampl.loc[:, 'A_Unc'] = df_ampl['A_Unc'].round(3)
       df_ampl.loc[:, 'A_Landau'] = df_ampl['A_Landau'].round(4)
       df_ampl.loc[:, 'A_Gaus'] = df_ampl['A_Gaus'].round(4)
       df_ampl.loc[:, 'A_LTF'] = df_ampl['A_LTF'].round(4)
       df_ampl.loc[:, 'A_LTF_unc'] = df_ampl['A_LTF_unc'].round(4)
-      df_ampl.loc[:, 'A_LTF_area'] = df_ampl['A_LTF_area'].round(4)
-      df_ampl.loc[:, 'A_LTF_max'] = df_ampl['A_LTF_max'].round(4)
-      df_ampl.loc[:, 'A_LTF_max_unc'] = df_ampl['A_LTF_max_unc'].round(4)
       df_ampl.loc[:, 'A_xiompv'] = df_ampl['A_xiompv'].round(4)
       df_ampl.loc[:, 'A_xiompv_unc'] = df_ampl['A_xiompv_unc'].round(4)
       dfs_to_concat.append(df_ampl)
@@ -141,11 +138,11 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
     elif var == "area_fitted":
       if first_df_found == False:
         first_df_found = True
-        df_area_fitted = df[['Channel','Bias','Area','Area Unc','Landau width','Gaussian sigma','LTF','LTF Unc','LTF from area','LTFmax','LTFmax Unc','Landau Frac','Landau Frac Unc']]
+        df_area_fitted = df[['Channel','Bias','Area','Area Unc','Landau width','Gaussian sigma','LTF','LTF Unc','Landau Frac','Landau Frac Unc']]
       else:
-        df_area_fitted = df[['Area','Area Unc','Landau width','Gaussian sigma','LTF','LTF Unc','LTF from area','LTFmax','LTFmax Unc','Landau Frac','Landau Frac Unc']]
+        df_area_fitted = df[['Area','Area Unc','Landau width','Gaussian sigma','LTF','LTF Unc','Landau Frac','Landau Frac Unc']]
       df_area_fitted = df_area_fitted.rename(columns={'Area':'Area / pWb','Area Unc':'Area_Unc','Landau width':'Area_Landau','Gaussian sigma':'Area_Gaus','LTF':'Area_LTF','LTF Unc':'Area_LTF_unc',
-                                             'LTF from area':'Area_LTF_area','LTFmax':'Area_LTF_max','LTFmax Unc':'Area_LTF_max_unc','Landau Frac':'Area_xiompv','Landau Frac Unc':'Area_xiompv_unc'})
+                                             'Landau Frac':'Area_xiompv','Landau Frac Unc':'Area_xiompv_unc'})
       df_area_fitted['Charge / fC'] = (df_area_fitted['Area / pWb']/atq_col)
       df_area_fitted['Charge Unc'] = df_area_fitted['Area_Unc']/atq_col
       df_area_fitted['Gain'] = 100*(df_area_fitted['Charge / fC'] / thickness_col)
@@ -156,9 +153,9 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
       df_area_fitted.loc[:, 'Area_Gaus'] = df_area_fitted['Area_Gaus'].round(4)
       df_area_fitted.loc[:, 'Area_LTF'] = df_area_fitted['Area_LTF'].round(4)
       df_area_fitted.loc[:, 'Area_LTF_unc'] = df_area_fitted['Area_LTF_unc'].round(4)
-      df_area_fitted.loc[:, 'Area_LTF_area'] = df_area_fitted['Area_LTF_area'].round(4)
-      df_area_fitted.loc[:, 'Area_LTF_max'] = df_area_fitted['Area_LTF_max'].round(4)
-      df_area_fitted.loc[:, 'Area_LTF_max_unc'] = df_area_fitted['Area_LTF_max_unc'].round(4)
+      #df_area_fitted.loc[:, 'Area_LTF_area'] = df_area_fitted['Area_LTF_area'].round(4)
+      #df_area_fitted.loc[:, 'Area_LTF_max'] = df_area_fitted['Area_LTF_max'].round(4)
+      #df_area_fitted.loc[:, 'Area_LTF_max_unc'] = df_area_fitted['Area_LTF_max_unc'].round(4)
       df_area_fitted.loc[:, 'Area_xiompv'] = df_area_fitted['Area_xiompv'].round(4)
       df_area_fitted.loc[:, 'Area_xiompv_unc'] = df_area_fitted['Area_xiompv_unc'].round(4)
       df_area_fitted.loc[:, 'Charge / fC'] = df_area_fitted['Charge / fC'].round(4)
