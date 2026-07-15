@@ -56,6 +56,7 @@ Double_t langaufun(Double_t *x, Double_t *par)
 }
 
 """)
+#print(ROOT.langaufun)
 
 def round_to_sig_figs(x, sig):
     if x == 0:
@@ -72,22 +73,28 @@ def fmt_val_unc(val, unc, sig_figs_val=3):
     return f"{round(val, decimals):.{decimals}f}" + " ± " + f"{round(unc, decimals):.{decimals}f}"
 
 
-def build_histogram(data, nbins, xmin, xmax, ch_ind):
-    h = ROOT.TH1D("hist_Ch{ch_ind}", "", nbins, xmin, xmax)
+def build_histogram(data, nbins, xmin, xmax, name="hist"):
+    h = ROOT.TH1D(name, "", nbins, xmin, xmax)
     for value in data:
         h.Fill(float(value))
     return h
 
 
-def fit_langau_root(hist, xmin, xmax, ch_ind):
+def fit_langau_root(hist, xmin, xmax, name="langau"):
     mpv_guess = hist.GetBinCenter(hist.GetMaximumBin())
     width_guess = hist.GetRMS() / 5.
     sigma_guess = width_guess
     area_guess = hist.Integral()
-    fit = ROOT.TF1("langau_Ch{ch_ind}", "langaufun", xmin, xmax, 4)
+    fit = ROOT.TF1(name, ROOT.langaufun, xmin, xmax, 4)
     fit.SetParNames("Width", "MP", "Area", "GSigma")
     fit.SetParameters(width_guess, mpv_guess, area_guess, sigma_guess)
-    hist.Fit(fit, "RQ0")
+    fit.SetParLimits(3, 1e-6, 1000)
+    status = hist.Fit(fit, "SRQ0")
+    #print("Fit status:", status.Status())
+    #print("Width:", fit.GetParameter(0))
+    #print("MPV:", fit.GetParameter(1))
+    #print("Area:", fit.GetParameter(2))
+    #print("Sigma:", fit.GetParameter(3))
     return fit
 
 
@@ -107,37 +114,40 @@ def evaluate_fit(fit, xmin, xmax, npoints=1000):
     return x, y
 
 
-def evaluate_landau(fit, xmin, xmax, npoints=1000):
-    landau = ROOT.TF1("landau", "[2]*TMath::Landau(x,[1],[0])", xmin, xmax)
-    landau.SetParameters(fit.GetParameter(0), fit.GetParameter(1), fit.GetParameter(2))
-
+def evaluate_landau(fit, xmin, xmax, name="landau_extract", npoints=1000):
+    width = fit.GetParameter(0)
+    mpv = fit.GetParameter(1)
+    area = fit.GetParameter(2)
+    mpshift = -0.22278298
+    landau = ROOT.TF1(name, "[2]*TMath::Landau(x,[1]-(-0.22278298)*[0],[0])/([0])", xmin, xmax)
+    landau.SetParameters(width, mpv, area)
     x = np.linspace(xmin, xmax, npoints)
     y = np.array([landau.Eval(xx) for xx in x])
-
     return x, y
 
 
-def bootstrap_langau(hist, fit, n_boot=500):
+def bootstrap_langau(hist, fit, n_boot=50):
     rng = ROOT.TRandom3(0)
-
     bestpars = [fit.GetParameter(i) for i in range(4)]
-
     mpvs = []
     widths = []
     sigmas = []
 
     for i in range(n_boot):
         hboot = hist.Clone(f"hboot_{i}")
-
-        for b in range(1, hist.GetNbinsX() + 1):
+        for b in range(1, hist.GetNbinsX()+1):
             c = hist.GetBinContent(b)
             hboot.SetBinContent(b, rng.Poisson(c))
-
-        fboot = fit.Clone(f"fit_{i}")
+        fboot = ROOT.TF1(
+            f"langau_boot_{i}",
+            ROOT.langaufun,
+            hist.GetXaxis().GetXmin(),
+            hist.GetXaxis().GetXmax(),
+            4
+        )
         fboot.SetParameters(*bestpars)
-
         hboot.Fit(fboot, "RQ0")
-
+        #mpvs.append(fboot.GetParameter(1))
         mpvs.append(fboot.GetMaximumX())
         widths.append(fboot.GetParameter(0))
         sigmas.append(fboot.GetParameter(3))
@@ -231,15 +241,17 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
       pmax = np.array(pmax_list)
       data_var = pmax[(pmax>=xLower) & (pmax<=xUpper)]
 
-    hist = build_histogram(data_var,nBins,xLower,xUpper, ch_ind)
+    hist = build_histogram(data_var,nBins,xLower,xUpper,f"hist_Ch{ch_ind}_{bias_of_channel}")
     counts=np.array([hist.GetBinContent(i+1) for i in range(nBins)])
     centres=np.array([hist.GetBinCenter(i+1) for i in range(nBins)])
 
-    fit = fit_langau_root(hist,xLower,xUpper,ch_ind)
+    fit = fit_langau_root(hist,xLower,xUpper,f"langau_Ch{ch_ind}_{bias_of_channel}")
     pars = extract_fit_parameters(fit)
 
     toys = bootstrap_langau(hist, fit, n_bootstrap)
     mpv_stats = bootstrap_summary(toys["mpvs"])
+    #print(toys["mpvs"][:20])
+    #print(np.min(toys["mpvs"]), np.max(toys["mpvs"]))
     width_stats = bootstrap_summary(toys["widths"])
     sigma_stats = bootstrap_summary(toys["sigmas"])
 
@@ -252,7 +264,7 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
     arr_of_width.append(pars["landau_width"])
     arr_of_sigma.append(pars["gauss_sigma"])
     arr_ratio.append(pars["landau_width"] / pars["mpv"])
-    arr_ratio_unc.append(arr_ratio*np.sqrt((mpv_stats["std"]/pars["mpv"])**2 + (width_stats["std"]/pars["landau_width"])**2))
+    arr_ratio_unc.append((pars["landau_width"] / pars["mpv"])*np.sqrt((mpv_stats["std"]/pars["mpv"])**2 + (width_stats["std"]/pars["landau_width"])**2))
 
     ltf = compute_ltf_from_data(data_var, pars["mpv"])
     arr_of_ltf.append(ltf)
@@ -272,10 +284,10 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
 
     chi2 = np.sum((residuals / sigma) ** 2)
     nu = nBins - 4
-    arr_rchi2.append(chi2 / nu)
-    arr_sse.append(np.sum(residuals ** 2))
+    arr_of_rchi2.append(chi2 / nu)
+    arr_of_sse.append(np.sum(residuals ** 2))
     x_axis, y_fit_curve = evaluate_fit(fit, xLower, xUpper)
-    _, y_landau = evaluate_landau(fit, xLower, xUpper)
+    _, y_landau = evaluate_landau(fit, xLower, xUpper, f"hist_Ch{ch_ind}_{bias_of_channel}")
     x_axis_add.append(x_axis)
     y_fit_counts_add.append(y_fit_curve)
 
@@ -318,12 +330,12 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
     else:
       fig.add_trace(
         go.Scatter(
-          x=bin_centres,
+          x=centres,
           y=counts,
           mode='markers',
           name=f"{thickness} μm, V<sub>bias</sub> = {bias_of_channel_spaced}",
           marker=dict(color='black', size=15),
-          error_y=dict(type='data', array=np.sqrt(histo))
+          error_y=dict(type='data', array=np.sqrt(counts))
         )
       )
     x_axis = np.linspace(xLower, xUpper, 999)
@@ -332,9 +344,9 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
         x=x_axis,
         y=y_fit_curve,
         name=(
-             f"<i>Q</i>~<b>θ</b>(<i>Q</i><sub>MPV</sub> = {fmt_val_unc(fmt_val_unc(pars["mpv"], mpv_stats["std"]))},<br>"
-             f"          ξ = {fmt_val_unc(fmt_val_unc(pars["landau_width"], width_stats["std"]))},<br>"
-             f"          σ = {fmt_val_unc(fmt_val_unc(pars["gauss_sigma"], sigma_stats["std"]))})"
+             f"<i>Q</i>~<b>θ</b>(<i>Q</i><sub>MPV</sub> = {fmt_val_unc(pars['mpv'], mpv_stats['std'])},<br>"
+             f"          ξ = {fmt_val_unc(pars['landau_width'], width_stats['std'])},<br>"
+             f"          σ = {fmt_val_unc(pars['gauss_sigma'], sigma_stats['std'])})"
             ),
         mode='lines',
         line=dict(color='red', width=10)
