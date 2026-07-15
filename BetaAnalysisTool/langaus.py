@@ -1,157 +1,167 @@
 import numpy as np
-import matplotlib.pyplot as plt
-import scipy
-from scipy.optimize import minimize
-from scipy.stats import poisson, median_abs_deviation
-import ROOT as root
-from ROOT import TF1
-from scipy.special import gammaln
-import math
-from math import exp, sqrt, pi
-import pandas as pd
-import argparse
-import glob
-import re
-import os
-import csv
-import math
+import ROOT
 import plotly.graph_objects as go
-
-import sys
-from datetime import datetime
-import matplotlib.pylab as plt
-import matplotlib.axes as axes
-from array import array
-from landaupy import langauss
-from scipy.optimize import curve_fit
+import pandas as pd
+import math
+import os
 
 from proc_tools import getBias
 
-def binned_fit_langauss(samples, bins, min_x_val, max_x_val, channel, nan='remove'):
-  if nan == 'remove':
-    samples = samples[~np.isnan(samples)]
-    #samples = samples[~(np.isnan(samples) | np.isinf(samples))]
+ROOT.EnableImplicitMT()
 
-  hist, bin_edges = np.histogram(samples, bins, range=(min_x_val, max_x_val), density=False)
-  bin_width = bin_edges[1] - bin_edges[0]
-  #sigma_hist = np.sqrt(hist)
-  sigma_hist = np.sqrt(np.maximum(hist, 1)) 
-  
-  bin_centres = bin_edges[:-1] + np.diff(bin_edges) / 2
-  #mask = np.isfinite(hist) & np.isfinite(bin_centres) & (hist > 0)
-  #hist = hist[mask]
-  #bin_centres = bin_centres[mask]
-  #sigma_hist = sigma_hist[mask]
-  landau_x_mpv_guess = bin_centres[np.argmax(hist)]
-  landau_xi_guess = median_abs_deviation(samples) / 5
-  gauss_sigma_guess = landau_xi_guess
-  N = len(samples)
+##########################################################################
+# Compile CERN Landau-Gaussian convolution once
+##########################################################################
 
-  popt, pcov = curve_fit(
-    lambda x, mpv, xi, sigma: langauss.pdf(x, mpv, xi, sigma) * N * bin_width,
-    xdata=bin_centres,
-    ydata=hist,
-    sigma=sigma_hist,
-    absolute_sigma=True,
-    p0=[landau_x_mpv_guess, landau_xi_guess, gauss_sigma_guess],
-  )
-  return popt, pcov, hist, bin_centres #hist, bin_centres
+ROOT.gInterpreter.Declare(r"""
 
-def get_true_mpv_from_grid(popt, x_grid):
-  y_scan = langauss.pdf(x_grid, *popt)
-  return x_grid[np.argmax(y_scan)]
+Double_t langaufun(Double_t *x, Double_t *par)
+{
+   Double_t invsq2pi = 0.3989422804014;
+   Double_t mpshift  = -0.22278298;
 
-def estimate_mpv_and_fraction_uncertainty(data_var, popt, pcov, x_grid, n_toys=200):
-  mpv_samples = []
-  xi_samples = []
-  sigma_samples = []
-  frac_mpv_samples = []
-  frac_maxbin_samples = []
-  ratio_samples = []
+   Double_t np = 100.0;
+   Double_t sc = 5.0;
 
-  histo, bins = np.histogram(data_var, bins=50)
-  bin_centres = bins[:-1] + np.diff(bins) / 2
-  max_bin_centre = bin_centres[np.argmax(histo)]
-  for _ in range(n_toys):
-    try:
-      sampled_params = np.random.multivariate_normal(popt, pcov)
-    except np.linalg.LinAlgError:
-      continue
+   Double_t sum = 0.0;
 
-    mpv_s, xi_s, sigma_s = sampled_params
-    # --- true MPV ---
-    mpv_true = get_true_mpv_from_grid(sampled_params, x_grid)
-    mpv_samples.append(mpv_true)
-    xi_samples.append(xi_s)
-    sigma_samples.append(sigma_s)
-    # --- ratio ---
-    if mpv_true != 0:
-      ratio_samples.append(xi_s / mpv_true)
-    # --- MPV fraction ---
-    count_1p0 = np.sum(data_var > mpv_true)
-    count_1p5 = np.sum(data_var > 1.5 * mpv_true)
-    if count_1p0 > 0:
-      frac_mpv_samples.append(count_1p5 / count_1p0)
-    # --- max bin fraction ---
-    count_max = np.sum(data_var > max_bin_centre)
-    count_1p5_max = np.sum(data_var > 1.5 * max_bin_centre)
-    if count_max > 0:
-      frac_maxbin_samples.append(count_1p5_max / count_max)
+   Double_t xx;
+   Double_t xlow,xupp;
+   Double_t step;
+   Double_t i;
 
-  return {"mpv_mean": np.mean(mpv_samples),
-          "mpv_std": np.std(mpv_samples),
-          "xi_std": np.std(xi_samples),
-          "sigma_std": np.std(sigma_samples),
-          "frac_mpv_std": np.std(frac_mpv_samples),
-          "frac_maxbin_std": np.std(frac_maxbin_samples),
-          "ratio_mean": np.mean(ratio_samples),
-          "ratio_std": np.std(ratio_samples),
-         }
+   Double_t mpc;
+   Double_t fland;
 
-def compute_ltf_extrapolated(popt, mpv_true, x_min, max_factor=20, n_points=3000):
-  """
-  Compute LTF using extrapolated Langaus fit beyond fit range.
+   mpc = par[1] - mpshift*par[0];
 
-  Parameters:
-    popt: fit parameters (mpv, xi, sigma)
-    mpv_true: true MPV
-    x_min: lower bound (same as your histogram lower edge)
-    max_factor: integrate up to max_factor * MPV
-    n_points: grid resolution
- 
-  Returns:
-    float: LTF value
-    """
-  upper_bound = max_factor * mpv_true
-  x_grid = np.linspace(x_min, upper_bound, n_points)
-  y = langauss.pdf(x_grid, *popt)
-  mask_mpv = x_grid >= mpv_true
-  mask_1p5 = x_grid >= 1.5 * mpv_true
-  area_mpv = np.trapz(y[mask_mpv], x_grid[mask_mpv])
-  area_1p5 = np.trapz(y[mask_1p5], x_grid[mask_1p5])
-  if area_mpv == 0:
-    return 0
-  return area_1p5 / area_mpv
+   xlow = x[0]-sc*par[3];
+   xupp = x[0]+sc*par[3];
+
+   step = (xupp-xlow)/np;
+
+   for(i=1.0;i<=np/2;i++){
+
+      xx=xlow+(i-.5)*step;
+      fland=TMath::Landau(xx,mpc,par[0])/par[0];
+      sum += fland*TMath::Gaus(x[0],xx,par[3]);
+
+      xx=xupp-(i-.5)*step;
+      fland=TMath::Landau(xx,mpc,par[0])/par[0];
+      sum += fland*TMath::Gaus(x[0],xx,par[3]);
+
+   }
+
+   return par[2]*step*sum*invsq2pi/par[3];
+}
+
+""")
 
 def round_to_sig_figs(x, sig):
-  if x == 0:
-    return 0
-  else:
+    if x == 0:
+        return 0
     return round(x, sig - int(math.floor(math.log10(abs(x)))) - 1)
 
-def fmt_val_unc(val, unc, sig_figs_val=3):
-  if val == 0:
-    val_rounded = 0
-    decimals = 0
-  else:
-    order = int(np.floor(np.log10(abs(val))))
-    decimals = max(sig_figs_val - 1 - order, 0)
-    val_rounded = round(val, decimals)
-  unc_rounded = round(unc, decimals)
-  fmt_str = f"{{:.{decimals}f}} ± {{:.{decimals}f}}"
-  return fmt_str.format(val_rounded, unc_rounded)
 
-def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpper, savename, thickness):
+def fmt_val_unc(val, unc, sig_figs_val=3):
+    if val == 0:
+        decimals = 0
+    else:
+        order = int(np.floor(np.log10(abs(val))))
+        decimals = max(sig_figs_val - 1 - order, 0)
+    return f"{round(val, decimals):.{decimals}f}" + " ± " + f"{round(unc, decimals):.{decimals}f}"
+
+
+def build_histogram(data, nbins, xmin, xmax, ch_ind):
+    h = ROOT.TH1D("hist_Ch{ch_ind}", "", nbins, xmin, xmax)
+    for value in data:
+        h.Fill(float(value))
+    return h
+
+
+def fit_langau_root(hist, xmin, xmax, ch_ind):
+    mpv_guess = hist.GetBinCenter(hist.GetMaximumBin())
+    width_guess = hist.GetRMS() / 5.
+    sigma_guess = width_guess
+    area_guess = hist.Integral()
+    fit = ROOT.TF1("langau_Ch{ch_ind}", "langaufun", xmin, xmax, 4)
+    fit.SetParNames("Width", "MP", "Area", "GSigma")
+    fit.SetParameters(width_guess, mpv_guess, area_guess, sigma_guess)
+    hist.Fit(fit, "RQ0")
+    return fit
+
+
+def extract_fit_parameters(fit):
+    return {
+        "mpv": fit.GetMaximumX(),
+        "landau_width": fit.GetParameter(0),
+        "gauss_sigma": fit.GetParameter(3),
+        "area": fit.GetParameter(2),
+        "fit": fit
+    }
+
+
+def evaluate_fit(fit, xmin, xmax, npoints=1000):
+    x = np.linspace(xmin, xmax, npoints)
+    y = np.array([fit.Eval(xx) for xx in x])
+    return x, y
+
+
+def evaluate_landau(fit, xmin, xmax, npoints=1000):
+    landau = ROOT.TF1("landau", "[2]*TMath::Landau(x,[1],[0])", xmin, xmax)
+    landau.SetParameters(fit.GetParameter(0), fit.GetParameter(1), fit.GetParameter(2))
+
+    x = np.linspace(xmin, xmax, npoints)
+    y = np.array([landau.Eval(xx) for xx in x])
+
+    return x, y
+
+
+def bootstrap_langau(hist, fit, n_boot=500):
+    rng = ROOT.TRandom3(0)
+
+    bestpars = [fit.GetParameter(i) for i in range(4)]
+
+    mpvs = []
+    widths = []
+    sigmas = []
+
+    for i in range(n_boot):
+        hboot = hist.Clone(f"hboot_{i}")
+
+        for b in range(1, hist.GetNbinsX() + 1):
+            c = hist.GetBinContent(b)
+            hboot.SetBinContent(b, rng.Poisson(c))
+
+        fboot = fit.Clone(f"fit_{i}")
+        fboot.SetParameters(*bestpars)
+
+        hboot.Fit(fboot, "RQ0")
+
+        mpvs.append(fboot.GetMaximumX())
+        widths.append(fboot.GetParameter(0))
+        sigmas.append(fboot.GetParameter(3))
+
+    return {
+        "mpvs": np.asarray(mpvs),
+        "widths": np.asarray(widths),
+        "sigmas": np.asarray(sigmas)
+    }
+
+def bootstrap_summary(samples):
+    return {
+        "mean":np.mean(samples),
+        "std":np.std(samples),
+        "median":np.median(samples),
+    }
+
+def compute_ltf_from_data(data, mpv):
+    n1 = np.sum(data > mpv)
+    n2 = np.sum(data > 1.5*mpv)
+    if n1 == 0: return 0.
+    return n2/n1
+
+def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpper, savename, thickness, n_bootstrap=500):
 
   arr_of_ch = []
   arr_of_biases = []
@@ -159,15 +169,12 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
   arr_of_MPV_unc = []
   arr_of_width = []
   arr_of_sigma = []
-  arr_mpv_frac = []
-  arr_maxbin_frac = []
-  arr_mpv_frac_unc = []
-  arr_maxbin_frac_unc = []
+  arr_of_ltf = []
+  arr_of_ltf_unc = []
   arr_ratio = []
   arr_ratio_unc = []
   arr_of_sse = []
   arr_of_rchi2 = []
-  arr_mpv_frac_from_area = []
 
   x_axis_add = []
   y_fit_counts_add = []
@@ -177,8 +184,6 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
     area_list = []
     pmax_list = []
     negpmax_list = []
-    dvdt_list = []
-    dvdt_2080_list = []
 
     sensorType, AtQfactor, (A, B, C, D, E, F, G) = ch_val
     if AtQfactor == 0:
@@ -211,131 +216,68 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
         tmax_sig = entry.tmax[ch_ind]
         negpmax_sig = entry.negpmax[ch_ind]
         if (area_sig < A) or (area_sig > B) or (pmax_sig < C) or (pmax_sig > D) or (tmax_sig < E) or (tmax_sig > F) or (negpmax_sig < G):
-          #print(f"BAD EVENTS {A} {B} {C} {D} {E} {F}")
           continue
         else:
-          #if (area_sig > A) and (area_sig < B) and (pmax_sig > C) and (tmax_sig > D) and (tmax_sig < E):
-          #dvdt_sig = entry.dvdt[ch_ind]
-          #dvdt_2080_sig = entry.dvdt_2080[ch_ind]
           pmax_list.append(pmax_sig)
           area_list.append(area_sig)
           negpmax_list.append(negpmax_sig)
-          #dvdt_list.append(dvdt_sig)
-          #dvdt_2080_list.append(dvdt_2080_sig)
     else:
       continue
 
-    plt.figure(figsize=(16, 10))
     if var == "area_fitted":
       area = np.array(area_list)
-      #area = area/AtQfactor
       data_var = area[(area>=xLower) & (area<=xUpper)]
-    elif var == "dvdt":
-      dvdt = np.array(dvdt_list)
-      data_var = dvdt[(dvdt>=xLower) & (dvdt<=xUpper)]
-    elif var == "dvdt_2080":
-      dvdt_2080 = np.array(dvdt_2080_list)
-      data_var = dvdt_2080[(dvdt_2080>=xLower) & (dvdt_2080<=xUpper)]
     else:
       pmax = np.array(pmax_list)
       data_var = pmax[(pmax>=xLower) & (pmax<=xUpper)]
 
+    hist = build_histogram(data_var,nBins,xLower,xUpper, ch_ind)
+    counts=np.array([hist.GetBinContent(i+1) for i in range(nBins)])
+    centres=np.array([hist.GetBinCenter(i+1) for i in range(nBins)])
 
-    histo, bins, _ = plt.hist(data_var, bins=nBins, range=(xLower, xUpper), color='white', edgecolor='black', alpha=0.6, density=False)
-    bin_width = bins[1] - bins[0]
-    bin_centres = bins[:-1] + np.diff(bins) / 2
+    fit = fit_langau_root(hist,xLower,xUpper,ch_ind)
+    pars = extract_fit_parameters(fit)
 
-    if (var == "area_fitted") & (int(bias_of_channel.rstrip("V")) >= 300):
-      X_cut = 11
-      mask_cut = bin_centres >= X_cut
-      histo_masked = histo.copy()
-      histo_masked[~mask_cut] = 0
+    toys = bootstrap_langau(hist, fit, n_bootstrap)
+    mpv_stats = bootstrap_summary(toys["mpvs"])
+    width_stats = bootstrap_summary(toys["widths"])
+    sigma_stats = bootstrap_summary(toys["sigmas"])
 
-    popt, pcov, fitted_hist, bin_centres = binned_fit_langauss(data_var, nBins, xLower, xUpper, ch_ind)
-    if (var == "area_fitted") & (int(bias_of_channel.rstrip("V")) >= 300):
-      counts = histo_masked
-    else:
-      #counts = fitted_hist * len(data_var) * bin_width
-      counts = fitted_hist
-    arr_of_ch.append("Ch"+str(ch_ind))
-    arr_of_biases.append(bias_of_channel)
+    arr_of_ch.append(f"Ch{ch_ind}")
+    bias=getBias(str(file), ch_ind)
+    arr_of_biases.append(bias)
 
-    x_grid = np.linspace(xLower, xUpper, 1000)
-    mpv_true = get_true_mpv_from_grid(popt, x_grid)
+    arr_of_MPV.append(pars["mpv"])
+    arr_of_MPV_unc.append(mpv_stats["std"])
+    arr_of_width.append(pars["landau_width"])
+    arr_of_sigma.append(pars["gauss_sigma"])
+    arr_ratio.append(pars["landau_width"] / pars["mpv"])
+    arr_ratio_unc.append(arr_ratio*np.sqrt((mpv_stats["std"]/pars["mpv"])**2 + (width_stats["std"]/pars["landau_width"])**2))
 
-    arr_of_MPV.append(mpv_true)
-    arr_of_width.append(popt[1])
-    arr_of_sigma.append(popt[2])
+    ltf = compute_ltf_from_data(data_var, pars["mpv"])
+    arr_of_ltf.append(ltf)
+    toy_ltf=[]
 
-    count_1p0mpv = np.sum(data_var > mpv_true)
-    count_1p5mpv = np.sum(data_var > 1.5 * mpv_true)
-    frac_mpv = count_1p5mpv/count_1p0mpv
-    arr_mpv_frac.append(frac_mpv)
-    ltf_fit = compute_ltf_extrapolated(popt, mpv_true, xLower)
-    arr_mpv_frac_from_area.append(ltf_fit)
+    for mpv in toys["mpvs"]:
+        toy_ltf.append(compute_ltf_from_data(data_var, mpv))
 
-    max_bin_index = np.argmax(histo)
-    max_bin_centre = bin_centres[max_bin_index]
-    count_max_bin = sum(1 for value in data_var if value > max_bin_centre)
-    count_1p5max_bin = sum(1 for value in data_var if value > 1.5 * max_bin_centre)
+    toy_ltf=np.asarray(toy_ltf)
+    arr_of_ltf_unc.append(np.std(toy_ltf))
 
-    frac_maxbin = count_1p5max_bin / count_max_bin if count_max_bin > 0 else 0
-    arr_maxbin_frac.append(frac_maxbin)
+    y_fit=np.array([fit.Eval(x) for x in centres])
 
-    n_toys = 200
-    print(f"[BETA ANALYSIS]: [LANGAUS PLOTTER] Estimating the uncertainty in Langaus fit parameters and variables of interest from {n_toys} toys")
-    unc_dict = estimate_mpv_and_fraction_uncertainty(data_var, popt, pcov, x_grid, n_toys)
-    ratio_val = popt[1] / mpv_true
-    ratio_unc = unc_dict["ratio_std"]
-    #ratio_val = unc_dict["ratio_mean"]
-    arr_ratio.append(ratio_val)
-    arr_ratio_unc.append(ratio_unc)
-     
-    mpv_unc = unc_dict["mpv_std"]
-    xi_unc = unc_dict["xi_std"]
-    sigma_unc = unc_dict["sigma_std"]
-    mpv_val, xi_val, sigma_val = popt
-    arr_of_MPV_unc.append(mpv_unc)
-    frac_mpv_unc_syst = unc_dict["frac_mpv_std"]
-    frac_maxbin_unc_syst = unc_dict["frac_maxbin_std"]
-    frac_mpv_stat = np.sqrt(frac_mpv * (1 - frac_mpv) / count_1p0mpv) if count_1p0mpv > 0 else 0
-    frac_maxbin_stat = np.sqrt(frac_maxbin * (1 - frac_maxbin) / count_max_bin) if count_max_bin > 0 else 0
- 
-    frac_mpv_total_unc = np.sqrt(frac_mpv_stat**2 + frac_mpv_unc_syst**2)
-    frac_maxbin_total_unc = np.sqrt(frac_maxbin_stat**2 + frac_maxbin_unc_syst**2)
-    arr_mpv_frac_unc.append(frac_mpv_total_unc)
-    arr_maxbin_frac_unc.append(frac_maxbin_total_unc)
+    residuals=counts-y_fit
 
-    mpv, xi, sigma = popt
-    y_fit_pdf = langauss.pdf(bin_centres, mpv, xi, sigma)
-    y_fit = y_fit_pdf * len(data_var) * bin_width
-    x_axis = np.linspace(xLower, xUpper, 999)
-    y_fit_counts = langauss.pdf(x_axis, *popt) * len(data_var) * bin_width
-    #histo = histo[histo > 0]
-    residuals = histo - y_fit
-
-    SSE = np.sum(residuals**2)
-    normSSE = SSE / len(data_var)
-    arr_of_sse.append(SSE)
-    #sigma = np.sqrt(histo)
-    #sigma[sigma == 0] = 1
-    sigma = np.sqrt(np.maximum(histo, 1))
+    sigma = np.sqrt(np.maximum(counts, 1))
 
     chi2 = np.sum((residuals / sigma) ** 2)
-
-    N = len(histo)
-    p = len(popt)
-    nu = N - p
-    chi2_red = chi2 / nu
-    arr_of_rchi2.append(chi2_red)
-
-    mpvext, xiext, sigmaext = popt
-    y_landau_pdf = langauss.landau.pdf(x_axis, mpvext, xiext)
-    y_landau_pdf *= y_fit_pdf.max() / y_landau_pdf.max()
-    y_landau_counts = y_landau_pdf * len(data_var) * bin_width
-
+    nu = nBins - 4
+    arr_rchi2.append(chi2 / nu)
+    arr_sse.append(np.sum(residuals ** 2))
+    x_axis, y_fit_curve = evaluate_fit(fit, xLower, xUpper)
+    _, y_landau = evaluate_landau(fit, xLower, xUpper)
     x_axis_add.append(x_axis)
-    y_fit_counts_add.append(y_fit_counts)
+    y_fit_counts_add.append(y_fit_curve)
 
     legend_fontsize=42
     bias_of_channel_spaced = bias_of_channel[:-1] + " " + bias_of_channel[-1]
@@ -365,12 +307,12 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
     if (var == "charge") & (int(bias_of_channel.rstrip("V")) >= 300):
       fig.add_trace(
         go.Scatter(
-          x=bin_centres,
+          x=centres,
           y=counts,
           mode='markers',
           name=f"{thickness} μm, V<sub>bias</sub> = {bias_of_channel_spaced}",
           marker=dict(color='black', size=15),
-          error_y=dict(type='data', array=np.sqrt(histo_masked))
+          error_y=dict(type='data', array=np.sqrt(counts))
         )
       )
     else:
@@ -388,11 +330,11 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
     fig.add_trace(
     go.Scatter(
         x=x_axis,
-        y=y_fit_counts,
+        y=y_fit_curve,
         name=(
-             f"<i>Q</i>~<b>θ</b>(<i>Q</i><sub>MPV</sub> = {fmt_val_unc(mpv_true, mpv_unc)},<br>"
-             f"          ξ = {fmt_val_unc(xi_val, xi_unc)},<br>"
-             f"          σ = {fmt_val_unc(sigma_val, sigma_unc)})"
+             f"<i>Q</i>~<b>θ</b>(<i>Q</i><sub>MPV</sub> = {fmt_val_unc(fmt_val_unc(pars["mpv"], mpv_stats["std"]))},<br>"
+             f"          ξ = {fmt_val_unc(fmt_val_unc(pars["landau_width"], width_stats["std"]))},<br>"
+             f"          σ = {fmt_val_unc(fmt_val_unc(pars["gauss_sigma"], sigma_stats["std"]))})"
             ),
         mode='lines',
         line=dict(color='red', width=10)
@@ -401,7 +343,7 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
     fig.add_trace(
       go.Scatter(
         x=x_axis,
-        y=y_landau_counts,
+        y=y_landau,
         mode='lines',
         name=f'  Landau contribution',
         line=dict(color='blue', width=10, dash='dash')
@@ -441,11 +383,11 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
     var+" Unc": arr_of_MPV_unc,
     "Landau width": arr_of_width,
     "Gaussian sigma": arr_of_sigma,
-    "LTF": arr_mpv_frac,
-    "LTF Unc": arr_mpv_frac_unc,
-    "LTF from area": arr_mpv_frac_from_area,
-    "LTFmax": arr_maxbin_frac,
-    "LTFmax Unc": arr_maxbin_frac_unc,
+    "LTF": arr_of_ltf,
+    "LTF Unc": arr_of_ltf_unc,
+    #"LTF from area": arr_mpv_frac_from_area,
+    #"LTFmax": arr_maxbin_frac,
+    #"LTFmax Unc": arr_maxbin_frac_unc,
     "Landau Frac": arr_ratio,
     "Landau Frac Unc": arr_ratio_unc,
     "SSE score": arr_of_sse,
