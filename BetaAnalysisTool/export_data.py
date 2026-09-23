@@ -169,7 +169,7 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
         df_rms = df[['Channel','Bias','Mean','Sigma','NEvents']]
       else:
         df_rms = df[['Mean','Sigma']]
-      df_rms.loc[:, 'Sigma'] = df_rms['Sigma'].round(2)
+      df_rms.loc[:, 'Sigma'] = df_rms['Sigma'].round(3)
       df_rms = df_rms.rename(columns={'Mean':'RMS Noise / mV', 'Sigma':'RMS Unc / mV'})
       dfs_to_concat.append(df_rms)
     elif var == "width30":
@@ -227,7 +227,12 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
     dfs_comb.loc[:, 'Jitter Unc / ps'] = dfs_comb['Jitter Unc / ps'].round(1)
     if 'TR @ 30% / ps' in dfs_comb.columns:
       # Fit between charge and time res calculation
-      dfs_comb['Landau TR Cpt / ps'], dfs_comb['Landau TR Unc / ps'] = landau_tr_quad_fit(dfs_comb['Charge / fC'], dfs_comb['TR @ 30% / ps'], dfs_comb['TR Unc @ 30% / ps'])
+      dfs_comb['Landau TR Cpt / ps'] = 0.0
+      dfs_comb['Landau TR Unc / ps'] = 0.0
+      for channel, group in dfs_comb.groupby('Channel'):
+        cpt, unc = landau_tr_quad_fit(group['Charge / fC'], group['TR @ 30% / ps'], group['TR Unc @ 30% / ps'])
+        dfs_comb.loc[group.index, 'Landau TR Cpt / ps'] = cpt
+        dfs_comb.loc[group.index, 'Landau TR Unc / ps'] = unc
       # Direct quad difference calculation
       #dfs_comb['Landau TR Cpt / ps'] = np.sqrt(dfs_comb['TR @ 30% / ps']**2 - dfs_comb['Jitter[20%:80%] / ps']**2)
       #unc_cpt_jit = dfs_comb['Jitter[20%:80%] / ps']*dfs_comb['Jitter[20%:80%] Unc / ps']

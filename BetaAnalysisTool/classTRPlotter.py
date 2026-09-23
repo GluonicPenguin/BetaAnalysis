@@ -59,7 +59,8 @@ class plotTRVar:
       else:
         F_string = f"{F[file_index]}"
       if G == 0.0:
-        G_string = "-100"
+        print("HERE")
+        G_string = "-400"
       else:
         G_string = f"{G}"
 

@@ -158,11 +158,20 @@ def bootstrap_langau(hist, fit, n_boot=50):
         "sigmas": np.asarray(sigmas)
     }
 
-def bootstrap_summary(samples):
+def bootstrap_summary(samples, range_info=False):
+    if range_info:
+        print("St dev")
+        print(np.std(samples)/4.7)
+        print("Range")
+        print((np.max(samples)-np.min(samples))/4.7)
+        print("Interquartile range")
+        print((np.percentile(samples, 75) - np.percentile(samples, 25))/4.7)
+        print("\n\n\n")
     return {
         "mean":np.mean(samples),
         "std":np.std(samples),
         "median":np.median(samples),
+        "range":np.max(samples)-np.min(samples)
     }
 
 def compute_ltf_from_data(data, mpv):
@@ -249,7 +258,7 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
     pars = extract_fit_parameters(fit)
 
     toys = bootstrap_langau(hist, fit, n_bootstrap)
-    mpv_stats = bootstrap_summary(toys["mpvs"])
+    mpv_stats = bootstrap_summary(toys["mpvs"], False)
     #print(toys["mpvs"][:20])
     #print(np.min(toys["mpvs"]), np.max(toys["mpvs"]))
     width_stats = bootstrap_summary(toys["widths"])
@@ -258,13 +267,12 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
     arr_of_ch.append(f"Ch{ch_ind}")
     bias=getBias(str(file), ch_ind)
     arr_of_biases.append(bias)
-
     arr_of_MPV.append(pars["mpv"])
-    arr_of_MPV_unc.append(mpv_stats["std"])
+    arr_of_MPV_unc.append(0.5*mpv_stats["range"])
     arr_of_width.append(pars["landau_width"])
     arr_of_sigma.append(pars["gauss_sigma"])
     arr_ratio.append(pars["landau_width"] / pars["mpv"])
-    arr_ratio_unc.append((pars["landau_width"] / pars["mpv"])*np.sqrt((mpv_stats["std"]/pars["mpv"])**2 + (width_stats["std"]/pars["landau_width"])**2))
+    arr_ratio_unc.append((pars["landau_width"] / pars["mpv"])*np.sqrt((0.5*mpv_stats["range"]/pars["mpv"])**2 + (0.5*width_stats["range"]/pars["landau_width"])**2))
 
     ltf = compute_ltf_from_data(data_var, pars["mpv"])
     arr_of_ltf.append(ltf)
@@ -274,7 +282,8 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
         toy_ltf.append(compute_ltf_from_data(data_var, mpv))
 
     toy_ltf=np.asarray(toy_ltf)
-    arr_of_ltf_unc.append(np.std(toy_ltf))
+    #arr_of_ltf_unc.append(np.std(toy_ltf))
+    arr_of_ltf_unc.append(0.5*(np.max(toy_ltf)-np.min(toy_ltf)))
 
     y_fit=np.array([fit.Eval(x) for x in centres])
 
@@ -344,9 +353,9 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
         x=x_axis,
         y=y_fit_curve,
         name=(
-             f"<i>Q</i>~<b>θ</b>(<i>Q</i><sub>MPV</sub> = {fmt_val_unc(pars['mpv'], mpv_stats['std'])},<br>"
-             f"          ξ = {fmt_val_unc(pars['landau_width'], width_stats['std'])},<br>"
-             f"          σ = {fmt_val_unc(pars['gauss_sigma'], sigma_stats['std'])})"
+             f"<i>Q</i>~<b>θ</b>(<i>Q</i><sub>MPV</sub> = {fmt_val_unc(pars['mpv'], 0.5*mpv_stats['range'])},<br>"
+             f"          ξ = {fmt_val_unc(pars['landau_width'], 0.5*width_stats['range'])},<br>"
+             f"          σ = {fmt_val_unc(pars['gauss_sigma'], 0.5*sigma_stats['range'])})"
             ),
         mode='lines',
         line=dict(color='red', width=10)

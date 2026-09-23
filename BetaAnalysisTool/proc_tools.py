@@ -51,7 +51,7 @@ def get_fit_results(arr_of_fits, arr_of_biases, arr_of_nevents, channel_of_dut, 
     #npar = fit_func.GetNpar()
     #nevents = ndf + npar
     mean = fit_func.GetParameter(1)  # Mean of the gauss distribution
-    sigma = fit_func.GetParameter(2) # Sigma of the gauss distribution
+    sigma = fit_func.GetParError(1) # Sigma of the gauss distribution
     amplitude = fit_func.GetParameter(0)  # Amplitude of the gauss distribution
     chi2 = fit_func.GetChisquare()  # Chi-squared value of the fit
     ndf = fit_func.GetNDF()  # Number of degrees of freedom

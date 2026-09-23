@@ -182,7 +182,8 @@ def bootstrap_sigma_uncertainty(hist_to_fit, fit_func, covariance_info, n_toys=5
 
   print(sigma_samples)
   if len(sigma_samples) > 2:
-      sigma_unc_toy = np.std(sigma_samples)
+      #sigma_unc_toy = np.std(sigma_samples)
+      sigma_unc_toy = 0.5*(np.max(sigma_samples) - np.min(sigma_samples))
   else:
       sigma_unc_toy = 0.0
   return sigma_unc_toy

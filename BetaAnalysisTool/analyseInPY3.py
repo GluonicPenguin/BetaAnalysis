@@ -70,7 +70,7 @@ def main():
   
   for ch in config['channels']:
     if ch[0] == 0: ch[1] = 0
-  modified_channels = [[ch[0], ch[1], (ch[2][0], 1600 if ch[2][1] == 0 else ch[2][1], ch[2][2], 1600 if ch[2][3] == 0 else ch[2][3], -50 if ch[2][4] == 0 else ch[2][4], 50 if ch[2][5] == 0 else ch[2][5], -100 if ch[2][6] == 0 else ch[2][6])] for ch in config['channels']] # set +ve negpmax lower bounds to -100 mV if they are +ve or 0 in the textCard (and tmax cuts on full range if specified as 0,0)
+  modified_channels = [[ch[0], ch[1], (ch[2][0], 1600 if ch[2][1] == 0 else ch[2][1], ch[2][2], 1600 if ch[2][3] == 0 else ch[2][3], -50 if ch[2][4] == 0 else ch[2][4], 50 if ch[2][5] == 0 else ch[2][5], -400 if ch[2][6] == 0 else ch[2][6])] for ch in config['channels']] # set +ve negpmax lower bounds to -100 mV if they are +ve or 0 in the textCard (and tmax cuts on full range if specified as 0,0)
   config['channels'] = modified_channels
 
   channel_mapping = {
@@ -189,7 +189,7 @@ def main():
     print(f"[BETA ANALYSIS]: [PLOTTER] Performing Gaussian fit to RISETIME distribution")
     risetime_dfs = []
     for file_ind, file_real in enumerate(file_array):
-      plot_risetime = plotVar("risetime", risetime_params[0], risetime_params[1], risetime_params[2], True, output_name_array[file_ind]+"_"+str(file_ind)+"_risetime_relu.png", fit="gaus")
+      plot_risetime = plotVar("risetime", risetime_params[0], risetime_params[1], risetime_params[2], True, output_name_array[file_ind]+"_"+str(file_ind)+"_risetime.png", fit="gaus")
       df_data = plot_risetime.run(file_real, file_ind, tree_array[file_ind], config['channels'])
       risetime_dfs.append(df_data)
     risetime_data = pd.concat(risetime_dfs, ignore_index=True)
