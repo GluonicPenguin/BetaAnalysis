@@ -178,7 +178,7 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
         df_width = df[['Channel','Bias','Mean','Sigma','NEvents']]
       else:
         df_width = df[['Mean','Sigma']]
-      df_width.loc[:, 'Sigma'] = df_width['Sigma'].round(2)
+      df_width.loc[:, 'Sigma'] = df_width['Sigma'].round(3)
       df_width = df_width.rename(columns={'Mean':'Width @ 30% / ns', 'Sigma':'Width Unc @ 30% / ns'})
       dfs_to_concat.append(df_width)
     elif var == "width50":
@@ -187,7 +187,7 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
         df_width = df[['Channel','Bias','Mean','Sigma','NEvents']]
       else:
         df_width = df[['Mean','Sigma']]
-      df_width.loc[:, 'Sigma'] = df_width['Sigma'].round(2)
+      df_width.loc[:, 'Sigma'] = df_width['Sigma'].round(3)
       df_width = df_width.rename(columns={'Mean':'Width @ 50% / ns', 'Sigma':'Width Unc @ 50% / ns'})
       dfs_to_concat.append(df_width)
     elif var == "timeres":
@@ -213,10 +213,10 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
     sqfracdiff_width50 = (dfs_comb['Width Unc @ 50% / ns'] / dfs_comb['Width @ 50% / ns'])**2
     dfs_comb['PMAX/Width@50% / mV/ns'] = dfs_comb['Amplitude / mV'] / dfs_comb['Width @ 50% / ns']
     dfs_comb['PMAX/Width@50% Unc / mV/ns'] = dfs_comb['PMAX/Width@50% / mV/ns'] * np.sqrt(sqfracdiff_ampl + sqfracdiff_width50)
-    dfs_comb['PMAX/Width@30% / mV/ns'].round(3)
-    dfs_comb['PMAX/Width@30% Unc / mV/ns'].round(3)
-    dfs_comb['PMAX/Width@50% / mV/ns'].round(3)
-    dfs_comb['PMAX/Width@50% Unc / mV/ns'].round(3)
+    dfs_comb.loc[:, 'PMAX/Width@30% / mV/ns'] = dfs_comb['PMAX/Width@30% / mV/ns'].round(3)
+    dfs_comb.loc[:, 'PMAX/Width@30% Unc / mV/ns'] = dfs_comb['PMAX/Width@30% Unc / mV/ns'].round(3)
+    dfs_comb.loc[:, 'PMAX/Width@50% / mV/ns'] = dfs_comb['PMAX/Width@50% / mV/ns'].round(3)
+    dfs_comb.loc[:, 'PMAX/Width@50% Unc / mV/ns'] = dfs_comb['PMAX/Width@50% Unc / mV/ns'].round(3)
   if ('Rise time / ps' in dfs_comb.columns) and ('Amplitude / mV' in dfs_comb.columns) and ('RMS Noise / mV' in dfs_comb.columns):
     dfs_comb['Jitter / ps'] = dfs_comb['RMS Noise / mV'] / (dfs_comb['Amplitude / mV'] / dfs_comb['Rise time / ps'])
     dfs_comb.loc[:, 'Jitter / ps'] = dfs_comb['Jitter / ps'].round(1)
