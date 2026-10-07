@@ -29,8 +29,9 @@ def main():
   args = parser.parse_args()
 
   print(f"[BETA ANALYSIS] : [CARD READER] Reading text card {args.config}.")
-  config, thicknesses, mcp_specs, safemode = read_text_card(args.config)
+  config, thicknesses, mcp_specs, safemode, ehpairspermicron = read_text_card(args.config)
   thicknesses = [thickness for thickness in thicknesses if thickness != "nDUT"]
+  ehpairspermicron = [ehpairpermicron for ehpairpermicron in ehpairspermicron if ehpairpermicron != 1]
   output_name = os.path.splitext(os.path.basename(args.config))[0]
 
   file_list = config.get('files', [])
@@ -85,6 +86,11 @@ def main():
     5: "on Mignone board",
     1: "unmounted",
     0: ""
+  }
+
+  ehpairpermicron_mapping = {
+    "Si" : 75,
+    "SiC" : 55
   }
 
   if safemode:
@@ -301,7 +307,7 @@ def main():
 
   convert_and_save_csv(data_langaus_out, 'data_langaus_'+output_name+'.csv')
   if len(data_out) > 1:
-    direct_to_table(data_out, config['channels'], output_name, thicknesses, area_charge_mapped_vals)
+    direct_to_table(data_out, config['channels'], output_name, thicknesses, area_charge_mapped_vals, ehpairspermicron)
 
 if __name__ == "__main__":
     main()

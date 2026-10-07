@@ -40,7 +40,7 @@ def convert_and_save_csv(data, savename):
   flat_df = pd.DataFrame(flat_dict)
   flat_df.to_csv(savename, index=False)
 
-def direct_to_table(name_and_df_couples, channel_configs, output_savename, thickness_info, atq_info):
+def direct_to_table(name_and_df_couples, channel_configs, output_savename, thickness_info, atq_info, ehpairpermicron_info):
 
   number_of_duts = sum(1 for element in channel_configs if element[0] == 1)
   number_of_bias_pts = int(len(name_and_df_couples[0][1]) / number_of_duts)
@@ -48,6 +48,7 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
   # thickness less 2 um to get active thickness vs nominal thickness of substrate
   thickness_col = np.repeat(np.array(thickness_info), number_of_bias_pts)
   atq_col = np.repeat(np.array(atq_info), number_of_bias_pts)
+  ehpairpermicron_col = np.repeat(np.array(ehpairpermicron_info), number_of_bias_pts)
 
   area_low = []
   area_high = []
@@ -145,8 +146,8 @@ def direct_to_table(name_and_df_couples, channel_configs, output_savename, thick
                                              'Landau Frac':'Area_xiompv','Landau Frac Unc':'Area_xiompv_unc'})
       df_area_fitted['Charge / fC'] = (df_area_fitted['Area / pWb']/atq_col)
       df_area_fitted['Charge Unc'] = df_area_fitted['Area_Unc']/atq_col
-      df_area_fitted['Gain'] = 100*(df_area_fitted['Charge / fC'] / thickness_col)
-      df_area_fitted['Gain Unc'] = 100*(df_area_fitted['Charge Unc'] / thickness_col)
+      df_area_fitted['Gain'] = df_area_fitted['Charge / fC'] / (thickness_col*ehpairpermicron_col*1.6*1E-4)
+      df_area_fitted['Gain Unc'] = df_area_fitted['Charge Unc'] / (thickness_col*ehpairpermicron_col*1.6*1E-4)
       df_area_fitted.loc[:, 'Area / pWb'] = df_area_fitted['Area / pWb'].round(4)
       df_area_fitted.loc[:, 'Area_Unc'] = df_area_fitted['Area_Unc'].round(4)
       df_area_fitted.loc[:, 'Area_Landau'] = df_area_fitted['Area_Landau'].round(4)

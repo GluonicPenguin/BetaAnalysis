@@ -16,6 +16,10 @@ def read_text_card(file_path):
         "None": 1
   }
   channels = [[0, 1]] * 8
+  channel_ehpairpermicron_mapping = {
+    "Si" : 75,
+    "SiC" : 55
+  }
 
   plot_flags = {
     "tmax": False,
@@ -50,6 +54,7 @@ def read_text_card(file_path):
     current_key = None  # Track the current key being processed
     current_value = []  # Collect multi-line values
     thickness_info = []
+    ehpairpermicron_info = []
     for line in f:
       line = line.strip()
       if not line or line.startswith('#'):  # Skip empty lines and comments
@@ -81,10 +86,13 @@ def read_text_card(file_path):
           type_str = parts[0]
           additional_str = parts[1] if len(parts) > 1 else ""
           thickness_str = parts[2] if (len(parts) > 2) & (type_str.upper() != "MCP") else "nDUT"
+          ehpairpermicron_str = parts[3] if (len(parts) > 3) & (type_str.upper() != "MCP") else 1
 
           channel_type = channel_type_mapping.get(type_str.upper(), 0)
           channel_value = channel_area_to_area_fitted_mapping.get(additional_str, 1)
+          ehpairpermicron_value = channel_ehpairpermicron_mapping.get(ehpairpermicron_str, 1)
           thickness_info.append(thickness_str)
+          ehpairpermicron_info.append(ehpairpermicron_value)
 
           if (type_str.upper() == "MCP"):
             if (parts[2] == 0) & (parts[3] == 0):
@@ -153,4 +161,4 @@ def read_text_card(file_path):
   config['channels'] = channels
   config.update(plot_flags)
   config.update(plot_params)
-  return config, thickness_info, MCP_specs, safemode
+  return config, thickness_info, MCP_specs, safemode, ehpairpermicron_info
