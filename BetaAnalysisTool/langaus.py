@@ -180,7 +180,7 @@ def compute_ltf_from_data(data, mpv):
     if n1 == 0: return 0.
     return n2/n1
 
-def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpper, savename, thickness, n_bootstrap=500):
+def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpper, savename, thickness, n_bootstrap=500, force_mcp_sel=False):
 
   arr_of_ch = []
   arr_of_biases = []
@@ -199,6 +199,38 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
   y_fit_counts_add = []
 
   dict_of_vars = {"amplitude": "Amplitude / mV", "area_fitted": "Area / pWb", "charge": "Charge / fC", "gain": "Gain / fC", "dvdt": "dV/dt / mV/ps", "dvdt_2080": "dV/dt[20%:80%] / mV/ps"}
+
+  mcp_channel = None
+  mcp_cuts = None
+
+  if force_mcp_sel:
+    for mcp_ind, mcp_val in enumerate(channel_array):
+      if mcp_val[0] == 2:
+        mcp_channel = mcp_ind
+        _, _, (A_mcp, B_mcp, C_mcp, D_mcp, E_mcp, F_mcp, G_mcp) = mcp_val
+        if A_mcp == 0.0 or A_mcp == []:
+          A_mcp = 0.0
+        else:
+          A_mcp = A_mcp[file_index]
+        if B_mcp == 0: B_mcp = 1600
+        if C_mcp == 0.0 or C_mcp == []:
+          C_mcp = 0.0
+        else:
+          C_mcp = C_mcp[file_index]
+        if D_mcp == 0: D_mcp = 1600
+        if E_mcp == 0.0 or E_mcp == []:
+          E_mcp = -50
+        else:
+          E_mcp = E_mcp[file_index]
+        if F_mcp == 0.0 or F_mcp == []:
+          F_mcp = 50
+        else:
+          F_mcp = F_mcp[file_index]
+        if G_mcp == 0:
+          G_mcp = -100
+        mcp_cuts = (A_mcp, B_mcp, C_mcp, D_mcp, E_mcp, F_mcp, G_mcp)
+        break
+
   for ch_ind, ch_val in enumerate(channel_array):
     area_list = []
     pmax_list = []
@@ -207,41 +239,50 @@ def plot_langaus(var, file, file_index, tree, channel_array, nBins, xLower, xUpp
     sensorType, AtQfactor, (A, B, C, D, E, F, G) = ch_val
     if AtQfactor == 0:
       AtQfactor = 1
-    if sensorType == 1:
-      if (A == 0.0) or (A == []):
-        A = 0.0
-      else:
-        A = A[file_index]
-      if B == 0: B = 1600
-      if (C == 0.0) or (C == []):
-        C = 0.0
-      else:
-        C = C[file_index]
-      if D == 0: D = 1600
-      if (E == 0.0) or (E == []):
-        E = -50
-      else:
-        E = E[file_index]
-      if (F == 0.0) or (F == []):
-        F = 50
-      else:
-        F = F[file_index]
-      if G == 0:
-        G = -100
-      bias_of_channel = getBias(str(file), ch_ind)
-      for entry in tree:
-        area_sig = entry.area_new[ch_ind]
-        pmax_sig = entry.pmax[ch_ind]
-        tmax_sig = entry.tmax[ch_ind]
-        negpmax_sig = entry.negpmax[ch_ind]
-        if (area_sig < A) or (area_sig > B) or (pmax_sig < C) or (pmax_sig > D) or (tmax_sig < E) or (tmax_sig > F) or (negpmax_sig < G):
-          continue
-        else:
-          pmax_list.append(pmax_sig)
-          area_list.append(area_sig)
-          negpmax_list.append(negpmax_sig)
-    else:
+    if sensorType != 1:
       continue
+
+    if A == 0.0 or A == []:
+      A = 0.0
+    else:
+      A = A[file_index]
+    if B == 0: B = 1600
+    if C == 0.0 or C == []:
+      C = 0.0
+    else:
+      C = C[file_index]
+    if D == 0: D = 1600
+    if E == 0.0 or E == []:
+      E = -50
+    else:
+      E = E[file_index]
+    if F == 0.0 or F == []:
+      F = 50
+    else:
+      F = F[file_index]
+    if G == 0:
+      G = -100
+
+    bias_of_channel = getBias(str(file), ch_ind)
+    for entry in tree:
+      area_sig = entry.area_new[ch_ind]
+      pmax_sig = entry.pmax[ch_ind]
+      tmax_sig = entry.tmax[ch_ind]
+      negpmax_sig = entry.negpmax[ch_ind]
+      if (area_sig < A) or (area_sig > B) or (pmax_sig < C) or (pmax_sig > D) or (tmax_sig < E) or (tmax_sig > F) or (negpmax_sig < G):
+        continue
+      if force_mcp_sel and mcp_cuts is not None:
+        A_mcp, B_mcp, C_mcp, D_mcp, E_mcp, F_mcp, G_mcp = mcp_cuts
+        area_mcp = entry.area_new[mcp_channel]
+        pmax_mcp = entry.pmax[mcp_channel]
+        tmax_mcp = entry.tmax[mcp_channel]
+        negpmax_mcp = entry.negpmax[mcp_channel]
+        if (area_mcp < A_mcp) or (area_mcp > B_mcp) or (pmax_mcp < C_mcp) or (pmax_mcp > D_mcp) or (tmax_mcp < E_mcp) or (tmax_mcp > F_mcp) or (negpmax_mcp < G_mcp):
+          continue
+
+      pmax_list.append(pmax_sig)
+      area_list.append(area_sig)
+      negpmax_list.append(negpmax_sig)
 
     if var == "area_fitted":
       area = np.array(area_list)

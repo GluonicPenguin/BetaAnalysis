@@ -21,7 +21,7 @@ import sys
 from proc_tools import get_fit_results, hist_tree_file_basics, plot_fit_curves, getBias
 
 class plotVar:
-  def __init__(self, var, nBins, xLower, xUpper, log_scale, save_name, fit=None):
+  def __init__(self, var, nBins, xLower, xUpper, log_scale, save_name, fit=None, force_mcp_sel=False):
 
     self.var = var
     self.nBins = nBins
@@ -30,6 +30,7 @@ class plotVar:
     self.log_scale = log_scale
     self.save_name = save_name
     self.fit = fit
+    self.force_mcp_sel = force_mcp_sel
 
   def run(self, file, file_index, tree, channel_array):
 
@@ -66,15 +67,34 @@ class plotVar:
       result.append(condition)
 
     channel_of_dut = []
+    mcp_channel = None
+    for j in range(len(channel_array)):
+      if channel_array[j][0] == 2:
+        mcp_channel = j
+
     for j in range(len(channel_array)):
       bias = getBias(str(file), j)
-      if (channel_array[j][0] == 1) or (channel_array[j][0] == 2):
-        if (channel_array[j][0] == 1): channel_of_dut.append(j)
-        thisHist = hist_tree_file_basics(tree, file, self.var, j, self.nBins, self.xLower, self.xUpper, bias, result[j], j)
-        num_ev = thisHist.GetEntries()
+      if self.force_mcp_sel:
+        if channel_array[j][0] == 1:
+          channel_of_dut.append(j)
+          selection = result[j]
+          if mcp_channel is not None:
+            selection += " && " + result[mcp_channel]
+          print(selection)
+          thisHist = hist_tree_file_basics(tree, file, self.var, j, self.nBins, self.xLower, self.xUpper, bias, selection, j)
+          num_ev = thisHist.GetEntries()
+        else:
+          thisHist = None
+          num_ev = 0
       else:
-        thisHist = None
-        num_ev = 0
+        if (channel_array[j][0] == 1) or (channel_array[j][0] == 2):
+          if channel_array[j][0] == 1:
+            channel_of_dut.append(j)
+          thisHist = hist_tree_file_basics(tree, file, self.var, j, self.nBins, self.xLower, self.xUpper, bias, result[j], j)
+          num_ev = thisHist.GetEntries()
+        else:
+          thisHist = None
+          num_ev = 0
       arr_of_hists.append(thisHist)
       arr_of_biases.append(bias)
       arr_of_nevents.append(num_ev)
